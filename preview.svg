@@ -1,0 +1,301 @@
+<svg viewBox="0 0 1280 820" xmlns="http://www.w3.org/2000/svg" font-family="system-ui,-apple-system,sans-serif">
+  <!-- Background -->
+  <rect width="1280" height="820" fill="#F7F5F0"/>
+
+  <!-- ── SIDEBAR ── -->
+  <rect x="0" y="0" width="220" height="820" fill="#FFFFFF" stroke="#E8E4DC" stroke-width="1"/>
+
+  <!-- Logo -->
+  <rect x="16" y="18" width="26" height="26" rx="7" fill="#111111"/>
+  <text x="29" y="36" text-anchor="middle" font-size="11" fill="#fff" font-weight="600">M</text>
+  <text x="50" y="36" font-size="13" font-weight="600" fill="#111" letter-spacing="-0.3">MenuIQ</text>
+  <rect x="98" y="23" width="24" height="13" rx="3" fill="#D63B1F"/>
+  <text x="110" y="33" text-anchor="middle" font-size="7.5" fill="#fff" font-weight="700" letter-spacing="0.5">PRO</text>
+  <line x1="0" y1="54" x2="220" y2="54" stroke="#E8E4DC" stroke-width="1"/>
+
+  <!-- CTA Button -->
+  <rect x="14" y="64" width="192" height="34" rx="8" fill="#D63B1F"/>
+  <text x="37" y="86" font-size="12.5" fill="#fff" font-weight="500">+ Track Competitor</text>
+
+  <!-- Nav label -->
+  <text x="18" y="116" font-size="9" fill="#7A7A7A" font-weight="600" letter-spacing="1">INTELLIGENCE</text>
+
+  <!-- Dashboard (active) -->
+  <rect x="0" y="122" width="220" height="30" fill="#FDF1EE"/>
+  <rect x="14" y="131" width="11" height="11" rx="2" fill="none" stroke="#D63B1F" stroke-width="1.5"/>
+  <text x="32" y="141" font-size="13" fill="#D63B1F" font-weight="500">Dashboard</text>
+
+  <!-- Price Watch -->
+  <rect x="0" y="152" width="220" height="30" fill="none"/>
+  <text x="14" y="172" font-size="13" fill="#555">$ Price Watch</text>
+
+  <!-- Menu Changes -->
+  <rect x="0" y="182" width="220" height="30" fill="none"/>
+  <text x="14" y="202" font-size="13" fill="#555">☰ Menu Changes</text>
+
+  <!-- Ratings -->
+  <rect x="0" y="212" width="220" height="30" fill="none"/>
+  <text x="14" y="232" font-size="13" fill="#555">★ Ratings</text>
+
+  <!-- Nav label -->
+  <text x="18" y="258" font-size="9" fill="#7A7A7A" font-weight="600" letter-spacing="1">MANAGEMENT</text>
+
+  <!-- Competitors -->
+  <rect x="0" y="264" width="220" height="30" fill="none"/>
+  <text x="14" y="284" font-size="13" fill="#555">◎ Competitors</text>
+
+  <!-- Alerts -->
+  <rect x="0" y="294" width="220" height="30" fill="none"/>
+  <text x="14" y="314" font-size="13" fill="#555">🔔 Alerts</text>
+  <rect x="178" y="301" width="22" height="16" rx="8" fill="#D63B1F"/>
+  <text x="189" y="313" text-anchor="middle" font-size="9" fill="#fff" font-weight="700">3</text>
+
+  <!-- Nav label -->
+  <text x="18" y="340" font-size="9" fill="#7A7A7A" font-weight="600" letter-spacing="1">ACCOUNT</text>
+  <rect x="0" y="346" width="220" height="30" fill="none"/>
+  <text x="14" y="366" font-size="13" fill="#555">⚙ Settings</text>
+
+  <!-- Sidebar footer -->
+  <line x1="0" y1="790" x2="220" y2="790" stroke="#E8E4DC" stroke-width="1"/>
+  <circle cx="30" cy="806" r="12" fill="#D63B1F"/>
+  <text x="30" y="810" text-anchor="middle" font-size="10" fill="#fff" font-weight="600">JD</text>
+  <text x="50" y="804" font-size="12" fill="#111" font-weight="500">Jane Doe</text>
+  <text x="50" y="817" font-size="10" fill="#7A7A7A">Restaurant Owner</text>
+
+  <!-- ── TOPBAR ── -->
+  <rect x="220" y="0" width="1060" height="56" fill="#FFFFFF" stroke="#E8E4DC" stroke-width="1"/>
+
+  <!-- Search bar -->
+  <rect x="238" y="14" width="300" height="28" rx="7" fill="#F7F5F0" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="256" y="32" font-size="12" fill="#AAAAAA">Search competitors, dishes, alerts…</text>
+  <text x="512" y="32" font-size="10" fill="#AAAAAA">⌘K</text>
+
+  <!-- Topbar icons -->
+  <rect x="1146" y="12" width="30" height="30" rx="7" fill="none" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="1161" y="32" text-anchor="middle" font-size="13" fill="#7A7A7A">?</text>
+  <rect x="1184" y="12" width="30" height="30" rx="7" fill="none" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="1199" y="32" text-anchor="middle" font-size="13" fill="#7A7A7A">🔔</text>
+  <circle cx="1209" cy="16" r="4" fill="#D63B1F" stroke="#fff" stroke-width="1.5"/>
+
+  <!-- User chip -->
+  <rect x="1222" y="12" width="92" height="30" rx="7" fill="#F7F5F0" stroke="#E8E4DC" stroke-width="1"/>
+  <circle cx="1238" cy="27" r="10" fill="#D63B1F"/>
+  <text x="1238" y="31" text-anchor="middle" font-size="9" fill="#fff" font-weight="600">JD</text>
+  <text x="1253" y="31" font-size="12" fill="#111" font-weight="500">Jane</text>
+
+  <!-- ── PAGE HEADER ── -->
+  <text x="238" y="90" font-size="22" font-weight="700" fill="#111" font-family="Georgia,serif" font-style="italic">Welcome back</text>
+  <text x="238" y="108" font-size="12" fill="#7A7A7A">The Dough House · Saturday, 10 May 2025</text>
+  <rect x="1170" y="72" width="88" height="28" rx="7" fill="#fff" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="1214" y="90" text-anchor="middle" font-size="12" fill="#111">This Week ▾</text>
+
+  <!-- ── KPI CARDS ── -->
+  <!-- Card 1: Competitors -->
+  <rect x="238" y="122" width="238" height="72" rx="9" fill="#fff" stroke="#E8E4DC" stroke-width="1"/>
+  <rect x="254" y="136" width="34" height="34" rx="9" fill="#F0EFED"/>
+  <text x="271" y="158" text-anchor="middle" font-size="16" fill="#111">👥</text>
+  <text x="298" y="147" font-size="10" fill="#7A7A7A">Competitors Tracked</text>
+  <text x="298" y="165" font-size="22" font-weight="600" fill="#111">4</text>
+  <text x="298" y="180" font-size="10" fill="#1A7F4B">+1 added this week</text>
+
+  <!-- Card 2: Price Alerts -->
+  <rect x="490" y="122" width="238" height="72" rx="9" fill="#fff" stroke="#E8E4DC" stroke-width="1"/>
+  <rect x="506" y="136" width="34" height="34" rx="9" fill="#FDF1EE"/>
+  <text x="523" y="158" text-anchor="middle" font-size="16" fill="#D63B1F">⚠</text>
+  <text x="550" y="147" font-size="10" fill="#7A7A7A">Price Alerts</text>
+  <text x="550" y="165" font-size="22" font-weight="600" fill="#111">3</text>
+  <text x="550" y="180" font-size="10" fill="#D63B1F">2 price increases nearby</text>
+
+  <!-- Card 3: Menu Changes -->
+  <rect x="742" y="122" width="238" height="72" rx="9" fill="#fff" stroke="#E8E4DC" stroke-width="1"/>
+  <rect x="758" y="136" width="34" height="34" rx="9" fill="#FDF6EA"/>
+  <text x="775" y="158" text-anchor="middle" font-size="16" fill="#C9922A">📄</text>
+  <text x="802" y="147" font-size="10" fill="#7A7A7A">Menu Changes</text>
+  <text x="802" y="165" font-size="22" font-weight="600" fill="#111">12</text>
+  <text x="802" y="180" font-size="10" fill="#7A7A7A">in the last 7 days</text>
+
+  <!-- Card 4: Rating Advantage -->
+  <rect x="994" y="122" width="264" height="72" rx="9" fill="#fff" stroke="#E8E4DC" stroke-width="1"/>
+  <rect x="1010" y="136" width="34" height="34" rx="9" fill="#E8F5EE"/>
+  <text x="1027" y="158" text-anchor="middle" font-size="16" fill="#1A7F4B">★</text>
+  <text x="1054" y="147" font-size="10" fill="#7A7A7A">Rating Advantage</text>
+  <text x="1054" y="165" font-size="22" font-weight="600" fill="#111">+0.2★</text>
+  <text x="1054" y="180" font-size="10" fill="#1A7F4B">vs area avg 4.1</text>
+
+  <!-- ── PRICE WIDGET ── -->
+  <rect x="238" y="208" width="526" height="268" rx="9" fill="#fff" stroke="#E8E4DC" stroke-width="1"/>
+
+  <!-- Widget header -->
+  <text x="256" y="232" font-size="10" fill="#7A7A7A" font-weight="600" letter-spacing="1">MARGHERITA PIZZA · SOHO</text>
+  <rect x="666" y="218" width="72" height="22" rx="11" fill="#FFF0EE" stroke="#FBCFC7" stroke-width="1"/>
+  <circle cx="680" cy="229" r="4" fill="#D63B1F"/>
+  <text x="680" cy="229"/>
+  <text x="692" y="233" font-size="10" fill="#D63B1F" font-weight="700">LIVE</text>
+
+  <!-- Item tabs -->
+  <rect x="254" y="244" width="74" height="22" rx="11" fill="#111"/>
+  <text x="291" y="259" text-anchor="middle" font-size="11" fill="#fff" font-weight="500">Margherita</text>
+  <rect x="334" y="244" width="66" height="22" rx="11" fill="#F7F5F0" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="367" y="259" text-anchor="middle" font-size="11" fill="#7A7A7A">Pepperoni</text>
+  <rect x="406" y="244" width="64" height="22" rx="11" fill="#F7F5F0" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="438" y="259" text-anchor="middle" font-size="11" fill="#7A7A7A">Caesar</text>
+  <rect x="476" y="244" width="62" height="22" rx="11" fill="#F7F5F0" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="507" y="259" text-anchor="middle" font-size="11" fill="#7A7A7A">Garlic</text>
+
+  <!-- Price rows -->
+  <!-- You -->
+  <text x="254" y="294" font-size="13" fill="#111" font-weight="600">You</text>
+  <text x="254" y="308" font-size="11" fill="#7A7A7A">Margherita 12"</text>
+  <rect x="420" y="293" width="280" height="8" rx="4" fill="#F0EDE8"/>
+  <rect x="420" y="293" width="182" height="8" rx="4" fill="#111111"/>
+  <text x="716" y="302" font-size="13" fill="#111" font-weight="600" text-anchor="end">£11.50</text>
+
+  <!-- Slice & Dice -->
+  <text x="254" y="328" font-size="13" fill="#111" font-weight="600">Slice &amp; Dice</text>
+  <text x="254" y="342" font-size="11" fill="#7A7A7A">Margherita Regular</text>
+  <rect x="420" y="327" width="280" height="8" rx="4" fill="#F0EDE8"/>
+  <rect x="420" y="327" width="219" height="8" rx="4" fill="#D63B1F"/>
+  <text x="716" y="336" font-size="13" fill="#D63B1F" font-weight="600" text-anchor="end">£13.90</text>
+
+  <!-- Pizza Primo -->
+  <text x="254" y="362" font-size="13" fill="#111" font-weight="600">Pizza Primo</text>
+  <text x="254" y="376" font-size="11" fill="#7A7A7A">Classic Margherita</text>
+  <rect x="420" y="361" width="280" height="8" rx="4" fill="#F0EDE8"/>
+  <rect x="420" y="361" width="166" height="8" rx="4" fill="#C9922A"/>
+  <text x="716" y="370" font-size="13" fill="#1A7F4B" font-weight="600" text-anchor="end">£10.50</text>
+
+  <!-- PizzaBase -->
+  <text x="254" y="396" font-size="13" fill="#111" font-weight="600">PizzaBase</text>
+  <text x="254" y="410" font-size="11" fill="#7A7A7A">Margarita 10"</text>
+  <rect x="420" y="395" width="280" height="8" rx="4" fill="#F0EDE8"/>
+  <rect x="420" y="395" width="224" height="8" rx="4" fill="#D63B1F"/>
+  <text x="716" y="404" font-size="13" fill="#D63B1F" font-weight="600" text-anchor="end">£14.20</text>
+
+  <!-- Franco Manca -->
+  <text x="254" y="430" font-size="13" fill="#111" font-weight="600">Franco Manca</text>
+  <text x="254" y="444" font-size="11" fill="#7A7A7A">Margherita</text>
+  <rect x="420" y="429" width="280" height="8" rx="4" fill="#F0EDE8"/>
+  <rect x="420" y="429" width="150" height="8" rx="4" fill="#C9922A"/>
+  <text x="716" y="438" font-size="13" fill="#1A7F4B" font-weight="600" text-anchor="end">£9.50</text>
+
+  <!-- Widget footer -->
+  <line x1="238" y1="457" x2="764" y2="457" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="256" y="472" font-size="11" fill="#7A7A7A">Updated 6 min ago · 4 competitors nearby</text>
+  <text x="748" y="472" font-size="11" fill="#D63B1F" font-weight="500" text-anchor="end">↻ Refresh</text>
+
+  <!-- ── AREAS TO WATCH ── -->
+  <rect x="776" y="208" width="482" height="268" rx="9" fill="#fff" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="794" y="232" font-size="12" fill="#111" font-weight="600">Areas to Watch</text>
+  <text x="1216" y="232" font-size="11" fill="#D63B1F" text-anchor="end">View alerts</text>
+  <line x1="776" y1="242" x2="1258" y2="242" stroke="#E8E4DC" stroke-width="1"/>
+
+  <!-- Watch item 1 -->
+  <rect x="792" y="252" width="28" height="28" rx="7" fill="#F7F5F0"/>
+  <text x="806" y="271" text-anchor="middle" font-size="14">🍕</text>
+  <text x="830" y="264" font-size="12" fill="#111" font-weight="500">PizzaBase</text>
+  <text x="830" y="277" font-size="11" fill="#7A7A7A">Raised prices on 3 items</text>
+  <rect x="1170" y="254" width="58" height="18" rx="4" fill="#FDF1EE"/>
+  <text x="1199" y="267" text-anchor="middle" font-size="10" fill="#D63B1F" font-weight="600">↑ Price</text>
+
+  <!-- Watch item 2 -->
+  <line x1="776" y1="290" x2="1258" y2="290" stroke="#E8E4DC" stroke-width="0.5"/>
+  <rect x="792" y="298" width="28" height="28" rx="7" fill="#F7F5F0"/>
+  <text x="806" y="317" text-anchor="middle" font-size="14">🌿</text>
+  <text x="830" y="310" font-size="12" fill="#111" font-weight="500">Franco Manca</text>
+  <text x="830" y="323" font-size="11" fill="#7A7A7A">Added new Vegan range (6 items)</text>
+  <rect x="1178" y="300" width="50" height="18" rx="4" fill="#FDF6EA"/>
+  <text x="1203" y="313" text-anchor="middle" font-size="10" fill="#C9922A" font-weight="600">New</text>
+
+  <!-- Watch item 3 -->
+  <line x1="776" y1="336" x2="1258" y2="336" stroke="#E8E4DC" stroke-width="0.5"/>
+  <rect x="792" y="344" width="28" height="28" rx="7" fill="#F7F5F0"/>
+  <text x="806" y="363" text-anchor="middle" font-size="14">💰</text>
+  <text x="830" y="356" font-size="12" fill="#111" font-weight="500">Slice &amp; Dice</text>
+  <text x="830" y="369" font-size="11" fill="#7A7A7A">Running 20% off lunch deal</text>
+  <rect x="1172" y="346" width="56" height="18" rx="4" fill="#FDF6EA"/>
+  <text x="1200" y="359" text-anchor="middle" font-size="10" fill="#C9922A" font-weight="600">Promo</text>
+
+  <!-- Watch item 4 -->
+  <line x1="776" y1="382" x2="1258" y2="382" stroke="#E8E4DC" stroke-width="0.5"/>
+  <rect x="792" y="390" width="28" height="28" rx="7" fill="#F7F5F0"/>
+  <text x="806" y="409" text-anchor="middle" font-size="14">⭐</text>
+  <text x="830" y="402" font-size="12" fill="#111" font-weight="500">Pizza Primo</text>
+  <text x="830" y="415" font-size="11" fill="#7A7A7A">Rating dropped 0.2 pts (now 4.2)</text>
+  <rect x="1164" y="392" width="64" height="18" rx="4" fill="#E8F5EE"/>
+  <text x="1196" y="405" text-anchor="middle" font-size="10" fill="#1A7F4B" font-weight="600">↓ Rating</text>
+
+  <!-- ── ACTIVITY CHART ── -->
+  <rect x="238" y="490" width="526" height="188" rx="9" fill="#fff" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="256" y="514" font-size="12" fill="#111" font-weight="600">Competitor Activity — Last 7 Days</text>
+  <rect x="588" y="504" width="9" height="9" rx="2" fill="#D63B1F"/>
+  <text x="601" y="513" font-size="10" fill="#7A7A7A">Price changes</text>
+  <rect x="666" y="504" width="9" height="9" rx="2" fill="#C9922A"/>
+  <text x="679" y="513" font-size="10" fill="#7A7A7A">New items</text>
+  <line x1="238" y1="524" x2="764" y2="524" stroke="#E8E4DC" stroke-width="1"/>
+
+  <!-- Chart bars -->
+  <!-- Mon -->
+  <text x="282" y="660" text-anchor="middle" font-size="10" fill="#7A7A7A">Mon</text>
+  <rect x="268" y="618" width="14" height="36" rx="3" fill="rgba(214,59,31,0.75)"/>
+
+  <!-- Tue -->
+  <text x="336" y="660" text-anchor="middle" font-size="10" fill="#7A7A7A">Tue</text>
+  <rect x="318" y="546" width="14" height="108" rx="3" fill="rgba(214,59,31,0.75)"/>
+  <rect x="334" y="582" width="14" height="72" rx="3" fill="rgba(201,146,42,0.75)"/>
+
+  <!-- Wed -->
+  <text x="390" y="660" text-anchor="middle" font-size="10" fill="#7A7A7A">Wed</text>
+  <rect x="374" y="582" width="14" height="72" rx="3" fill="rgba(214,59,31,0.75)"/>
+  <rect x="390" y="618" width="14" height="36" rx="3" fill="rgba(201,146,42,0.75)"/>
+
+  <!-- Thu -->
+  <text x="444" y="660" text-anchor="middle" font-size="10" fill="#7A7A7A">Thu</text>
+  <rect x="430" y="582" width="14" height="72" rx="3" fill="rgba(214,59,31,0.75)"/>
+
+  <!-- Fri -->
+  <text x="498" y="660" text-anchor="middle" font-size="10" fill="#7A7A7A">Fri</text>
+  <rect x="482" y="546" width="14" height="108" rx="3" fill="rgba(214,59,31,0.75)"/>
+  <rect x="498" y="582" width="14" height="72" rx="3" fill="rgba(201,146,42,0.75)"/>
+
+  <!-- Sat -->
+  <text x="552" y="660" text-anchor="middle" font-size="10" fill="#7A7A7A">Sat</text>
+  <rect x="536" y="582" width="14" height="72" rx="3" fill="rgba(214,59,31,0.75)"/>
+  <rect x="552" y="582" width="14" height="72" rx="3" fill="rgba(201,146,42,0.75)"/>
+
+  <!-- Sun -->
+  <text x="606" y="660" text-anchor="middle" font-size="10" fill="#7A7A7A">Sun</text>
+
+  <!-- ── RECENT CHANGES ── -->
+  <rect x="776" y="490" width="482" height="188" rx="9" fill="#fff" stroke="#E8E4DC" stroke-width="1"/>
+  <text x="794" y="514" font-size="12" fill="#111" font-weight="600">Recent Changes</text>
+  <text x="1216" y="514" font-size="11" fill="#D63B1F" text-anchor="end">See all</text>
+  <line x1="776" y1="524" x2="1258" y2="524" stroke="#E8E4DC" stroke-width="1"/>
+
+  <!-- Change items -->
+  <circle cx="800" cy="544" r="4" fill="#D63B1F"/>
+  <text x="814" y="541" font-size="12" fill="#333"><tspan font-weight="600" fill="#111">PizzaBase</tspan> raised Pepperoni 10" → <tspan font-weight="600">£14.20</tspan></text>
+  <text x="814" y="554" font-size="10" fill="#7A7A7A">2 hours ago</text>
+  <line x1="776" y1="564" x2="1258" y2="564" stroke="#E8E4DC" stroke-width="0.5"/>
+
+  <circle cx="800" cy="580" r="4" fill="#C9922A"/>
+  <text x="814" y="577" font-size="12" fill="#333"><tspan font-weight="600" fill="#111">Franco Manca</tspan> added <tspan font-weight="600">Vegan Funghi</tspan> at £9.50</text>
+  <text x="814" y="590" font-size="10" fill="#7A7A7A">5 hours ago</text>
+  <line x1="776" y1="600" x2="1258" y2="600" stroke="#E8E4DC" stroke-width="0.5"/>
+
+  <circle cx="800" cy="616" r="4" fill="#D63B1F"/>
+  <text x="814" y="613" font-size="12" fill="#333"><tspan font-weight="600" fill="#111">Slice &amp; Dice</tspan> raised Margherita → <tspan font-weight="600">£13.90</tspan></text>
+  <text x="814" y="626" font-size="10" fill="#7A7A7A">Yesterday, 3:12 PM</text>
+  <line x1="776" y1="636" x2="1258" y2="636" stroke="#E8E4DC" stroke-width="0.5"/>
+
+  <circle cx="800" cy="652" r="4" fill="#1A7F4B"/>
+  <text x="814" y="649" font-size="12" fill="#333"><tspan font-weight="600" fill="#111">Pizza Primo</tspan> dropped Margherita → <tspan font-weight="600">£10.50</tspan></text>
+  <text x="814" y="662" font-size="10" fill="#7A7A7A">Yesterday, 10:05 AM</text>
+  <line x1="776" y1="672" x2="1258" y2="672" stroke="#E8E4DC" stroke-width="0.5"/>
+
+  <circle cx="800" cy="688" r="4" fill="#AAAAAA"/>
+  <text x="814" y="685" font-size="12" fill="#333"><tspan font-weight="600" fill="#111">Franco Manca</tspan> removed <tspan font-weight="600">Truffle Pizza</tspan></text>
+  <text x="814" y="698" font-size="10" fill="#7A7A7A">2 days ago</text>
+
+  <!-- Bottom label -->
+  <text x="640" y="790" text-anchor="middle" font-size="11" fill="#AAAAAA">competitor-intelligence.html · MenuIQ Dashboard Preview</text>
+</svg>
