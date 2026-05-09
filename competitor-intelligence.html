@@ -1,0 +1,2080 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MenuIQ — Competitor Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,700&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+  <style>
+    :root {
+      --bg:         #F7F5F0;
+      --surface:    #FFFFFF;
+      --ink:        #111111;
+      --ink-2:      #444444;
+      --ink-muted:  #7A7A7A;
+      --red:        #D63B1F;
+      --red-light:  #FDF1EE;
+      --red-hover:  #B83018;
+      --gold:       #C9922A;
+      --gold-light: #FDF6EA;
+      --green:      #1A7F4B;
+      --green-light:#E8F5EE;
+      --border:     #E8E4DC;
+      --sidebar-w:  240px;
+      --topbar-h:   64px;
+      --radius:     10px;
+      --shadow:     0 1px 3px rgba(0,0,0,0.07), 0 4px 16px rgba(0,0,0,0.05);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'DM Sans', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--ink);
+      min-height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── APP SHELL ── */
+    .app {
+      display: grid;
+      grid-template-columns: var(--sidebar-w) 1fr;
+      grid-template-rows: 1fr;
+      height: 100vh;
+    }
+
+    /* ── SIDEBAR ── */
+    .sidebar {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .sidebar-logo {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 20px 20px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--ink);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo-text {
+      font-weight: 600;
+      font-size: 15px;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+    }
+
+    .logo-badge {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: #fff;
+      background: var(--red);
+      padding: 2px 5px;
+      border-radius: 3px;
+      text-transform: uppercase;
+    }
+
+    .sidebar-cta {
+      margin: 16px 16px 8px;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      background: var(--red);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 14px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.18s;
+      width: calc(100% - 32px);
+    }
+    .sidebar-cta:hover { background: var(--red-hover); }
+
+    .sidebar-nav { flex: 1; padding: 8px 0 16px; }
+
+    .nav-section { margin-bottom: 8px; }
+
+    .nav-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+      padding: 10px 20px 4px;
+    }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 20px;
+      font-size: 13.5px;
+      font-weight: 400;
+      color: var(--ink-2);
+      cursor: pointer;
+      border-radius: 0;
+      text-decoration: none;
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+      user-select: none;
+    }
+    .nav-item:hover { background: var(--bg); color: var(--ink); }
+    .nav-item.active {
+      background: var(--red-light);
+      color: var(--red);
+      font-weight: 500;
+    }
+    .nav-item.active svg { stroke: var(--red); }
+
+    .nav-badge {
+      margin-left: auto;
+      background: var(--red);
+      color: #fff;
+      font-size: 10px;
+      font-weight: 600;
+      min-width: 18px;
+      height: 18px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 5px;
+    }
+
+    .sidebar-footer {
+      border-top: 1px solid var(--border);
+      padding: 12px 16px;
+    }
+
+    .user-mini {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .user-mini-avatar {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: var(--red);
+      color: #fff;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .user-mini-info { flex: 1; min-width: 0; }
+    .user-mini-name { font-size: 13px; font-weight: 500; color: var(--ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .user-mini-role { font-size: 11px; color: var(--ink-muted); }
+
+    /* ── MAIN ── */
+    .main {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* ── TOPBAR ── */
+    .topbar {
+      height: var(--topbar-h);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .search-wrapper {
+      flex: 1;
+      max-width: 360px;
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 12px;
+      color: var(--ink-muted);
+      pointer-events: none;
+    }
+
+    .search-input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 44px 8px 36px;
+      font-family: inherit;
+      font-size: 13px;
+      color: var(--ink);
+      outline: none;
+      transition: border-color 0.18s;
+    }
+    .search-input::placeholder { color: var(--ink-muted); }
+    .search-input:focus { border-color: var(--red); }
+
+    .search-kbd {
+      position: absolute;
+      right: 10px;
+      font-size: 11px;
+      color: var(--ink-muted);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 1px 5px;
+      pointer-events: none;
+    }
+
+    .topbar-right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+    .topbar-icon-btn {
+      width: 36px;
+      height: 36px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--ink-muted);
+      transition: background 0.15s, color 0.15s;
+      position: relative;
+    }
+    .topbar-icon-btn:hover { background: var(--bg); color: var(--ink); }
+
+    .notif-dot {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      width: 7px;
+      height: 7px;
+      background: var(--red);
+      border-radius: 50%;
+      border: 1.5px solid var(--surface);
+    }
+
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 10px 5px 5px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .user-chip:hover { background: var(--border); }
+
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--red);
+      color: #fff;
+      font-size: 11px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .user-chip-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+
+    /* ── CONTENT AREA ── */
+    .content-area {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 28px;
+    }
+
+    /* ── PAGE HEADER ── */
+    .page-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+
+    .page-title {
+      font-family: 'Playfair Display', Georgia, serif;
+      font-size: 26px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      color: var(--ink);
+      line-height: 1.15;
+    }
+
+    .page-sub {
+      font-size: 13px;
+      color: var(--ink-muted);
+      margin-top: 3px;
+    }
+
+    .period-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 8px 14px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .period-btn:hover { background: var(--bg); }
+
+    /* ── KPI CARDS ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      display: flex;
+      gap: 14px;
+      align-items: flex-start;
+      box-shadow: var(--shadow);
+    }
+
+    .kpi-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .kpi-icon--red   { background: var(--red-light); color: var(--red); }
+    .kpi-icon--gold  { background: var(--gold-light); color: var(--gold); }
+    .kpi-icon--green { background: var(--green-light); color: var(--green); }
+    .kpi-icon--ink   { background: #F0EFED; color: var(--ink); }
+
+    .kpi-label { font-size: 12px; color: var(--ink-muted); font-weight: 400; margin-bottom: 4px; }
+    .kpi-value { font-size: 26px; font-weight: 600; letter-spacing: -0.02em; color: var(--ink); line-height: 1; }
+    .kpi-sub   { font-size: 11.5px; color: var(--ink-muted); margin-top: 5px; }
+    .kpi-sub.up   { color: var(--green); }
+    .kpi-sub.down { color: var(--red); }
+
+    /* ── DASHBOARD GRID ── */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.1fr 0.9fr;
+      grid-template-rows: auto auto;
+      gap: 20px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-inner { padding: 20px; }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      letter-spacing: -0.01em;
+    }
+
+    .card-action {
+      font-size: 12px;
+      color: var(--red);
+      cursor: pointer;
+      font-weight: 500;
+      background: none;
+      border: none;
+      padding: 0;
+      font-family: inherit;
+    }
+    .card-action:hover { text-decoration: underline; }
+
+    /* ── PRICE WIDGET ── */
+    .price-widget { grid-row: 1 / 2; }
+
+    .price-widget-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 20px 0;
+    }
+
+    .price-widget-title {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--ink-muted);
+    }
+
+    .live-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #FFF0EE;
+      border: 1px solid #FBCFC7;
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 10.5px;
+      font-weight: 600;
+      letter-spacing: 0.06em;
+      color: var(--red);
+    }
+
+    .live-dot {
+      width: 6px;
+      height: 6px;
+      background: var(--red);
+      border-radius: 50%;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.4; }
+    }
+
+    .item-tabs {
+      display: flex;
+      gap: 4px;
+      padding: 14px 20px 0;
+    }
+
+    .item-tab {
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--ink-muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .item-tab.active {
+      background: var(--ink);
+      color: #fff;
+      border-color: var(--ink);
+    }
+    .item-tab:hover:not(.active) { border-color: var(--ink-muted); color: var(--ink); }
+
+    .price-list { padding: 16px 20px 0; display: flex; flex-direction: column; gap: 16px; }
+
+    .price-row {
+      display: grid;
+      grid-template-columns: 160px 1fr 60px;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .price-name strong { display: block; font-size: 13.5px; font-weight: 600; color: var(--ink); }
+    .price-name span   { display: block; font-size: 11.5px; color: var(--ink-muted); margin-top: 1px; }
+
+    .price-bar-track {
+      height: 8px;
+      background: #F0EDE8;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .price-bar {
+      height: 100%;
+      border-radius: 4px;
+      transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .price-bar--you      { background: var(--ink); }
+    .price-bar--higher   { background: var(--red); }
+    .price-bar--lower    { background: var(--gold); }
+    .price-bar--similar  { background: #AAAAAA; }
+
+    .price-amount {
+      font-size: 14px;
+      font-weight: 600;
+      text-align: right;
+      font-variant-numeric: tabular-nums;
+    }
+    .price-amount--you     { color: var(--ink); }
+    .price-amount--higher  { color: var(--red); }
+    .price-amount--lower   { color: var(--green); }
+    .price-amount--similar { color: var(--ink-muted); }
+
+    .price-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px 18px;
+      margin-top: 16px;
+      border-top: 1px solid var(--border);
+      font-size: 12px;
+      color: var(--ink-muted);
+    }
+
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--red);
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 0;
+    }
+    .refresh-btn:hover { text-decoration: underline; }
+
+    /* ── ACTIVITY FEED ── */
+    .activity-list { padding: 0 20px 16px; }
+    .activity-item {
+      display: flex;
+      gap: 12px;
+      padding: 12px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .activity-item:last-child { border-bottom: none; }
+
+    .activity-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      margin-top: 5px;
+      flex-shrink: 0;
+    }
+    .activity-dot--red  { background: var(--red); }
+    .activity-dot--gold { background: var(--gold); }
+    .activity-dot--green{ background: var(--green); }
+    .activity-dot--ink  { background: #AAAAAA; }
+
+    .activity-text { font-size: 13px; color: var(--ink-2); line-height: 1.5; flex: 1; }
+    .activity-text strong { color: var(--ink); font-weight: 600; }
+    .activity-time { font-size: 11px; color: var(--ink-muted); margin-top: 3px; }
+
+    /* ── WATCH LIST (bottom-left) ── */
+    .watch-list { padding: 0 20px 16px; }
+    .watch-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      cursor: pointer;
+    }
+    .watch-item:last-child { border-bottom: none; }
+    .watch-item:hover { opacity: 0.75; }
+
+    .watch-icon {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      background: var(--bg);
+    }
+
+    .watch-name { font-size: 13px; font-weight: 500; color: var(--ink); }
+    .watch-sub  { font-size: 11.5px; color: var(--ink-muted); margin-top: 1px; }
+    .watch-badge {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+    .watch-badge--red   { background: var(--red-light); color: var(--red); }
+    .watch-badge--gold  { background: var(--gold-light); color: var(--gold); }
+    .watch-badge--green { background: var(--green-light); color: var(--green); }
+
+    /* ── CHART CARD ── */
+    .chart-card { grid-column: 1 / -1; }
+    .chart-container { padding: 0 20px 20px; height: 180px; }
+
+    /* ── COMPETITORS SECTION ── */
+    .comp-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+    }
+
+    .comp-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      box-shadow: var(--shadow);
+      transition: box-shadow 0.18s;
+    }
+    .comp-card:hover { box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+
+    .comp-card-header { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+
+    .comp-logo {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      background: var(--bg);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      border: 1px solid var(--border);
+    }
+
+    .comp-name { font-size: 14px; font-weight: 600; color: var(--ink); }
+    .comp-meta { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+
+    .comp-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+
+    .comp-stat-label { font-size: 10.5px; color: var(--ink-muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .comp-stat-value { font-size: 18px; font-weight: 600; color: var(--ink); margin-top: 2px; }
+
+    .comp-stat-delta {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 6px;
+      border-radius: 4px;
+      display: inline-block;
+      margin-top: 4px;
+    }
+    .comp-stat-delta--up   { background: var(--red-light); color: var(--red); }
+    .comp-stat-delta--down { background: var(--green-light); color: var(--green); }
+
+    .comp-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      font-size: 11.5px;
+      color: var(--ink-muted);
+    }
+
+    .comp-status {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11.5px;
+      font-weight: 500;
+    }
+    .comp-status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--green);
+    }
+
+    /* ── ALERTS SECTION ── */
+    .alert-list { display: flex; flex-direction: column; gap: 12px; }
+
+    .alert-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    .alert-icon-wrap {
+      width: 36px;
+      height: 36px;
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .alert-icon-wrap--red  { background: var(--red-light); color: var(--red); }
+    .alert-icon-wrap--gold { background: var(--gold-light); color: var(--gold); }
+    .alert-icon-wrap--ink  { background: #F0EFED; color: var(--ink); }
+
+    .alert-body { flex: 1; }
+    .alert-title { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+    .alert-desc  { font-size: 12.5px; color: var(--ink-muted); margin-top: 3px; }
+    .alert-time  { font-size: 11.5px; color: var(--ink-muted); margin-left: auto; white-space: nowrap; padding-top: 2px; }
+
+    /* ── PRICE WATCH SECTION ── */
+    .price-watch-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    /* ── MENU CHANGES SECTION ── */
+    .change-timeline { padding: 0 20px 16px; display: flex; flex-direction: column; gap: 0; }
+
+    .change-day-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--ink-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 14px 0 6px;
+    }
+
+    .change-item {
+      display: flex;
+      gap: 14px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+      align-items: flex-start;
+    }
+    .change-item:last-child { border-bottom: none; }
+
+    .change-type {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 4px;
+      white-space: nowrap;
+      margin-top: 1px;
+      flex-shrink: 0;
+    }
+    .change-type--new    { background: var(--green-light); color: var(--green); }
+    .change-type--price  { background: var(--red-light); color: var(--red); }
+    .change-type--removed{ background: #F5F5F5; color: #777; }
+    .change-type--promo  { background: var(--gold-light); color: var(--gold); }
+
+    .change-rest { font-size: 13px; font-weight: 600; color: var(--ink); }
+    .change-item-name { font-size: 13px; color: var(--ink-2); flex: 1; }
+    .change-detail { font-size: 12px; color: var(--ink-muted); margin-top: 2px; }
+
+    /* ── MODAL ── */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      backdrop-filter: blur(2px);
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 14px;
+      width: 460px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      transform: translateY(8px);
+      transition: transform 0.2s;
+    }
+    .modal-overlay.open .modal { transform: translateY(0); }
+
+    .modal-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 24px 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .modal-title { font-size: 16px; font-weight: 600; color: var(--ink); }
+
+    .modal-close {
+      width: 30px;
+      height: 30px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--ink-muted);
+      line-height: 1;
+    }
+
+    .modal-body { padding: 20px 24px; }
+
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--ink-2);
+      margin-bottom: 6px;
+      letter-spacing: 0.03em;
+    }
+    .form-input {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 9px 12px;
+      font-family: inherit;
+      font-size: 13.5px;
+      color: var(--ink);
+      background: var(--bg);
+      outline: none;
+      transition: border-color 0.18s;
+    }
+    .form-input:focus { border-color: var(--red); background: var(--surface); }
+
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+    .modal-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+      padding: 16px 24px 20px;
+      border-top: 1px solid var(--border);
+    }
+
+    .btn-secondary {
+      padding: 9px 18px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--ink-2);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-secondary:hover { background: var(--border); }
+
+    .btn-primary {
+      padding: 9px 20px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+      background: var(--red);
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary:hover { background: var(--red-hover); }
+
+    /* ── SECTION VISIBILITY ── */
+    .content-section { display: none; }
+    .content-section.active { display: block; }
+
+    /* ── SCROLLBAR ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── RATINGS SECTION ── */
+    .ratings-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 0.8fr;
+      gap: 20px;
+    }
+
+    .rating-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 20px;
+      border-bottom: 1px solid var(--border);
+    }
+    .rating-row:last-child { border-bottom: none; }
+
+    .rating-name { font-size: 13px; font-weight: 500; color: var(--ink); width: 130px; flex-shrink: 0; }
+    .rating-stars { display: flex; gap: 2px; }
+    .star { font-size: 12px; }
+    .rating-num {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--ink);
+      margin-left: 4px;
+      width: 28px;
+    }
+    .rating-delta {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 2px 6px;
+      border-radius: 4px;
+      margin-left: auto;
+    }
+    .rating-delta--up   { background: var(--green-light); color: var(--green); }
+    .rating-delta--down { background: var(--red-light); color: var(--red); }
+    .rating-delta--flat { background: #F0EFED; color: #888; }
+    .rating-you { background: #FAFAF8; }
+  </style>
+</head>
+<body>
+
+<div class="app" id="app" style="display:none;">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"></path>
+          <path d="M7 2v20"></path>
+          <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3Zm0 0v7"></path>
+        </svg>
+      </div>
+      <span class="logo-text">MenuIQ</span>
+      <span class="logo-badge">PRO</span>
+    </div>
+
+    <button class="sidebar-cta" onclick="openModal()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      Track Competitor
+    </button>
+
+    <nav class="sidebar-nav">
+      <div class="nav-section">
+        <div class="nav-label">Intelligence</div>
+        <div class="nav-item active" data-section="dashboard">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect>
+            <rect x="3" y="14" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect>
+          </svg>
+          Dashboard
+        </div>
+        <div class="nav-item" data-section="price-watch">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="1" x2="12" y2="23"></line>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+          </svg>
+          Price Watch
+        </div>
+        <div class="nav-item" data-section="menu-changes">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+          </svg>
+          Menu Changes
+        </div>
+        <div class="nav-item" data-section="ratings">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+          </svg>
+          Ratings
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Management</div>
+        <div class="nav-item" data-section="competitors">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+            <circle cx="9" cy="7" r="4"></circle>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+          </svg>
+          Competitors
+        </div>
+        <div class="nav-item" data-section="alerts">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          Alerts
+          <span class="nav-badge">3</span>
+        </div>
+      </div>
+
+      <div class="nav-section">
+        <div class="nav-label">Account</div>
+        <div class="nav-item" data-section="settings">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+          Settings
+        </div>
+      </div>
+    </nav>
+
+    <div class="sidebar-footer">
+      <div class="user-mini">
+        <div class="user-mini-avatar" id="sidebar-avatar">JD</div>
+        <div class="user-mini-info">
+          <div class="user-mini-name" id="sidebar-name">Loading…</div>
+          <div class="user-mini-role">Restaurant Owner</div>
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <!-- Topbar -->
+    <header class="topbar">
+      <div class="search-wrapper">
+        <svg class="search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input class="search-input" type="text" placeholder="Search competitors, dishes, alerts…">
+        <span class="search-kbd">⌘ K</span>
+      </div>
+
+      <div class="topbar-right">
+        <button class="topbar-icon-btn" title="Help">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="10"></circle>
+            <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </button>
+        <button class="topbar-icon-btn topbar-notif" title="Notifications">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+            <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+          </svg>
+          <span class="notif-dot"></span>
+        </button>
+        <div class="user-chip" onclick="handleLogout()">
+          <div class="user-avatar" id="topbar-avatar">JD</div>
+          <span class="user-chip-name" id="topbar-name">Loading…</span>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </div>
+      </div>
+    </header>
+
+    <div class="content-area">
+
+      <!-- ── DASHBOARD ── -->
+      <section class="content-section active" id="section-dashboard">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Welcome back</h1>
+            <p class="page-sub" id="dashboard-sub">The Dough House · Loading…</p>
+          </div>
+          <button class="period-btn">
+            This Week
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <polyline points="6 9 12 15 18 9"></polyline>
+            </svg>
+          </button>
+        </div>
+
+        <!-- KPI Grid -->
+        <div class="kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon kpi-icon--ink">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+              </svg>
+            </div>
+            <div>
+              <div class="kpi-label">Competitors Tracked</div>
+              <div class="kpi-value">4</div>
+              <div class="kpi-sub up">+1 added this week</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon kpi-icon--red">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="10"></circle>
+                <line x1="12" y1="8" x2="12" y2="12"></line>
+                <line x1="12" y1="16" x2="12.01" y2="16"></line>
+              </svg>
+            </div>
+            <div>
+              <div class="kpi-label">Price Alerts</div>
+              <div class="kpi-value">3</div>
+              <div class="kpi-sub down">2 price increases nearby</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon kpi-icon--gold">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </div>
+            <div>
+              <div class="kpi-label">Menu Changes</div>
+              <div class="kpi-value">12</div>
+              <div class="kpi-sub">in the last 7 days</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon kpi-icon--green">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            </div>
+            <div>
+              <div class="kpi-label">Rating Advantage</div>
+              <div class="kpi-value">+0.2★</div>
+              <div class="kpi-sub up">vs area avg 4.1</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Dashboard grid -->
+        <div class="dashboard-grid">
+
+          <!-- Price intelligence widget -->
+          <div class="card price-widget" id="price-widget">
+            <div class="price-widget-header">
+              <div class="price-widget-title" id="pw-title">MARGHERITA PIZZA · SOHO</div>
+              <div class="live-badge">
+                <span class="live-dot"></span>
+                LIVE
+              </div>
+            </div>
+            <div class="item-tabs" id="pw-tabs"></div>
+            <div class="price-list" id="pw-rows"></div>
+            <div class="price-footer">
+              <span id="pw-footer">Updated 6 min ago · 4 competitors nearby</span>
+              <button class="refresh-btn" onclick="refreshPriceWidget()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <polyline points="1 4 1 10 7 10"></polyline>
+                  <path d="M3.51 15a9 9 0 1 0 .49-3.51"></path>
+                </svg>
+                Refresh
+              </button>
+            </div>
+          </div>
+
+          <!-- Areas to Watch -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Areas to Watch</span>
+              <button class="card-action" onclick="showSection('alerts')">View alerts</button>
+            </div>
+            <div class="watch-list">
+              <div class="watch-item">
+                <div class="watch-icon">🍕</div>
+                <div>
+                  <div class="watch-name">PizzaBase</div>
+                  <div class="watch-sub">Raised prices on 3 items</div>
+                </div>
+                <span class="watch-badge watch-badge--red">↑ Price</span>
+              </div>
+              <div class="watch-item">
+                <div class="watch-icon">🌿</div>
+                <div>
+                  <div class="watch-name">Franco Manca</div>
+                  <div class="watch-sub">Added new Vegan range (6 items)</div>
+                </div>
+                <span class="watch-badge watch-badge--gold">New</span>
+              </div>
+              <div class="watch-item">
+                <div class="watch-icon">💰</div>
+                <div>
+                  <div class="watch-name">Slice &amp; Dice</div>
+                  <div class="watch-sub">Running 20% off lunch deal</div>
+                </div>
+                <span class="watch-badge watch-badge--gold">Promo</span>
+              </div>
+              <div class="watch-item">
+                <div class="watch-icon">⭐</div>
+                <div>
+                  <div class="watch-name">Pizza Primo</div>
+                  <div class="watch-sub">Rating dropped 0.2 pts (now 4.2)</div>
+                </div>
+                <span class="watch-badge watch-badge--green">↓ Rating</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Activity chart -->
+          <div class="card chart-card">
+            <div class="card-header">
+              <span class="card-title">Competitor Activity — Last 7 Days</span>
+              <div style="display:flex;gap:16px;align-items:center;font-size:11.5px;color:var(--ink-muted);">
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--red);display:inline-block;"></span>Price changes</span>
+                <span style="display:flex;align-items:center;gap:5px;"><span style="width:10px;height:10px;border-radius:2px;background:var(--gold);display:inline-block;"></span>New items</span>
+              </div>
+            </div>
+            <div class="chart-container">
+              <canvas id="activity-chart"></canvas>
+            </div>
+          </div>
+
+          <!-- Recent changes -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">Recent Changes</span>
+              <button class="card-action" onclick="showSection('menu-changes')">See all</button>
+            </div>
+            <div class="activity-list">
+              <div class="activity-item">
+                <div class="activity-dot activity-dot--red"></div>
+                <div>
+                  <div class="activity-text"><strong>PizzaBase</strong> raised Pepperoni 10" from £13.50 → <strong>£14.20</strong></div>
+                  <div class="activity-time">2 hours ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot activity-dot--gold"></div>
+                <div>
+                  <div class="activity-text"><strong>Franco Manca</strong> added <strong>Vegan Funghi</strong> at £9.50</div>
+                  <div class="activity-time">5 hours ago</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot activity-dot--red"></div>
+                <div>
+                  <div class="activity-text"><strong>Slice &amp; Dice</strong> raised Margherita from £12.50 → <strong>£13.90</strong></div>
+                  <div class="activity-time">Yesterday, 3:12 PM</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot activity-dot--green"></div>
+                <div>
+                  <div class="activity-text"><strong>Pizza Primo</strong> dropped Classic Margherita from £11.50 → <strong>£10.50</strong></div>
+                  <div class="activity-time">Yesterday, 10:05 AM</div>
+                </div>
+              </div>
+              <div class="activity-item">
+                <div class="activity-dot activity-dot--ink"></div>
+                <div>
+                  <div class="activity-text"><strong>Franco Manca</strong> removed <strong>Truffle Pizza</strong> from menu</div>
+                  <div class="activity-time">2 days ago</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </section>
+
+      <!-- ── PRICE WATCH ── -->
+      <section class="content-section" id="section-price-watch">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Price Watch</h1>
+            <p class="page-sub">Live price comparisons across all tracked competitors</p>
+          </div>
+          <button class="period-btn">
+            All Items
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+        </div>
+        <div class="price-watch-grid" id="price-watch-grid"></div>
+      </section>
+
+      <!-- ── MENU CHANGES ── -->
+      <section class="content-section" id="section-menu-changes">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Menu Changes</h1>
+            <p class="page-sub">Track every item addition, removal, and price change</p>
+          </div>
+        </div>
+        <div class="card" style="max-width:760px;">
+          <div class="card-header">
+            <span class="card-title">Change Timeline</span>
+            <div style="display:flex;gap:6px;">
+              <span style="font-size:11px;background:var(--green-light);color:var(--green);padding:3px 8px;border-radius:4px;font-weight:600;">NEW</span>
+              <span style="font-size:11px;background:var(--red-light);color:var(--red);padding:3px 8px;border-radius:4px;font-weight:600;">PRICE</span>
+              <span style="font-size:11px;background:var(--gold-light);color:var(--gold);padding:3px 8px;border-radius:4px;font-weight:600;">PROMO</span>
+              <span style="font-size:11px;background:#F5F5F5;color:#777;padding:3px 8px;border-radius:4px;font-weight:600;">REMOVED</span>
+            </div>
+          </div>
+          <div class="change-timeline">
+            <div class="change-day-label">Today — Saturday, 10 May</div>
+            <div class="change-item">
+              <span class="change-type change-type--price">PRICE</span>
+              <div>
+                <div class="change-rest">PizzaBase</div>
+                <div class="change-item-name">Pepperoni 10"</div>
+                <div class="change-detail">£13.50 → £14.20 <span style="color:var(--red)">▲ +£0.70</span></div>
+              </div>
+            </div>
+            <div class="change-item">
+              <span class="change-type change-type--new">NEW</span>
+              <div>
+                <div class="change-rest">Franco Manca</div>
+                <div class="change-item-name">Vegan Funghi</div>
+                <div class="change-detail">New item added at £9.50</div>
+              </div>
+            </div>
+            <div class="change-item">
+              <span class="change-type change-type--new">NEW</span>
+              <div>
+                <div class="change-rest">Franco Manca</div>
+                <div class="change-item-name">Vegan Calzone</div>
+                <div class="change-detail">New item added at £11.00</div>
+              </div>
+            </div>
+            <div class="change-day-label">Yesterday — Friday, 9 May</div>
+            <div class="change-item">
+              <span class="change-type change-type--promo">PROMO</span>
+              <div>
+                <div class="change-rest">Slice &amp; Dice</div>
+                <div class="change-item-name">Lunch Deal</div>
+                <div class="change-detail">20% off all mains, Mon–Fri 12–3pm</div>
+              </div>
+            </div>
+            <div class="change-item">
+              <span class="change-type change-type--price">PRICE</span>
+              <div>
+                <div class="change-rest">Slice &amp; Dice</div>
+                <div class="change-item-name">Margherita Regular</div>
+                <div class="change-detail">£12.50 → £13.90 <span style="color:var(--red)">▲ +£1.40</span></div>
+              </div>
+            </div>
+            <div class="change-item">
+              <span class="change-type change-type--price">PRICE</span>
+              <div>
+                <div class="change-rest">Pizza Primo</div>
+                <div class="change-item-name">Classic Margherita</div>
+                <div class="change-detail">£11.50 → £10.50 <span style="color:var(--green)">▼ −£1.00</span></div>
+              </div>
+            </div>
+            <div class="change-day-label">Thursday, 8 May</div>
+            <div class="change-item">
+              <span class="change-type change-type--removed">REMOVED</span>
+              <div>
+                <div class="change-rest">Franco Manca</div>
+                <div class="change-item-name">Truffle &amp; Mushroom Pizza</div>
+                <div class="change-detail">Item removed from menu</div>
+              </div>
+            </div>
+            <div class="change-item">
+              <span class="change-type change-type--price">PRICE</span>
+              <div>
+                <div class="change-rest">PizzaBase</div>
+                <div class="change-item-name">Margarita 10"</div>
+                <div class="change-detail">£13.50 → £14.20 <span style="color:var(--red)">▲ +£0.70</span></div>
+              </div>
+            </div>
+            <div class="change-day-label">Wednesday, 7 May</div>
+            <div class="change-item">
+              <span class="change-type change-type--new">NEW</span>
+              <div>
+                <div class="change-rest">Pizza Primo</div>
+                <div class="change-item-name">BBQ Chicken Pizza</div>
+                <div class="change-detail">New item added at £12.50</div>
+              </div>
+            </div>
+            <div class="change-item">
+              <span class="change-type change-type--promo">PROMO</span>
+              <div>
+                <div class="change-rest">PizzaBase</div>
+                <div class="change-item-name">Two-for-One Tuesday</div>
+                <div class="change-detail">BOGO on all 10" pizzas, Tuesdays only</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── RATINGS ── -->
+      <section class="content-section" id="section-ratings">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Ratings</h1>
+            <p class="page-sub">Monitor competitor reviews across Google, Yelp &amp; TripAdvisor</p>
+          </div>
+        </div>
+        <div class="ratings-grid">
+          <div>
+            <div class="card" style="margin-bottom:20px;">
+              <div class="card-header"><span class="card-title">Ratings Overview</span></div>
+              <div class="rating-row rating-you">
+                <div class="rating-name" style="font-weight:700;color:var(--red);">You</div>
+                <div class="rating-stars">
+                  <span class="star" style="color:#F5A623;">★</span><span class="star" style="color:#F5A623;">★</span>
+                  <span class="star" style="color:#F5A623;">★</span><span class="star" style="color:#F5A623;">★</span>
+                  <span class="star" style="color:#E8E4DC;">★</span>
+                </div>
+                <div class="rating-num">4.3</div>
+                <div class="rating-delta rating-delta--flat">—</div>
+              </div>
+              <div class="rating-row">
+                <div class="rating-name">Slice &amp; Dice</div>
+                <div class="rating-stars">
+                  <span class="star" style="color:#F5A623;">★</span><span class="star" style="color:#F5A623;">★</span>
+                  <span class="star" style="color:#F5A623;">★</span><span class="star" style="color:#F5A623;">★</span>
+                  <span class="star" style="color:#E8E4DC;">★</span>
+                </div>
+                <div class="rating-num">4.1</div>
+                <div class="rating-delta rating-delta--down">↓ 0.1</div>
+              </div>
+              <div class="rating-row">
+                <div class="rating-name">Pizza Primo</div>
+                <div class="rating-stars">
+                  <span class="star" style="color:#F5A623;">★</span><span class="star" style="color:#F5A623;">★</span>
+                  <span class="star" style="color:#F5A623;">★</span><span class="star" style="color:#F5A623;">★</span>
+                  <span class="star" style="color:#E8E4DC;">★</span>
+                </div>
+                <div class="rating-num">4.2</div>
+                <div class="rating-delta rating-delta--down">↓ 0.2</div>
+              </div>
+              <div class="rating-row">
+                <div class="rating-name">PizzaBase</div>
+                <div class="rating-stars">
+                  <span class="star" style="color:#F5A623;">★</span><span class="star" style="color:#F5A623;">★</span>
+                  <span class="star" style="color:#F5A623;">★</span>
+                  <span class="star" style="color:#E8E4DC;">★</span><span class="star" style="color:#E8E4DC;">★</span>
+                </div>
+                <div class="rating-num">3.9</div>
+                <div class="rating-delta rating-delta--down">↓ 0.2</div>
+              </div>
+              <div class="rating-row">
+                <div class="rating-name">Franco Manca</div>
+                <div class="rating-stars">
+                  <span class="star" style="color:#F5A623;">★</span><span class="star" style="color:#F5A623;">★</span>
+                  <span class="star" style="color:#F5A623;">★</span><span class="star" style="color:#F5A623;">★</span>
+                  <span class="star" style="color:#F5A623;">★</span>
+                </div>
+                <div class="rating-num">4.6</div>
+                <div class="rating-delta rating-delta--up">↑ 0.1</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <div class="card">
+              <div class="card-header"><span class="card-title">30-Day Trend</span></div>
+              <div style="padding:16px 20px 20px;height:300px;">
+                <canvas id="ratings-chart"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── COMPETITORS ── -->
+      <section class="content-section" id="section-competitors">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Competitors</h1>
+            <p class="page-sub">4 restaurants tracked in your area</p>
+          </div>
+          <button class="btn-primary" onclick="openModal()" style="display:flex;align-items:center;gap:7px;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            Add Competitor
+          </button>
+        </div>
+        <div class="comp-grid" id="comp-grid"></div>
+      </section>
+
+      <!-- ── ALERTS ── -->
+      <section class="content-section" id="section-alerts">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Alerts</h1>
+            <p class="page-sub">3 unread alerts in the last 24 hours</p>
+          </div>
+        </div>
+        <div class="alert-list" style="max-width:680px;" id="alert-list">
+          <div class="alert-item">
+            <div class="alert-icon-wrap alert-icon-wrap--red">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+            <div class="alert-body">
+              <div class="alert-title">PizzaBase raised Pepperoni 10" by £0.70</div>
+              <div class="alert-desc">Now £14.20 — you're £0.70 cheaper. Consider holding your price.</div>
+            </div>
+            <div class="alert-time">2h ago</div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-icon-wrap alert-icon-wrap--red">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="12" y1="1" x2="12" y2="23"></line>
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+              </svg>
+            </div>
+            <div class="alert-body">
+              <div class="alert-title">Slice &amp; Dice raised Margherita by £1.40</div>
+              <div class="alert-desc">Now £13.90 — you're £2.40 cheaper at £11.50. Opportunity to grow margin.</div>
+            </div>
+            <div class="alert-time">Yesterday</div>
+          </div>
+          <div class="alert-item">
+            <div class="alert-icon-wrap alert-icon-wrap--gold">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+              </svg>
+            </div>
+            <div class="alert-body">
+              <div class="alert-title">Franco Manca launched a Vegan range (6 items)</div>
+              <div class="alert-desc">Items priced £9.50–£12.50. No vegan items in your current menu.</div>
+            </div>
+            <div class="alert-time">5h ago</div>
+          </div>
+          <div class="alert-item" style="opacity:0.55;">
+            <div class="alert-icon-wrap alert-icon-wrap--ink">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+            </div>
+            <div class="alert-body">
+              <div class="alert-title">Pizza Primo rating dropped to 4.2 (was 4.4)</div>
+              <div class="alert-desc">You're now rated higher than Pizza Primo for the first time this month.</div>
+            </div>
+            <div class="alert-time">2d ago</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── SETTINGS ── -->
+      <section class="content-section" id="section-settings">
+        <div class="page-header">
+          <div>
+            <h1 class="page-title">Settings</h1>
+            <p class="page-sub">Manage your restaurant profile and alert preferences</p>
+          </div>
+        </div>
+        <div style="max-width:520px;display:flex;flex-direction:column;gap:20px;">
+          <div class="card">
+            <div class="card-header"><span class="card-title">My Restaurant</span></div>
+            <div class="card-inner" style="display:flex;flex-direction:column;gap:14px;">
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Restaurant Name</label>
+                <input class="form-input" type="text" value="The Dough House">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Location / Area</label>
+                <input class="form-input" type="text" value="Soho, London">
+              </div>
+              <div class="form-group" style="margin:0;">
+                <label class="form-label">Cuisine Type</label>
+                <input class="form-input" type="text" value="Italian, Pizza">
+              </div>
+              <button class="btn-primary" style="align-self:flex-start;">Save Changes</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Alert Preferences</span></div>
+            <div class="card-inner" style="display:flex;flex-direction:column;gap:12px;">
+              <label style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--ink-2);cursor:pointer;">
+                <input type="checkbox" checked style="accent-color:var(--red);width:16px;height:16px;">
+                Notify me on competitor price changes
+              </label>
+              <label style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--ink-2);cursor:pointer;">
+                <input type="checkbox" checked style="accent-color:var(--red);width:16px;height:16px;">
+                Notify me on new menu items
+              </label>
+              <label style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--ink-2);cursor:pointer;">
+                <input type="checkbox" checked style="accent-color:var(--red);width:16px;height:16px;">
+                Notify me on rating changes (&gt;0.1 pts)
+              </label>
+              <label style="display:flex;align-items:center;gap:12px;font-size:13.5px;color:var(--ink-2);cursor:pointer;">
+                <input type="checkbox" style="accent-color:var(--red);width:16px;height:16px;">
+                Weekly summary email
+              </label>
+              <button class="btn-primary" style="align-self:flex-start;margin-top:4px;">Save Preferences</button>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Account</span></div>
+            <div class="card-inner">
+              <button class="btn-secondary" onclick="handleLogout()" style="color:var(--red);border-color:var(--red);">Log out</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+    </div><!-- /content-area -->
+  </main>
+</div><!-- /app -->
+
+<!-- ── ADD COMPETITOR MODAL ── -->
+<div class="modal-overlay" id="add-modal" onclick="closeModal(event)">
+  <div class="modal">
+    <div class="modal-header">
+      <span class="modal-title">Track a Competitor</span>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label">Restaurant Name</label>
+        <input class="form-input" type="text" placeholder="e.g. Yard Sale Pizza" id="modal-name">
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Location / Area</label>
+          <input class="form-input" type="text" placeholder="e.g. Soho, London" id="modal-location">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cuisine Type</label>
+          <input class="form-input" type="text" placeholder="e.g. Pizza" id="modal-cuisine">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-group">
+          <label class="form-label">Google Maps URL <span style="font-weight:400;color:var(--ink-muted);">(optional)</span></label>
+          <input class="form-input" type="url" placeholder="maps.google.com/…" id="modal-url">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Distance</label>
+          <input class="form-input" type="text" placeholder="e.g. 0.3 mi" id="modal-distance">
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-secondary" onclick="closeModal()">Cancel</button>
+      <button class="btn-primary" onclick="addCompetitor()">Start Tracking</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ── CONFIG ── */
+const SUPABASE_URL = 'https://cwgayyhppadpnyfukfpo.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_ZFa-5tBLBQLfZYugTDvruw_OUWPkFQy';
+const { createClient } = supabase;
+const sb = createClient(SUPABASE_URL, SUPABASE_KEY);
+
+/* ── MOCK DATA ── */
+const COMPETITORS = [
+  { id: 1, name: 'Slice & Dice',  emoji: '🍕', location: 'Soho',  cuisine: 'Pizza',  rating: 4.1, ratingDelta: -0.1, priceRange: '$$',  distance: '0.2 mi', menuItems: 18, changes: 2 },
+  { id: 2, name: 'Pizza Primo',   emoji: '🫓', location: 'Soho',  cuisine: 'Pizza',  rating: 4.2, ratingDelta: -0.2, priceRange: '$',   distance: '0.4 mi', menuItems: 14, changes: 3 },
+  { id: 3, name: 'PizzaBase',     emoji: '🔥', location: 'Soho',  cuisine: 'Pizza',  rating: 3.9, ratingDelta: -0.2, priceRange: '$$$', distance: '0.5 mi', menuItems: 22, changes: 4 },
+  { id: 4, name: 'Franco Manca',  emoji: '🌿', location: 'Soho',  cuisine: 'Neapolitan', rating: 4.6, ratingDelta: +0.1, priceRange: '$$', distance: '0.7 mi', menuItems: 20, changes: 3 },
+];
+
+const MENU_ITEMS = [
+  {
+    id: 0,
+    name: 'Margherita Pizza',
+    category: 'SOHO',
+    me: { label: 'Margherita 12"', price: 11.50 },
+    competitors: [
+      { id: 1, label: 'Margherita Regular', price: 13.90 },
+      { id: 2, label: 'Classic Margherita', price: 10.50 },
+      { id: 3, label: 'Margarita 10"',      price: 14.20 },
+      { id: 4, label: 'Margherita',          price: 9.50  },
+    ]
+  },
+  {
+    id: 1,
+    name: 'Pepperoni Pizza',
+    category: 'SOHO',
+    me: { label: 'Pepperoni 12"', price: 13.50 },
+    competitors: [
+      { id: 1, label: 'Pepperoni Regular', price: 15.90 },
+      { id: 2, label: 'Classic Pepperoni', price: 12.50 },
+      { id: 3, label: 'Pepperoni 10"',     price: 14.20 },
+      { id: 4, label: 'Pepperoni',          price: 11.50 },
+    ]
+  },
+  {
+    id: 2,
+    name: 'Caesar Salad',
+    category: 'SOHO',
+    me: { label: 'Caesar Salad', price: 9.00 },
+    competitors: [
+      { id: 1, label: 'Classic Caesar', price: 8.50  },
+      { id: 2, label: 'Caesar',         price: 7.50  },
+      { id: 3, label: 'Caesar Salad',   price: 10.00 },
+    ]
+  },
+  {
+    id: 3,
+    name: 'Garlic Bread',
+    category: 'SOHO',
+    me: { label: 'Garlic Bread',        price: 4.50 },
+    competitors: [
+      { id: 1, label: 'Garlic Bread',   price: 5.50 },
+      { id: 2, label: 'Garlic Sourdough', price: 4.00 },
+      { id: 3, label: 'Garlic Focaccia', price: 6.00 },
+      { id: 4, label: 'Garlic Bread',   price: 3.50 },
+    ]
+  },
+];
+
+let activeItem = 0;
+let activityChart = null;
+let ratingsChart = null;
+
+/* ── AUTH ── */
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { window.location.href = 'login.html'; return; }
+
+  const user = session.user;
+  const email = user.email || '';
+  const name = user.user_metadata?.full_name || email.split('@')[0] || 'Owner';
+  const initials = name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2);
+
+  document.getElementById('sidebar-name').textContent = name;
+  document.getElementById('sidebar-avatar').textContent = initials;
+  document.getElementById('topbar-name').textContent = name.split(' ')[0];
+  document.getElementById('topbar-avatar').textContent = initials;
+
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('en-GB', { weekday:'long', day:'numeric', month:'long', year:'numeric' });
+  document.getElementById('dashboard-sub').textContent = 'The Dough House · ' + dateStr;
+
+  document.getElementById('app').style.display = 'grid';
+  renderPriceWidget(activeItem);
+  renderCompetitors();
+  renderPriceWatchGrid();
+  initActivityChart();
+  initRatingsChart();
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  window.location.href = 'login.html';
+}
+
+/* ── NAVIGATION ── */
+function showSection(id) {
+  document.querySelectorAll('.content-section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + id).classList.add('active');
+  const navItem = document.querySelector('[data-section="' + id + '"]');
+  if (navItem) navItem.classList.add('active');
+
+  if (id === 'ratings' && !ratingsChart) initRatingsChart();
+}
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const section = item.dataset.section;
+    if (section) showSection(section);
+  });
+});
+
+/* ── PRICE WIDGET ── */
+function renderPriceWidget(itemIdx) {
+  const item = MENU_ITEMS[itemIdx];
+  const allPrices = [item.me.price, ...item.competitors.map(c => c.price)];
+  const maxPrice = Math.max(...allPrices);
+
+  document.getElementById('pw-title').textContent = item.name.toUpperCase() + ' · ' + item.category;
+
+  /* tabs */
+  const tabs = document.getElementById('pw-tabs');
+  tabs.innerHTML = MENU_ITEMS.map((mi, i) =>
+    `<button class="item-tab ${i === itemIdx ? 'active' : ''}" onclick="renderPriceWidget(${i})">${mi.name.split(' ')[0]}</button>`
+  ).join('');
+
+  /* rows */
+  const rows = document.getElementById('pw-rows');
+  const myPrice = item.me.price;
+
+  let html = `
+    <div class="price-row">
+      <div class="price-name"><strong>You</strong><span>${item.me.label}</span></div>
+      <div class="price-bar-track"><div class="price-bar price-bar--you" style="width:${(myPrice/maxPrice*100).toFixed(1)}%"></div></div>
+      <div class="price-amount price-amount--you">£${myPrice.toFixed(2)}</div>
+    </div>
+  `;
+
+  item.competitors.forEach(comp => {
+    const c = COMPETITORS.find(x => x.id === comp.id);
+    const diff = comp.price - myPrice;
+    let barClass, amtClass;
+    if (diff > 0.20)        { barClass = 'price-bar--higher'; amtClass = 'price-amount--higher'; }
+    else if (diff < -0.20)  { barClass = 'price-bar--lower';  amtClass = 'price-amount--lower';  }
+    else                    { barClass = 'price-bar--similar'; amtClass = 'price-amount--similar'; }
+
+    html += `
+      <div class="price-row">
+        <div class="price-name"><strong>${c ? c.name : 'Competitor'}</strong><span>${comp.label}</span></div>
+        <div class="price-bar-track"><div class="price-bar ${barClass}" style="width:${(comp.price/maxPrice*100).toFixed(1)}%"></div></div>
+        <div class="price-amount ${amtClass}">£${comp.price.toFixed(2)}</div>
+      </div>
+    `;
+  });
+
+  rows.innerHTML = html;
+  activeItem = itemIdx;
+
+  document.getElementById('pw-footer').textContent =
+    'Updated just now · ' + item.competitors.length + ' competitors nearby';
+}
+
+function refreshPriceWidget() {
+  const footer = document.getElementById('pw-footer');
+  footer.textContent = 'Refreshing…';
+  setTimeout(() => {
+    footer.textContent = 'Updated just now · ' + MENU_ITEMS[activeItem].competitors.length + ' competitors nearby';
+  }, 900);
+}
+
+/* ── PRICE WATCH GRID ── */
+function renderPriceWatchGrid() {
+  const grid = document.getElementById('price-watch-grid');
+  grid.innerHTML = MENU_ITEMS.map((item, i) => {
+    const allPrices = [item.me.price, ...item.competitors.map(c => c.price)];
+    const maxPrice = Math.max(...allPrices);
+    const myPrice = item.me.price;
+
+    let rows = `
+      <div class="price-row">
+        <div class="price-name"><strong>You</strong><span>${item.me.label}</span></div>
+        <div class="price-bar-track"><div class="price-bar price-bar--you" style="width:${(myPrice/maxPrice*100).toFixed(1)}%"></div></div>
+        <div class="price-amount price-amount--you">£${myPrice.toFixed(2)}</div>
+      </div>
+    `;
+
+    item.competitors.forEach(comp => {
+      const c = COMPETITORS.find(x => x.id === comp.id);
+      const diff = comp.price - myPrice;
+      let barClass, amtClass;
+      if (diff > 0.20)        { barClass = 'price-bar--higher'; amtClass = 'price-amount--higher'; }
+      else if (diff < -0.20)  { barClass = 'price-bar--lower';  amtClass = 'price-amount--lower';  }
+      else                    { barClass = 'price-bar--similar'; amtClass = 'price-amount--similar'; }
+      rows += `
+        <div class="price-row">
+          <div class="price-name"><strong>${c ? c.name : 'Competitor'}</strong><span>${comp.label}</span></div>
+          <div class="price-bar-track"><div class="price-bar ${barClass}" style="width:${(comp.price/maxPrice*100).toFixed(1)}%"></div></div>
+          <div class="price-amount ${amtClass}">£${comp.price.toFixed(2)}</div>
+        </div>
+      `;
+    });
+
+    return `
+      <div class="card">
+        <div class="price-widget-header" style="margin-bottom:0;">
+          <div class="price-widget-title">${item.name.toUpperCase()} · ${item.category}</div>
+          <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+        </div>
+        <div class="price-list" style="padding-bottom:16px;">${rows}</div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ── COMPETITORS GRID ── */
+function renderCompetitors() {
+  const grid = document.getElementById('comp-grid');
+  grid.innerHTML = COMPETITORS.map(c => {
+    const deltaClass = c.ratingDelta >= 0 ? 'comp-stat-delta--up' : 'comp-stat-delta--down';
+    const deltaStr = (c.ratingDelta >= 0 ? '↑ +' : '↓ ') + Math.abs(c.ratingDelta).toFixed(1);
+    return `
+      <div class="comp-card">
+        <div class="comp-card-header">
+          <div class="comp-logo">${c.emoji}</div>
+          <div>
+            <div class="comp-name">${c.name}</div>
+            <div class="comp-meta">${c.cuisine} · ${c.location} · ${c.distance}</div>
+          </div>
+        </div>
+        <div class="comp-stats">
+          <div>
+            <div class="comp-stat-label">Rating</div>
+            <div class="comp-stat-value">${c.rating}★</div>
+            <span class="comp-stat-delta ${deltaClass}">${deltaStr} 30d</span>
+          </div>
+          <div>
+            <div class="comp-stat-label">Price Range</div>
+            <div class="comp-stat-value">${c.priceRange}</div>
+            <span class="comp-stat-delta" style="background:#F0EFED;color:#888;">${c.menuItems} items</span>
+          </div>
+        </div>
+        <div class="comp-footer">
+          <div class="comp-status">
+            <span class="comp-status-dot"></span>
+            Tracking live
+          </div>
+          <span>${c.changes} changes this week</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ── ACTIVITY CHART ── */
+function initActivityChart() {
+  const ctx = document.getElementById('activity-chart').getContext('2d');
+  const labels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+  activityChart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Price changes',
+          data: [1, 3, 2, 2, 3, 2, 0],
+          backgroundColor: 'rgba(214,59,31,0.75)',
+          borderRadius: 5,
+          borderSkipped: false,
+        },
+        {
+          label: 'New items',
+          data: [0, 1, 1, 0, 2, 2, 0],
+          backgroundColor: 'rgba(201,146,42,0.75)',
+          borderRadius: 5,
+          borderSkipped: false,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false }, tooltip: { mode: 'index' } },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: 'DM Sans', size: 12 }, color: '#7A7A7A' },
+          border: { display: false }
+        },
+        y: {
+          beginAtZero: true,
+          grid: { color: '#F0EDE8' },
+          ticks: { font: { family: 'DM Sans', size: 11 }, color: '#7A7A7A', stepSize: 1 },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+/* ── RATINGS CHART ── */
+function initRatingsChart() {
+  const ctx = document.getElementById('ratings-chart');
+  if (!ctx) return;
+  if (ratingsChart) return;
+  const labels = ['10 Apr','15 Apr','20 Apr','25 Apr','1 May','5 May','10 May'];
+  ratingsChart = new Chart(ctx.getContext('2d'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [
+        { label: 'You',          data: [4.2, 4.2, 4.3, 4.3, 4.3, 4.3, 4.3], borderColor: '#111', backgroundColor: 'transparent', borderWidth: 2.5, pointRadius: 3, tension: 0.3 },
+        { label: 'Slice & Dice', data: [4.3, 4.2, 4.2, 4.1, 4.1, 4.1, 4.1], borderColor: '#D63B1F', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3, borderDash: [4,3] },
+        { label: 'Pizza Primo',  data: [4.4, 4.4, 4.3, 4.3, 4.2, 4.2, 4.2], borderColor: '#C9922A', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3, borderDash: [4,3] },
+        { label: 'PizzaBase',    data: [4.1, 4.0, 3.9, 3.9, 3.9, 3.9, 3.9], borderColor: '#AAAAAA', backgroundColor: 'transparent', borderWidth: 1.5, pointRadius: 2, tension: 0.3, borderDash: [4,3] },
+        { label: 'Franco Manca', data: [4.5, 4.5, 4.5, 4.6, 4.6, 4.6, 4.6], borderColor: '#1A7F4B', backgroundColor: 'transparent', borderWidth: 2, pointRadius: 3, tension: 0.3, borderDash: [4,3] },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'bottom',
+          labels: { font: { family: 'DM Sans', size: 11 }, color: '#7A7A7A', boxWidth: 16, padding: 12 }
+        }
+      },
+      scales: {
+        x: {
+          grid: { display: false },
+          ticks: { font: { family: 'DM Sans', size: 11 }, color: '#7A7A7A' },
+          border: { display: false }
+        },
+        y: {
+          min: 3.5, max: 5.0,
+          grid: { color: '#F0EDE8' },
+          ticks: { font: { family: 'DM Sans', size: 11 }, color: '#7A7A7A', stepSize: 0.5 },
+          border: { display: false }
+        }
+      }
+    }
+  });
+}
+
+/* ── MODAL ── */
+function openModal() {
+  document.getElementById('add-modal').classList.add('open');
+}
+function closeModal(e) {
+  if (!e || e.target === document.getElementById('add-modal') || !e.target.closest) {
+    document.getElementById('add-modal').classList.remove('open');
+  }
+}
+function addCompetitor() {
+  const name = document.getElementById('modal-name').value.trim();
+  if (!name) { document.getElementById('modal-name').focus(); return; }
+  const newComp = {
+    id: COMPETITORS.length + 1,
+    name,
+    emoji: '🏪',
+    location: document.getElementById('modal-location').value || 'Nearby',
+    cuisine: document.getElementById('modal-cuisine').value || 'Restaurant',
+    rating: 4.0,
+    ratingDelta: 0,
+    priceRange: '$$',
+    distance: document.getElementById('modal-distance').value || '—',
+    menuItems: 0,
+    changes: 0,
+  };
+  COMPETITORS.push(newComp);
+  renderCompetitors();
+  closeModal();
+  showSection('competitors');
+  ['modal-name','modal-location','modal-cuisine','modal-url','modal-distance'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+}
+
+/* ── BOOT ── */
+init();
+</script>
+</body>
+</html>
