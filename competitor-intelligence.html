@@ -770,12 +770,11 @@ let currentPinId = null;
 
 async function init() {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { window.location.href = 'login.html'; return; }
-  const user = session.user;
-  const name = user.user_metadata?.full_name || user.email.split('@')[0] || 'Owner';
+  const DEMO = !session;
+  const name = session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'Demo User';
   document.getElementById('sidebar-name').textContent = name;
   document.getElementById('settings-user-name').textContent = name;
-  document.getElementById('settings-user-email').textContent = user.email || '';
+  document.getElementById('settings-user-email').textContent = session?.user?.email || 'demo@menuiq.app';
   const now = new Date();
   document.getElementById('date-num').textContent = now.getDate();
   document.getElementById('date-label').textContent = now.toLocaleDateString('en-GB',{weekday:'short'}).toUpperCase() + ' / ' + now.toLocaleDateString('en-GB',{month:'short'}).toUpperCase();
