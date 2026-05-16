@@ -49,7 +49,6 @@ const CompetitorsContent = () => {
   const visibleCompetitors = MOCK_COMPETITORS.filter(c => c.distance <= radius);
   const watchlistedCompetitors = MOCK_COMPETITORS.filter(c => watchlistIds.includes(c.id));
   
-  // Calculate Top 3 Threats
   const topThreats = [...MOCK_COMPETITORS]
     .sort((a, b) => {
       const threatScore = { red: 3, amber: 2, green: 1 };
@@ -61,265 +60,138 @@ const CompetitorsContent = () => {
 
   return (
     <>
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-      {/* Map Widget Section */}
-      <div 
-        style={{ position: 'relative', height: '200px', flexShrink: 0, borderRadius: '24px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-      >
-        <MapContainer 
-          center={LONDON_CENTER} 
-          zoom={13} 
-          zoomControl={false}
-          scrollWheelZoom={true}
-          style={{ height: '200px', width: '100%', zIndex: 0 }}
-        >
-          <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
-            attribution='&copy; <a href="https://carto.com/">CartoDB</a>'
-          />
-
-          {/* Owner Pin (Center) */}
-          <Marker position={LONDON_CENTER} icon={ownerIcon} />
-
-          {/* Radius Circle */}
-          <Circle 
-            center={LONDON_CENTER}
-            radius={radius * 1609.34}
-            pathOptions={{ color: '#F59E0B', fillColor: '#F59E0B', fillOpacity: 0.08, weight: 1, dashArray: '4' }}
-          />
-
-          {/* Competitor Pins */}
-          {MOCK_COMPETITORS.map(comp => {
-            const isVisible = comp.distance <= radius || watchlistIds.includes(comp.id);
-            if (!isVisible) return null;
-            
-            return (
-              <Marker 
-                key={comp.id}
-                position={[comp.lat, comp.lng]}
-                icon={customIcon}
-              >
-                <Tooltip direction="top" offset={[0, -15]} opacity={1} className="custom-tooltip">
-                  <div style={{ background: '#111', borderRadius: '16px', padding: '1rem', display: 'flex', gap: '1rem', color: '#fff', boxShadow: '0 10px 25px rgba(0,0,0,0.3)', whiteSpace: 'nowrap', position: 'relative' }}>
-                    {/* Small pointer at bottom */}
-                    <div style={{ position: 'absolute', bottom: '-4px', left: '50%', transform: 'translateX(-50%) rotate(45deg)', width: '10px', height: '10px', background: '#111' }}></div>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingRight: '1rem', borderRight: '1px solid rgba(255,255,255,0.2)' }}>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 600 }}>{comp.health}</span>
-                      <span style={{ fontSize: '0.65rem', color: '#9CA3AF', marginTop: '0.25rem' }}>Health Score</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', paddingRight: '1rem', borderRight: '1px solid rgba(255,255,255,0.2)' }}>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 600 }}>{comp.priceChanges}</span>
-                      <span style={{ fontSize: '0.65rem', color: '#9CA3AF', marginTop: '0.25rem' }}>Price Changes</span>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '1.5rem', fontWeight: 600 }}>{comp.promos}</span>
-                      <span style={{ fontSize: '0.65rem', color: '#9CA3AF', marginTop: '0.25rem' }}>Active Promos</span>
-                    </div>
-                  </div>
-                </Tooltip>
-              </Marker>
-            );
-          })}
-        </MapContainer>
-
-        {/* Top Bar Overlay (Floating Pills) */}
-        <div 
-          onMouseDown={(e) => e.stopPropagation()}
-          style={{ position: 'absolute', top: '1.5rem', left: '1.5rem', right: '1.5rem', display: 'flex', gap: '0.75rem', zIndex: 30, alignItems: 'center' }}
-        >
-          <div style={{ flex: 1, background: '#fff', borderRadius: '9999px', padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', boxShadow: '0 4px 15px rgba(0,0,0,0.08)' }}>
-            <Search size={18} color="#9CA3AF" />
-            <input type="text" placeholder="Search" style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.9rem', color: '#111' }} />
-          </div>
-          <select style={{ background: '#fff', borderRadius: '9999px', padding: '0.75rem 1.5rem', border: 'none', outline: 'none', fontSize: '0.9rem', boxShadow: '0 4px 15px rgba(0,0,0,0.08)', cursor: 'pointer', color: '#111', fontWeight: 500, appearance: 'none', paddingRight: '2.5rem', backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23111%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem top 50%', backgroundSize: '0.65rem auto' }}><option>Platform</option><option>UberEats</option><option>Deliveroo</option></select>
-          <select style={{ background: '#fff', borderRadius: '9999px', padding: '0.75rem 1.5rem', border: 'none', outline: 'none', fontSize: '0.9rem', boxShadow: '0 4px 15px rgba(0,0,0,0.08)', cursor: 'pointer', color: '#111', fontWeight: 500, appearance: 'none', paddingRight: '2.5rem', backgroundImage: 'url("data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23111%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-5%200-9.3%201.8-12.9%205.4A17.6%2017.6%200%200%200%200%2082.2c0%205%201.8%209.3%205.4%2012.9l128%20127.9c3.6%203.6%207.8%205.4%2012.8%205.4s9.2-1.8%2012.8-5.4L287%2095c3.5-3.5%205.4-7.8%205.4-12.8%200-5-1.9-9.2-5.5-12.8z%22%2F%3E%3C%2Fsvg%3E")', backgroundRepeat: 'no-repeat', backgroundPosition: 'right 1rem top 50%', backgroundSize: '0.65rem auto' }}><option>Threat Level</option><option>High</option><option>Moderate</option></select>
-          
-          {/* Radius Slider styled as a floating pill */}
-          <div style={{ background: '#fff', borderRadius: '9999px', padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem', boxShadow: '0 4px 15px rgba(0,0,0,0.08)' }}>
-            <span style={{ fontSize: '0.9rem', fontWeight: 500, color: '#111' }}>Radius: {radius}mi</span>
-            <input type="range" min="1" max="10" value={radius} onChange={(e) => setRadius(parseInt(e.target.value))} style={{ width: '80px', accentColor: '#111' }} />
-          </div>
-
-        <button onClick={() => setMapExpanded(true)} style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#111', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}>
-          <Maximize2 size={18} />
-        </button>
-      </div>
-
-    {/* Top Threats Strip */}
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', animation: 'pulse 2s infinite' }}></div>
-        <h2 style={{ fontSize: '1.125rem', fontWeight: 700, margin: 0 }}>Top Threats</h2>
-      </div>
-      
-      <div className="flex-stack-mobile" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
-        {topThreats.map(comp => (
-          <div key={comp.id} className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>{comp.name}</h3>
-                <span style={{ fontSize: '0.75rem', color: '#6B7280' }}>{comp.cuisine} • {comp.distance}mi away</span>
-              </div>
-              <span style={{ 
-                fontSize: '0.65rem', fontWeight: 700, padding: '0.25rem 0.5rem', borderRadius: '4px', textTransform: 'uppercase',
-                background: comp.threat === 'red' ? '#FEE2E2' : comp.threat === 'amber' ? '#FEF3C7' : '#DCFCE7',
-                color: comp.threat === 'red' ? '#B91C1C' : comp.threat === 'amber' ? '#B45309' : '#15803D'
-              }}>
-                {comp.threat === 'red' ? 'High' : comp.threat === 'amber' ? 'Medium' : 'Low'}
-              </span>
-            </div>
-            
-            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              {comp.platforms.map(p => (
-                <span key={p} style={{ fontSize: '0.65rem', padding: '0.2rem 0.4rem', background: '#F3F4F6', borderRadius: '4px', fontWeight: 600, color: '#4B5563' }}>{p}</span>
-              ))}
-            </div>
-
-            <div style={{ fontSize: '0.75rem', color: '#4B5563', fontStyle: 'italic', borderLeft: '2px solid #E5E7EB', paddingLeft: '0.75rem' }}>
-              {comp.lastChange}
-            </div>
-
-            {comp.promoText && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', background: '#FEF2F2', padding: '0.4rem 0.75rem', borderRadius: '8px', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
-                <Tag size={12} color="#EF4444" />
-                <span style={{ fontSize: '0.7rem', color: '#B91C1C', fontWeight: 600 }}>{comp.promoText}</span>
-              </div>
-            )}
-
-            <button style={{ marginTop: 'auto', width: '100%', padding: '0.6rem', borderRadius: '8px', background: '#111', color: '#fff', fontSize: '0.75rem', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
-              View profile
-            </button>
-          </div>
-        ))}
-      </div>
-    </div>
-
-      {/* Two Sections: Directory & Watchlist */}
-      <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-        {/* Tabs */}
-        <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '1rem' }}>
-          <button 
-            onClick={() => setActiveTab('Directory')}
-            style={{ background: 'transparent', border: 'none', fontSize: '1.125rem', fontWeight: activeTab === 'Directory' ? 800 : 500, color: activeTab === 'Directory' ? '#000' : '#6B7280', cursor: 'pointer', position: 'relative' }}
-          >
-            Directory
-            {activeTab === 'Directory' && <div style={{ position: 'absolute', bottom: '-1rem', left: 0, right: 0, height: '3px', background: '#000', borderRadius: '3px 3px 0 0' }}></div>}
-          </button>
-          <button 
-            onClick={() => setActiveTab('Watchlist')}
-            style={{ background: 'transparent', border: 'none', fontSize: '1.125rem', fontWeight: activeTab === 'Watchlist' ? 800 : 500, color: activeTab === 'Watchlist' ? '#000' : '#6B7280', cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', gap: '0.5rem' }}
-          >
-            Watchlist
-            <span style={{ background: '#F3F4F6', color: '#000', fontSize: '0.75rem', padding: '0.1rem 0.5rem', borderRadius: '9999px', fontWeight: 600 }}>{watchlistIds.length}</span>
-            {activeTab === 'Watchlist' && <div style={{ position: 'absolute', bottom: '-1rem', left: 0, right: 0, height: '3px', background: '#000', borderRadius: '3px 3px 0 0' }}></div>}
-          </button>
-        </div>
-
-        {/* Competitor Grid (Location Style Cards) */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '1.5rem', paddingRight: '0.5rem', paddingBottom: '1rem' }}>
-          {displayCompetitors.length === 0 ? (
-            <div style={{ gridColumn: '1 / -1', padding: '3rem', textAlign: 'center', color: '#6B7280', fontSize: '1rem' }}>
-              No competitors found.
-            </div>
-          ) : displayCompetitors.map(comp => (
-            <div key={comp.id} style={{ background: '#fff', borderRadius: '24px', padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', transition: 'transform 0.2s, box-shadow 0.2s', border: '1px solid rgba(0,0,0,0.04)' }} onMouseEnter={(e) => {e.currentTarget.style.transform = 'translateY(-4px)'; e.currentTarget.style.boxShadow = '0 10px 25px rgba(0,0,0,0.06)';}} onMouseLeave={(e) => {e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = 'none';}}>
-              
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <h3 style={{ fontSize: '1.25rem', fontWeight: 700, margin: 0, color: '#111' }}>{comp.name}</h3>
-                  <div style={{ fontSize: '0.875rem', color: '#6B7280', marginTop: '0.25rem' }}>{comp.distance}mi away • {comp.platforms.join(', ')}</div>
-                </div>
-                <button onClick={() => toggleWatchlist(comp.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: '0.25rem' }}>
-                  <Star size={20} fill={watchlistIds.includes(comp.id) ? '#F59E0B' : 'none'} color={watchlistIds.includes(comp.id) ? '#F59E0B' : '#9CA3AF'} />
-                </button>
-              </div>
-
-              {/* Data Blocks matching "Location" card */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.75rem', marginTop: 'auto' }}>
-                <div style={{ background: '#F8FAFC', padding: '1.25rem 1rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <TrendingUp size={18} color="#9CA3AF" />
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.25rem', fontWeight: 500 }}>Health Score</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 500, color: '#111', fontFamily: 'Playfair Display, serif' }}>{comp.health}</div>
-                  </div>
-                </div>
-                <div style={{ background: '#F8FAFC', padding: '1.25rem 1rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <TrendingDown size={18} color="#9CA3AF" />
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.25rem', fontWeight: 500 }}>Price Chgs</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 500, color: '#111', fontFamily: 'Playfair Display, serif' }}>{comp.priceChanges}</div>
-                  </div>
-                </div>
-                <div style={{ background: '#F8FAFC', padding: '1.25rem 1rem', borderRadius: '16px', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                  <Tag size={18} color="#9CA3AF" />
-                  <div>
-                    <div style={{ fontSize: '0.75rem', color: '#6B7280', marginBottom: '0.25rem', fontWeight: 500 }}>Active Promos</div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 500, color: '#111', fontFamily: 'Playfair Display, serif' }}>{comp.promos}</div>
-                  </div>
-                </div>
-              </div>
-
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-
-    {/* Map Modal */}
-    {mapExpanded && (
-      <div 
-        style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }}
-        onClick={() => setMapExpanded(false)}
-      >
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)', WebkitBackdropFilter: 'blur(6px)' }} />
-        
-        <div 
-          onClick={(e) => e.stopPropagation()}
-          style={{ position: 'relative', width: '90%', height: '85%', background: '#fff', borderRadius: '32px', overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)' }}
-        >
-          {/* Modal Header/Filters */}
-          <div style={{ padding: '1.5rem', display: 'flex', gap: '1rem', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)', background: '#fff', zIndex: 10 }}>
-            <div style={{ flex: 1, background: '#F3F4F6', borderRadius: '9999px', padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <Search size={18} color="#9CA3AF" />
-              <input type="text" placeholder="Search competitors..." style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%', fontSize: '0.9rem' }} />
-            </div>
-            <select style={{ background: '#F3F4F6', borderRadius: '9999px', padding: '0.75rem 1.5rem', border: 'none', outline: 'none', fontSize: '0.9rem', fontWeight: 500 }}><option>Platform</option><option>UberEats</option><option>Deliveroo</option></select>
-            <select style={{ background: '#F3F4F6', borderRadius: '9999px', padding: '0.75rem 1.5rem', border: 'none', outline: 'none', fontSize: '0.9rem', fontWeight: 500 }}><option>Threat Level</option><option>High</option><option>Moderate</option></select>
-            <div style={{ background: '#F3F4F6', borderRadius: '9999px', padding: '0.75rem 1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontSize: '0.9rem', fontWeight: 500 }}>Radius: {radius}mi</span>
-              <input type="range" min="1" max="10" value={radius} onChange={(e) => setRadius(parseInt(e.target.value))} style={{ width: '80px', accentColor: '#111' }} />
-            </div>
-            <button onClick={() => setMapExpanded(false)} style={{ width: '42px', height: '42px', borderRadius: '50%', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer' }}>
-              <X size={20} />
-            </button>
-          </div>
-
-          <div style={{ flex: 1, position: 'relative' }}>
-            <MapContainer 
-              center={LONDON_CENTER} 
-              zoom={13} 
-              zoomControl={false}
-              style={{ height: '100%', width: '100%' }}
-            >
-              <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-              <Marker position={LONDON_CENTER} icon={ownerIcon} />
-              <Circle center={LONDON_CENTER} radius={radius * 1609.34} pathOptions={{ color: '#F59E0B', fillOpacity: 0.08, weight: 1, dashArray: '4' }} />
-              {MOCK_COMPETITORS.map(comp => (
-                (comp.distance <= radius || watchlistIds.includes(comp.id)) && (
-                  <Marker key={`modal-${comp.id}`} position={[comp.lat, comp.lng]} icon={customIcon}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        {/* Map Widget Section */}
+        <div style={{ position: 'relative', height: '200px', flexShrink: 0, borderRadius: '24px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+          <MapContainer center={LONDON_CENTER} zoom={13} zoomControl={false} scrollWheelZoom={true} style={{ height: '100%', width: '100%', zIndex: 0 }}>
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution='&copy; CartoDB' />
+            <Marker position={LONDON_CENTER} icon={ownerIcon} />
+            <Circle center={LONDON_CENTER} radius={radius * 1609.34} pathOptions={{ color: '#F59E0B', fillColor: '#F59E0B', fillOpacity: 0.08, weight: 1, dashArray: '4' }} />
+            {MOCK_COMPETITORS.map(comp => {
+              if (comp.distance <= radius || watchlistIds.includes(comp.id)) {
+                return (
+                  <Marker key={comp.id} position={[comp.lat, comp.lng]} icon={customIcon}>
                     <Tooltip direction="top" offset={[0, -15]} opacity={1}>
-                      <div style={{ padding: '0.5rem', fontWeight: 600 }}>{comp.name}</div>
+                      <div style={{ background: '#111', borderRadius: '12px', padding: '0.75rem', color: '#fff', fontSize: '0.8rem' }}>{comp.name}</div>
                     </Tooltip>
                   </Marker>
-                )
-              ))}
-            </MapContainer>
+                );
+              }
+              return null;
+            })}
+          </MapContainer>
+
+          <div style={{ position: 'absolute', top: '1rem', left: '1rem', right: '1rem', display: 'flex', gap: '0.5rem', zIndex: 30, alignItems: 'center' }}>
+            <div style={{ flex: 1, background: '#fff', borderRadius: '9999px', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.08)' }}>
+              <Search size={16} color="#9CA3AF" />
+              <input type="text" placeholder="Search" style={{ border: 'none', outline: 'none', width: '100%', fontSize: '0.85rem' }} />
+            </div>
+            <select style={{ background: '#fff', borderRadius: '9999px', padding: '0.5rem 1rem', border: 'none', outline: 'none', fontSize: '0.85rem', boxShadow: '0 4px 15px rgba(0,0,0,0.08)', cursor: 'pointer' }}><option>Platform</option></select>
+            <div style={{ background: '#fff', borderRadius: '9999px', padding: '0.5rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 4px 15px rgba(0,0,0,0.08)' }}>
+              <span style={{ fontSize: '0.85rem' }}>{radius}mi</span>
+              <input type="range" min="1" max="10" value={radius} onChange={(e) => setRadius(parseInt(e.target.value))} style={{ width: '60px', accentColor: '#111' }} />
+            </div>
+            <button onClick={() => setMapExpanded(true)} style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#111', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', border: 'none' }}>
+              <Maximize2 size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* Top Threats Strip */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444' }}></div>
+            <h2 style={{ fontSize: '1rem', fontWeight: 700, margin: 0 }}>Top Threats</h2>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1rem' }}>
+            {topThreats.map(comp => (
+              <div key={comp.id} className="glass-panel" style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', border: '1px solid rgba(239, 68, 68, 0.1)' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div>
+                    <h3 style={{ fontSize: '0.9rem', fontWeight: 700, margin: 0 }}>{comp.name}</h3>
+                    <span style={{ fontSize: '0.7rem', color: '#6B7280' }}>{comp.distance}mi away</span>
+                  </div>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 700, padding: '0.2rem 0.4rem', borderRadius: '4px', background: comp.threat === 'red' ? '#FEE2E2' : '#FEF3C7', color: comp.threat === 'red' ? '#B91C1C' : '#B45309' }}>
+                    {comp.threat === 'red' ? 'High' : 'Medium'}
+                  </span>
+                </div>
+                <div style={{ fontSize: '0.7rem', color: '#4B5563', fontStyle: 'italic' }}>{comp.lastChange}</div>
+                {comp.promoText && (
+                  <div style={{ background: '#FEF2F2', padding: '0.3rem 0.5rem', borderRadius: '6px', fontSize: '0.65rem', color: '#B91C1C', fontWeight: 600 }}>{comp.promoText}</div>
+                )}
+                <button style={{ marginTop: 'auto', width: '100%', padding: '0.5rem', borderRadius: '6px', background: '#111', color: '#fff', fontSize: '0.7rem', fontWeight: 600, border: 'none' }}>View profile</button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Directory & Watchlist */}
+        <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', gap: '1rem', borderBottom: '1px solid rgba(0,0,0,0.1)', paddingBottom: '1rem' }}>
+            <button onClick={() => setActiveTab('Directory')} style={{ background: 'transparent', border: 'none', fontSize: '1rem', fontWeight: activeTab === 'Directory' ? 700 : 500, color: activeTab === 'Directory' ? '#000' : '#6B7280', cursor: 'pointer', position: 'relative' }}>
+              Directory
+              {activeTab === 'Directory' && <div style={{ position: 'absolute', bottom: '-1rem', left: 0, right: 0, height: '2px', background: '#000' }}></div>}
+            </button>
+            <button onClick={() => setActiveTab('Watchlist')} style={{ background: 'transparent', border: 'none', fontSize: '1rem', fontWeight: activeTab === 'Watchlist' ? 700 : 500, color: activeTab === 'Watchlist' ? '#000' : '#6B7280', cursor: 'pointer', position: 'relative' }}>
+              Watchlist
+              {activeTab === 'Watchlist' && <div style={{ position: 'absolute', bottom: '-1rem', left: 0, right: 0, height: '2px', background: '#000' }}></div>}
+            </button>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '1.5rem' }}>
+            {displayCompetitors.map(comp => (
+              <div key={comp.id} className="glass-panel" style={{ padding: '1.25rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0 }}>{comp.name}</h3>
+                  <button onClick={(e) => toggleWatchlist(comp.id, e)} style={{ background: 'transparent', border: 'none', cursor: 'pointer' }}>
+                    <Star size={18} fill={watchlistIds.includes(comp.id) ? '#F59E0B' : 'none'} color={watchlistIds.includes(comp.id) ? '#F59E0B' : '#9CA3AF'} />
+                  </button>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '0.5rem' }}>
+                  <div style={{ background: '#F8FAFC', padding: '0.75rem', borderRadius: '12px' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#6B7280' }}>Health</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{comp.health}</div>
+                  </div>
+                  <div style={{ background: '#F8FAFC', padding: '0.75rem', borderRadius: '12px' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#6B7280' }}>Price Chgs</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{comp.priceChanges}</div>
+                  </div>
+                  <div style={{ background: '#F8FAFC', padding: '0.75rem', borderRadius: '12px' }}>
+                    <div style={{ fontSize: '0.65rem', color: '#6B7280' }}>Promos</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 600 }}>{comp.promos}</div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
-    )}
-    </div>
+
+      {/* Map Modal */}
+      {mapExpanded && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={() => setMapExpanded(false)}>
+          <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }} />
+          <div onClick={(e) => e.stopPropagation()} style={{ position: 'relative', width: '90%', height: '85%', background: '#fff', borderRadius: '32px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '1.25rem', display: 'flex', gap: '1rem', alignItems: 'center', borderBottom: '1px solid #eee' }}>
+              <div style={{ flex: 1, background: '#F3F4F6', borderRadius: '9999px', padding: '0.6rem 1.25rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <Search size={18} color="#9CA3AF" />
+                <input type="text" placeholder="Search..." style={{ border: 'none', outline: 'none', background: 'transparent', width: '100%' }} />
+              </div>
+              <button onClick={() => setMapExpanded(false)} style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F3F4F6', border: 'none', cursor: 'pointer' }}><X size={20} /></button>
+            </div>
+            <div style={{ flex: 1 }}>
+              <MapContainer center={LONDON_CENTER} zoom={13} zoomControl={false} style={{ height: '100%', width: '100%' }}>
+                <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+                <Marker position={LONDON_CENTER} icon={ownerIcon} />
+                {MOCK_COMPETITORS.map(comp => (
+                  <Marker key={`modal-${comp.id}`} position={[comp.lat, comp.lng]} icon={customIcon}>
+                    <Tooltip direction="top" offset={[0, -15]} opacity={1}><div>{comp.name}</div></Tooltip>
+                  </Marker>
+                ))}
+              </MapContainer>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 };
