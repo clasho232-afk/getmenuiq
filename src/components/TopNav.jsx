@@ -1,66 +1,98 @@
-import React from 'react';
-import { Search, Mail, Bell, UtensilsCrossed } from 'lucide-react';
+import React, { useState } from 'react';
+import { Search, Mail, Bell, UtensilsCrossed, Menu, X } from 'lucide-react';
 
 const TopNav = ({ activeTab, setActiveTab }) => {
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  const navLinks = [
+    { id: 'Dashboard', label: 'Dashboard' },
+    { id: 'My Menu', label: 'My Menu' },
+    { id: 'Competitors', label: 'Competitors' },
+    { id: 'AI Strategy', label: 'AI Strategy' },
+    { id: 'Market Niche', label: 'Market Niche' },
+  ];
+
   return (
-    <header className="top-nav" style={{ backgroundColor: 'transparent', borderBottom: 'none', padding: '1.5rem 2rem' }}>
-      <div className="flex items-center gap-2 font-bold text-xl" style={{ width: '200px', color: '#e05046' }}>
-        <UtensilsCrossed size={24} fill="none" color="#e05046" />
-        <span>MenuIQ</span>
+    <header className="top-nav" style={{ 
+      backgroundColor: 'rgba(255, 255, 255, 0.8)', 
+      backdropFilter: 'blur(10px)',
+      WebkitBackdropFilter: 'blur(10px)',
+      borderBottom: '1px solid rgba(0,0,0,0.05)', 
+      padding: '0 2rem',
+      height: '70px',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      position: 'sticky',
+      top: 0,
+      zIndex: 100
+    }}>
+      {/* Logo Area */}
+      <div className="flex items-center gap-2 font-bold text-xl" style={{ color: '#e05046', flexShrink: 0 }}>
+        <UtensilsCrossed size={24} color="#e05046" />
+        <span className="desktop-only">MenuIQ Dashboard</span>
+        <span className="mobile-only">MenuIQ</span>
       </div>
       
-      <nav className="flex items-center gap-6" style={{ fontSize: '0.875rem', fontWeight: 500, color: '#4B5563' }}>
-        <span 
-          onClick={() => setActiveTab && setActiveTab('Dashboard')} 
-          style={{ cursor: 'pointer', color: activeTab === 'Dashboard' ? '#000' : '#4B5563', fontWeight: activeTab === 'Dashboard' ? 700 : 500 }}
-        >Dashboard</span>
-        <span 
-          onClick={() => setActiveTab && setActiveTab('My Menu')} 
-          style={{ cursor: 'pointer', color: activeTab === 'My Menu' ? '#000' : '#4B5563', fontWeight: activeTab === 'My Menu' ? 700 : 500 }}
-        >My Menu</span>
-        <span 
-          onClick={() => setActiveTab && setActiveTab('Competitors')} 
-          style={{ cursor: 'pointer', color: activeTab === 'Competitors' ? '#000' : '#4B5563', fontWeight: activeTab === 'Competitors' ? 700 : 500 }}
-        >Competitors</span>
-        <span 
-          onClick={() => setActiveTab && setActiveTab('Competitor Finder')} 
-          style={{ cursor: 'pointer', color: activeTab === 'Competitor Finder' ? '#000' : '#4B5563', fontWeight: activeTab === 'Competitor Finder' ? 700 : 500 }}
-        >Finder</span>
-        <span style={{ cursor: 'pointer' }}>Orders</span>
-        <span style={{ backgroundColor: 'black', color: 'white', padding: '0.5rem 1.25rem', borderRadius: '9999px', cursor: 'pointer' }}>Workflows</span>
-        <span 
-          onClick={() => setActiveTab && setActiveTab('Blind Spot')} 
-          style={{ cursor: 'pointer', color: activeTab === 'Blind Spot' ? '#000' : '#4B5563', fontWeight: activeTab === 'Blind Spot' ? 700 : 500 }}
-        >Blind Spot</span>
-        <span 
-          onClick={() => setActiveTab && setActiveTab('Market Niche')} 
-          style={{ cursor: 'pointer', color: activeTab === 'Market Niche' ? '#000' : '#4B5563', fontWeight: activeTab === 'Market Niche' ? 700 : 500 }}
-        >Market Niche</span>
-        <span 
-          onClick={() => setActiveTab && setActiveTab('AI Strategy')} 
-          style={{ cursor: 'pointer', color: activeTab === 'AI Strategy' ? '#000' : '#4B5563', fontWeight: activeTab === 'AI Strategy' ? 700 : 500, position: 'relative', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-        >
-          AI Strategy
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#EF4444', display: 'inline-block', animation: 'pulse 2s infinite' }} />
-        </span>
-        <span style={{ cursor: 'pointer' }}>Settings</span>
+      {/* Desktop Navigation Links */}
+      <nav className="desktop-only" style={{ 
+        flex: 1, 
+        justifyContent: 'center', 
+        gap: '2rem', 
+        fontSize: '0.875rem', 
+        fontWeight: 500, 
+        color: '#4B5563' 
+      }}>
+        {navLinks.map(link => (
+          <span 
+            key={link.id}
+            onClick={() => setActiveTab && setActiveTab(link.id)} 
+            style={{ 
+              cursor: 'pointer', 
+              color: activeTab === link.id ? '#000' : '#4B5563', 
+              fontWeight: activeTab === link.id ? 700 : 500,
+              padding: '0.5rem 0'
+            }}
+          >
+            {link.label}
+          </span>
+        ))}
       </nav>
 
-      <div className="flex gap-4 items-center" style={{ width: '200px', justifyContent: 'flex-end' }}>
-        <button className="btn-icon" style={{ backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-          <Search size={18} strokeWidth={2} color="#000" />
+      {/* Right Actions */}
+      <div className="flex items-center gap-2 sm:gap-4" style={{ flexShrink: 0 }}>
+        <button className="btn-icon desktop-only">
+          <Search size={20} />
         </button>
-        <button className="btn-icon" style={{ backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-          <Mail size={18} strokeWidth={2} color="#000" />
+        <button className="btn-icon">
+          <Bell size={20} />
         </button>
-        <div style={{ position: 'relative' }}>
-          <button className="btn-icon" style={{ backgroundColor: 'white', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
-            <Bell size={18} strokeWidth={2} color="#000" />
-          </button>
-          <div style={{ position: 'absolute', top: '0', right: '0', width: '8px', height: '8px', backgroundColor: 'transparent', borderRadius: '50%', border: '2px solid white' }}></div>
-        </div>
-        <img src="https://i.pravatar.cc/150?u=admin" alt="Profile" className="avatar avatar-sm ml-2" style={{ border: '2px solid white' }} />
+        <img src="https://i.pravatar.cc/150?u=admin" alt="Profile" className="avatar avatar-sm" style={{ border: '2px solid white' }} />
+        
+        {/* Mobile Menu Toggle */}
+        <button className="mobile-only btn-icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+          {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
       </div>
+
+      {/* Mobile Menu Overlay */}
+      {isMenuOpen && (
+        <div className="mobile-only" style={{
+          position: 'fixed', top: '70px', left: 0, right: 0, bottom: 0,
+          background: 'white', zIndex: 1000, padding: '2rem',
+          flexDirection: 'column', gap: '1.5rem'
+        }}>
+          {navLinks.map(link => (
+            <span 
+              key={link.id}
+              onClick={() => { setActiveTab(link.id); setIsMenuOpen(false); }}
+              style={{ fontSize: '1.25rem', fontWeight: activeTab === link.id ? 700 : 500 }}
+            >
+              {link.label}
+            </span>
+          ))}
+        </div>
+      )}
     </header>
   );
 };

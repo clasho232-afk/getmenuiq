@@ -66,6 +66,29 @@ function App() {
               {activeTab === 'Competitor Finder' && <CompetitorFinderContent />}
             </main>
           </div>
+          
+          {/* Mobile Bottom Navigation Bar */}
+          <div className="mobile-bottom-nav mobile-only">
+            {[
+              { id: 'Dashboard', icon: 'Dashboard' },
+              { id: 'My Menu', icon: 'Menu' },
+              { id: 'AI Strategy', icon: 'AI' },
+              { id: 'Market Niche', icon: 'Niche' },
+              { id: 'Competitors', icon: 'Comp' }
+            ].map((item) => (
+              <div 
+                key={item.id}
+                onClick={() => setActiveTab(item.id)}
+                style={{ 
+                  display: 'flex', flexDirection: 'column', alignItems: 'center', 
+                  gap: '4px', cursor: 'pointer',
+                  color: activeTab === item.id ? '#e05046' : '#6B7280'
+                }}
+              >
+                <div style={{ fontWeight: activeTab === item.id ? 800 : 500, fontSize: '0.7rem' }}>{item.icon}</div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </>
