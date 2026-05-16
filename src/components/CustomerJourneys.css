@@ -1,0 +1,336 @@
+.cj-container {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.cj-header-title {
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+.cj-card {
+  padding: 2rem;
+  position: relative;
+  background: rgba(255, 255, 255, 0.75); 
+  backdrop-filter: blur(24px); 
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.5); 
+  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08); 
+  border-radius: 24px;
+}
+
+.cj-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+}
+
+.cj-card-title {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.cj-avatars-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(10px);
+  border-radius: 9999px;
+  padding: 0.5rem 1rem;
+  gap: 0.5rem;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+}
+
+.cj-avatar-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  margin-left: -0.5rem;
+}
+.cj-avatar-wrapper:first-child {
+  margin-left: 0;
+}
+
+.cj-avatar-img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid white;
+  object-fit: cover;
+}
+
+.cj-avatar-placeholder {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: 2px solid white;
+  background-color: #F3F4F6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9CA3AF;
+}
+
+.cj-avatar-badge {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  color: white;
+  border: 1px solid white;
+  position: absolute;
+  bottom: -8px;
+}
+
+.cj-badge-blue { background-color: #60A5FA; }
+.cj-badge-red { background-color: #F87171; }
+.cj-badge-yellow { background-color: #FBBF24; }
+.cj-badge-white { background-color: white; color: #9CA3AF; }
+
+.cj-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.cj-action-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #E5E7EB;
+  color: #6B7280;
+  background-color: white;
+  transition: background-color 0.2s;
+  cursor: pointer;
+}
+.cj-action-btn:hover {
+  background-color: #F9FAFB;
+}
+
+.cj-tree-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 2rem;
+  position: relative;
+  margin-top: 3rem;
+  padding-bottom: 2rem;
+}
+
+.cj-col {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  position: relative;
+  z-index: 10;
+}
+
+.cj-box {
+  background-color: white;
+  border-radius: 32px;
+  padding: 1.5rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  height: 180px;
+  position: relative;
+}
+
+.cj-box-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.cj-box-icons {
+  display: flex;
+  gap: 0.5rem;
+  color: #9CA3AF;
+}
+
+.cj-box-text {
+  font-weight: 500;
+  font-size: 0.875rem;
+  width: 75%;
+}
+
+.cj-dot {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 3px solid;
+  background-color: white;
+  z-index: 20;
+}
+.cj-dot-blue { border-color: #93C5FD; }
+.cj-dot-red { border-color: #EF4444; }
+.cj-dot-gray { border-color: #D1D5DB; }
+.cj-dot-black { border-color: #000000; }
+
+.cj-list-container {
+  background-color: white;
+  border-radius: 40px;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.cj-list-item {
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  position: relative;
+  height: 80px;
+  border-bottom: 1px solid #F3F4F6;
+}
+.cj-list-item:last-child {
+  border-bottom: none;
+}
+
+.cj-item-left {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding-left: 0.5rem;
+}
+
+.cj-item-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #F9FAFB;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #9CA3AF;
+}
+
+.cj-item-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+}
+
+.cj-item-title {
+  font-weight: 600;
+  font-size: 0.875rem;
+}
+
+.cj-item-title.active {
+  color: #000000;
+}
+.cj-item-title.inactive {
+  color: #9CA3AF;
+}
+
+.cj-col-title {
+  text-align: center;
+  font-weight: 500;
+  color: #4B5563;
+  margin-top: 1rem;
+  font-size: 0.875rem;
+}
+
+.cj-task-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.cj-task-box {
+  border-radius: 24px;
+  padding: 1.25rem;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.02);
+  height: 125px;
+  display: flex;
+  align-items: center;
+  position: relative;
+}
+.cj-task-box.active {
+  background-color: #000000;
+  color: white;
+}
+.cj-task-box.inactive {
+  background-color: white;
+  color: #4B5563;
+}
+
+.cj-task-text {
+  font-weight: 600;
+  font-size: 0.875rem;
+  white-space: pre-line;
+  line-height: 1.25;
+}
+
+.cj-bottom-widgets {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2rem;
+}
+
+.cj-table {
+  width: 100%;
+  font-size: 0.875rem;
+  border-collapse: collapse;
+}
+
+.cj-table th {
+  padding-bottom: 1rem;
+  font-weight: 400;
+  color: #9CA3AF;
+  text-align: left;
+}
+.cj-table th.right {
+  text-align: right;
+}
+
+.cj-table td {
+  padding: 1rem 0;
+  border-top: 1px solid rgba(255,255,255,0.4);
+}
+
+.cj-status-pill {
+  color: white;
+  padding: 0.25rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.cj-donut-container {
+  position: relative;
+  width: 128px;
+  height: 128px;
+}
+
+.cj-donut-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.cj-donut-label {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translate(-50%, 50%);
+  color: white;
+  font-weight: 500;
+  font-size: 0.75rem;
+  z-index: 10;
+  background-color: transparent;
+}
