@@ -14,10 +14,8 @@ const TopNav = ({ activeTab, setActiveTab }) => {
 
   return (
     <header className="top-nav" style={{ 
-      backgroundColor: 'rgba(255, 255, 255, 0.8)', 
-      backdropFilter: 'blur(10px)',
-      WebkitBackdropFilter: 'blur(10px)',
-      borderBottom: '1px solid rgba(0,0,0,0.05)', 
+      backgroundColor: 'transparent', 
+      borderBottom: 'none', 
       padding: '0 2rem',
       height: '70px',
       display: 'flex',

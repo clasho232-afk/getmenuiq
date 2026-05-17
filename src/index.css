@@ -185,8 +185,8 @@ button {
 
 .top-nav {
   height: var(--header-height);
-  background-color: var(--bg-card);
-  border-bottom: 1px solid var(--border-subtle);
+  background-color: transparent;
+  border-bottom: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
