@@ -94,7 +94,7 @@ const DashboardContent = () => {
           <div style={{ 
             flex: 1, 
             position: 'relative', 
-            backgroundImage: 'url(/gordos-hero.png)', 
+            backgroundImage: 'linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.3) 60%, transparent 100%), url(/gordos-hero.png)', 
             backgroundSize: 'cover', 
             backgroundPosition: 'center',
             minHeight: '320px',
