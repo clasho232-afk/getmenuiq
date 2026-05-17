@@ -3,11 +3,11 @@ import { ArrowRight, AlertTriangle, Sparkles, Send, Wallet, Satellite, Megaphone
 import './DashboardContent.css';
 import MarketPositionReport from './MarketPositionReport';
 
-const PricingCard = ({ title, count, items, colorClass, onShowMore }) => {
+const PricingCard = ({ title, count, items, colorClass, onShowMore, gradient }) => {
   const displayedItems = items.slice(0, 2);
 
   return (
-    <div className="glass-panel" style={{ flex: 1, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+    <div className="glass-panel" style={{ flex: 1, padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', backgroundImage: gradient ? `${gradient}, radial-gradient(circle, rgba(200, 196, 188, 0.25) 1.2px, transparent 1.2px)` : undefined, backgroundSize: gradient ? 'auto, 20px 20px' : undefined }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <h3 style={{ fontSize: '1rem', fontWeight: 600, color: '#4B5563' }}>{title}</h3>
         <span style={{ fontSize: '2rem', fontWeight: 800 }} className={colorClass}>{count}</span>
@@ -257,6 +257,7 @@ const DashboardContent = () => {
       <div style={{ display: 'flex', gap: '1.5rem' }}>
         <PricingCard 
           title="Overpriced" count="12" colorClass="text-red-500"
+          gradient="linear-gradient(to bottom, rgba(226, 75, 74, 0.08) 0%, rgba(255,255,255,0) 55%)"
           items={[
             { name: 'Spicy Chicken Burger', impact: -240, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=64&q=80' },
             { name: 'Truffle Fries', impact: -120, image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=64&q=80' },
@@ -272,6 +273,7 @@ const DashboardContent = () => {
         />
         <PricingCard 
           title="Priced Right" count="45" colorClass="text-green-500"
+          gradient="linear-gradient(to bottom, rgba(99, 153, 34, 0.08) 0%, rgba(255,255,255,0) 55%)"
           items={[
             { name: 'Classic Cheeseburger', impact: 850, image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=64&q=80' },
             { name: 'Onion Rings', impact: 320, image: 'https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=64&q=80' },
@@ -285,6 +287,7 @@ const DashboardContent = () => {
         />
         <PricingCard 
           title="Underpriced" count="8" colorClass="text-yellow-500"
+          gradient="linear-gradient(to bottom, rgba(239, 159, 39, 0.08) 0%, rgba(255,255,255,0) 55%)"
           items={[
             { name: 'Vegan Wrap', impact: -450, image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=64&q=80' },
             { name: 'Milkshake', impact: -180, image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=64&q=80' },
