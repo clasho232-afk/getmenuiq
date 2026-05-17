@@ -367,68 +367,80 @@ const DashboardContent = () => {
       </div>
 
       {/* Price Change Alerts */}
-      <div className="glass-panel" style={{ padding: '1.5rem' }}>
+      <div 
+        className="price-changes-gradient-card" 
+        style={{ 
+          background: 'linear-gradient(to bottom, #D63B1F 0%, rgba(214,59,31,0.5) 25%, rgba(214,59,31,0.15) 50%, #FAF8F4 70%, #FAF8F4 100%)',
+          borderRadius: '16px',
+          border: 'none',
+          padding: '1.5rem',
+          boxShadow: 'none'
+        }}
+      >
         {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-            <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <TrendingUp size={16} color="#6B7280" strokeWidth={1.5} />
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+          <div>
+            <div style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', marginBottom: '4px' }}>
+              PRICE CHANGES
             </div>
-            <div>
-              <h3 style={{ fontSize: '1rem', fontWeight: 700, color: '#111', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                Price Changes
-                {newCount > 0 && (
-                  <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#fff', background: '#EF4444', padding: '0.15rem 0.45rem', borderRadius: '9999px', animation: 'pulse 2s infinite' }}>{newCount} new</span>
-                )}
-              </h3>
-              <p style={{ fontSize: '0.7rem', color: '#9CA3AF', marginTop: '0.1rem' }}>Last 24 hours · {visibleAlerts.length} changes detected{affectsYouCount > 0 && <span style={{ color: '#D97706', fontWeight: 600 }}> · {affectsYouCount} affect your menu</span>}</p>
-            </div>
+            <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>
+              Instant price alerts
+              {newCount > 0 && (
+                <span style={{ fontSize: '11px', fontWeight: 700, color: '#D63B1F', background: '#FFFFFF', padding: '2px 8px', borderRadius: '9999px' }}>{newCount} new</span>
+              )}
+            </h3>
+            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '6px', lineHeight: 1.5 }}>
+              Get notified the moment a rival changes their pricing
+            </p>
           </div>
-          <button style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '2px' }}
-            onMouseEnter={(e) => e.currentTarget.style.color = '#111'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#6B7280'}
+          <button style={{ fontSize: '12px', fontWeight: 600, color: '#FFFFFF', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '3px' }}
+            onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.8)'}
+            onMouseLeave={(e) => e.currentTarget.style.color = '#FFFFFF'}
           >View all price changes</button>
         </div>
 
         {/* Category Tabs */}
-        <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '1rem', background: 'rgba(0,0,0,0.03)', borderRadius: '8px', padding: '0.25rem', alignSelf: 'flex-start' }}>
+        <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '1rem', background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.25rem', alignSelf: 'flex-start', width: 'fit-content' }}>
           {[
             { key: 'all', label: 'All', count: priceAlerts.filter(a => !dismissedAlerts.includes(a.id)).length },
             { key: 'mine', label: 'My Competitors', count: priceAlerts.filter(a => !dismissedAlerts.includes(a.id) && a.isMine).length }
-          ].map((tab) => (
-            <button
-              key={tab.key}
-              onClick={() => setPriceAlertFilter(tab.key)}
-              style={{
-                padding: '0.4rem 0.85rem',
-                borderRadius: '6px',
-                border: 'none',
-                fontSize: '0.75rem',
-                fontWeight: priceAlertFilter === tab.key ? 700 : 500,
-                color: priceAlertFilter === tab.key ? '#111' : '#9CA3AF',
-                background: priceAlertFilter === tab.key ? '#fff' : 'transparent',
-                boxShadow: priceAlertFilter === tab.key ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                cursor: 'pointer',
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.35rem'
-              }}
-            >
-              {tab.label}
-              <span style={{ 
-                fontSize: '0.6rem', fontWeight: 700, 
-                color: priceAlertFilter === tab.key ? '#6B7280' : '#D1D5DB',
-                background: priceAlertFilter === tab.key ? 'rgba(0,0,0,0.05)' : 'rgba(0,0,0,0.03)', 
-                padding: '0.1rem 0.35rem', borderRadius: '4px',
-                transition: 'all 0.2s'
-              }}>{tab.count}</span>
-            </button>
-          ))}
+          ].map((tab) => {
+            const isActive = priceAlertFilter === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setPriceAlertFilter(tab.key)}
+                style={{
+                  padding: '0.4rem 0.85rem',
+                  borderRadius: '6px',
+                  border: 'none',
+                  fontSize: '0.75rem',
+                  fontWeight: isActive ? 700 : 500,
+                  color: isActive ? '#D63B1F' : '#FFFFFF',
+                  background: isActive ? '#FFFFFF' : 'transparent',
+                  boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.35rem'
+                }}
+              >
+                {tab.label}
+                <span style={{ 
+                  fontSize: '0.6rem', fontWeight: 700, 
+                  color: isActive ? '#D63B1F' : 'rgba(255,255,255,0.8)',
+                  background: isActive ? 'rgba(214,59,31,0.08)' : 'rgba(255,255,255,0.15)', 
+                  padding: '0.1rem 0.35rem', borderRadius: '4px',
+                  transition: 'all 0.2s'
+                }}>{tab.count}</span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Alerts Feed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           {visibleAlerts.slice(0, 6).map((alert) => {
             const isUp = alert.direction === 'up';
             const platformColors = {
@@ -455,10 +467,14 @@ const DashboardContent = () => {
             };
             const initials = getInitials(alert.competitor);
 
+            const diff = alert.newPrice - alert.oldPrice;
+            const diffSign = diff > 0 ? '+' : '';
+            const diffText = `${diffSign}£${Math.abs(diff).toFixed(2)}`;
+
             return (
               <div 
                 key={alert.id}
-                className={`price-change-card${alert.youSellThis ? ' you-sell-this' : ''}`}
+                className="price-change-row"
               >
                 {/* Competitor Photo */}
                 <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
@@ -508,7 +524,7 @@ const DashboardContent = () => {
                 {/* Text Block */}
                 <div style={{ minWidth: '150px', flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#111', lineHeight: 1.2 }}>{alert.competitor}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#111111', lineHeight: 1.2 }}>{alert.competitor}</span>
                     {alert.youSellThis && (
                       <span style={{
                         background: '#FDECEA',
@@ -522,38 +538,56 @@ const DashboardContent = () => {
                       }}>You sell this</span>
                     )}
                   </div>
-                  <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alert.item}</div>
+                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alert.item}</div>
                 </div>
 
-                {/* Price Change */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', flexShrink: 0, marginLeft: '12px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    <span style={{ fontSize: '12px', color: '#9CA3AF', textDecoration: 'line-through' }}>£{alert.oldPrice.toFixed(2)}</span>
-                    {isUp ? (
-                      <TrendingUp size={14} color="#D63B1F" strokeWidth={2.5} />
-                    ) : (
-                      <TrendingDown size={14} color="#1D9E75" strokeWidth={2.5} />
-                    )}
-                    <span style={{ fontSize: '14px', fontWeight: 600, color: isUp ? '#D63B1F' : '#1D9E75' }}>£{alert.newPrice.toFixed(2)}</span>
+                {/* Price Change Info */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <span style={{ fontSize: '12px', color: '#9CA3AF', textDecoration: 'line-through' }}>£{alert.oldPrice.toFixed(2)}</span>
+                      {isUp ? (
+                        <TrendingUp size={14} color="#D63B1F" strokeWidth={2.5} />
+                      ) : (
+                        <TrendingDown size={14} color="#1D9E75" strokeWidth={2.5} />
+                      )}
+                      <span style={{ fontSize: '14px', fontWeight: 600, color: isUp ? '#D63B1F' : '#1D9E75' }}>£{alert.newPrice.toFixed(2)}</span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#9CA3AF' }}>
+                      <Clock size={11} strokeWidth={1.5} />
+                      <span style={{ fontSize: '11px' }}>{alert.time}</span>
+                    </div>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#9CA3AF' }}>
-                    <Clock size={11} strokeWidth={1.5} />
-                    <span style={{ fontSize: '11px' }}>{alert.time}</span>
+
+                  {/* Pill Badge */}
+                  <div style={{
+                    background: isUp ? '#D63B1F' : '#1D9E75',
+                    color: '#FFFFFF',
+                    borderRadius: '9999px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    padding: '4px 10px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '55px'
+                  }}>
+                    {diffText}
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginLeft: 'auto' }}>
+                <div className="row-hover-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
                   {alert.youSellThis && (
-                    <button className="adjust-price-btn">
+                    <button className="adjust-price-btn-outline">
                       Adjust price
                     </button>
                   )}
-                  <button className="hover-action-btn" title="View Item">
+                  <button className="hover-action-btn-light" title="View Item">
                     <Eye size={14} />
                   </button>
                   <button 
-                    className="hover-action-btn" 
+                    className="hover-action-btn-light" 
                     title="Dismiss"
                     onClick={(e) => { e.stopPropagation(); setDismissedAlerts(prev => [...prev, alert.id]); }}
                   >
@@ -563,6 +597,23 @@ const DashboardContent = () => {
               </div>
             );
           })}
+        </div>
+
+        {/* Bottom View All Link */}
+        <div style={{ textAlign: 'center', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: '8px' }}>
+          <span 
+            className="price-changes-bottom-link"
+            style={{
+              fontSize: '13px',
+              color: '#6B7280',
+              textDecoration: 'none',
+              cursor: 'pointer',
+              fontWeight: 600,
+              transition: 'color 0.2s ease'
+            }}
+          >
+            View all price changes &rarr;
+          </span>
         </div>
       </div>
 

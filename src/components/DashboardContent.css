@@ -94,27 +94,33 @@
   to { transform: rotate(360deg); }
 }
 
-/* Price Change Feed Redesign */
-.price-change-card {
-  background: linear-gradient(135deg, #FFFFFF 0%, #FAF8F4 100%);
-  border-radius: 12px;
-  border: 1px solid rgba(0, 0, 0, 0.06);
-  padding: 12px 16px;
+/* Price Changes Gradient Card Redesign */
+.price-changes-gradient-card {
+  box-shadow: none !important;
+}
+
+.price-change-row {
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-bottom: 8px;
+  padding: 12px 0;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
   transition: all 0.2s ease;
   position: relative;
 }
 
-.price-change-card.you-sell-this {
-  border-left: 3px solid #D63B1F;
-  border-radius: 0 12px 12px 0;
-  background: linear-gradient(135deg, #FFF8F7 0%, #FAF8F4 100%);
+.price-change-row:last-child {
+  border-bottom: none;
 }
 
-.price-change-card .hover-action-btn {
+.price-change-row .row-hover-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.price-change-row .hover-action-btn-light {
   opacity: 0;
   transition: opacity 0.2s ease, color 0.2s ease;
   background: transparent;
@@ -127,15 +133,15 @@
   color: #D1D5DB;
 }
 
-.price-change-card:hover .hover-action-btn {
+.price-change-row:hover .hover-action-btn-light {
   opacity: 1;
 }
 
-.price-change-card .hover-action-btn:hover {
+.price-change-row .hover-action-btn-light:hover {
   color: #6B7280;
 }
 
-.price-change-card .adjust-price-btn {
+.price-change-row .adjust-price-btn-outline {
   border: 1px solid #D63B1F;
   color: #D63B1F;
   background: transparent;
@@ -148,8 +154,13 @@
   white-space: nowrap;
 }
 
-.price-change-card .adjust-price-btn:hover {
+.price-change-row .adjust-price-btn-outline:hover {
   background: #D63B1F;
   color: #FFFFFF;
 }
+
+.price-changes-bottom-link:hover {
+  color: #D63B1F !important;
+}
+
 
