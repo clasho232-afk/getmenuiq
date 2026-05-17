@@ -426,99 +426,102 @@ const DashboardContent = () => {
         </div>
 
         {/* Alerts Feed */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
           {visibleAlerts.slice(0, 6).map((alert) => {
             const isUp = alert.direction === 'up';
-            const heatBg = alert.youSellThis 
-              ? (isUp ? 'linear-gradient(to right, rgba(245,158,11,0.07) 0%, transparent 50%)' : 'linear-gradient(to right, rgba(20,184,166,0.07) 0%, transparent 50%)')
-              : 'transparent';
-            const borderColor = alert.youSellThis 
-              ? (isUp ? 'rgba(245,158,11,0.15)' : 'rgba(20,184,166,0.12)') 
-              : 'rgba(0,0,0,0.04)';
+            const platformColors = {
+              ubereats: '#10B981',
+              deliveroo: '#00CDBC',
+              justeat: '#F36F21'
+            };
+            const platformLetters = {
+              ubereats: 'U',
+              deliveroo: 'D',
+              justeat: 'J'
+            };
+            const pBg = platformColors[alert.platform] || '#10B981';
+            const pLetter = platformLetters[alert.platform] || 'U';
 
             return (
               <div 
                 key={alert.id}
-                style={{ 
-                  display: 'flex', 
-                  alignItems: 'center', 
-                  gap: '0.75rem',
-                  padding: '0.65rem 0.85rem',
-                  background: heatBg,
-                  backdropFilter: 'blur(8px)',
-                  borderRadius: '8px',
-                  border: `1px solid ${borderColor}`,
-                  transition: 'all 0.2s',
-                  position: 'relative'
-                }}
-                onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateX(3px)'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateX(0)'; }}
+                className={`price-change-card${alert.youSellThis ? ' you-sell-this' : ''}`}
               >
-                {/* New indicator */}
-                {alert.isNew && (
-                  <div style={{ position: 'absolute', left: '-1px', top: '50%', transform: 'translateY(-50%)', width: '3px', height: '60%', borderRadius: '0 4px 4px 0', background: '#EF4444' }} />
-                )}
-
-                {/* Competitor Badge + Item Image */}
-                <div style={{ position: 'relative', flexShrink: 0, width: '36px', height: '36px' }}>
-                  <img src={alert.image} alt={alert.item} style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', border: '1px solid rgba(0,0,0,0.06)' }} />
-                  <div style={{ position: 'absolute', bottom: '-3px', right: '-3px', width: '16px', height: '16px', borderRadius: '4px', background: alert.logoColor, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1.5px solid #fff' }}>
-                    <span style={{ fontSize: '0.4rem', fontWeight: 800, color: '#fff', letterSpacing: '0.02em' }}>{alert.logo}</span>
+                {/* Competitor Photo */}
+                <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
+                  <img src={alert.image} alt={alert.competitor} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(0,0,0,0.06)' }} />
+                  <div style={{
+                    position: 'absolute',
+                    bottom: '-2px',
+                    right: '-2px',
+                    width: '16px',
+                    height: '16px',
+                    borderRadius: '50%',
+                    background: pBg,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    border: '1.5px solid #fff',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                    zIndex: 10
+                  }}>
+                    <span style={{ fontSize: '7px', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{pLetter}</span>
                   </div>
                 </div>
 
-                {/* Item Details */}
+                {/* Text Block */}
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                    <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#111' }}>{alert.competitor}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 500, color: '#111', lineHeight: 1.2 }}>{alert.competitor}</span>
                     {alert.youSellThis && (
-                      <span style={{ fontSize: '0.55rem', fontWeight: 700, color: isUp ? '#D97706' : '#0D9488', background: isUp ? 'rgba(245,158,11,0.1)' : 'rgba(20,184,166,0.1)', padding: '0.1rem 0.35rem', borderRadius: '4px', textTransform: 'uppercase', letterSpacing: '0.03em' }}>You sell this</span>
+                      <span style={{
+                        background: '#FDECEA',
+                        color: '#D63B1F',
+                        fontSize: '10px',
+                        fontWeight: 600,
+                        padding: '2px 7px',
+                        borderRadius: '10px',
+                        lineHeight: 1,
+                        whiteSpace: 'nowrap'
+                      }}>You sell this</span>
                     )}
                   </div>
-                  <p style={{ fontSize: '0.7rem', color: '#6B7280', marginTop: '0.1rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alert.item}</p>
+                  <div style={{ fontSize: '12px', color: '#9CA3AF', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alert.item}</div>
                 </div>
 
                 {/* Price Change */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                  <span style={{ fontSize: '0.75rem', color: '#9CA3AF', fontWeight: 500, textDecoration: 'line-through' }}>£{alert.oldPrice.toFixed(2)}</span>
-                  {isUp ? <TrendingUp size={14} color="#E05046" strokeWidth={2} /> : <TrendingDown size={14} color="#0D9488" strokeWidth={2} />}
-                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: isUp ? '#E05046' : '#0D9488', letterSpacing: '-0.02em' }}>£{alert.newPrice.toFixed(2)}</span>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ fontSize: '12px', color: '#9CA3AF', textDecoration: 'line-through' }}>£{alert.oldPrice.toFixed(2)}</span>
+                    {isUp ? (
+                      <TrendingUp size={14} color="#D63B1F" strokeWidth={2.5} />
+                    ) : (
+                      <TrendingDown size={14} color="#1D9E75" strokeWidth={2.5} />
+                    )}
+                    <span style={{ fontSize: '14px', fontWeight: 600, color: isUp ? '#D63B1F' : '#1D9E75' }}>£{alert.newPrice.toFixed(2)}</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#9CA3AF' }}>
+                    <Clock size={11} strokeWidth={1.5} />
+                    <span style={{ fontSize: '11px' }}>{alert.time}</span>
+                  </div>
                 </div>
 
-                {/* Time */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem', flexShrink: 0, minWidth: '65px' }}>
-                  <Clock size={11} color="#D1D5DB" strokeWidth={1.5} />
-                  <span style={{ fontSize: '0.6rem', color: '#D1D5DB', fontWeight: 500 }}>{alert.time}</span>
-                </div>
-
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: '0.25rem', flexShrink: 0 }}>
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
                   {alert.youSellThis && (
-                    <button 
-                      title="Adjust my price"
-                      style={{ height: '26px', borderRadius: '6px', border: 'none', background: '#111', color: '#fff', fontSize: '0.6rem', fontWeight: 700, padding: '0 0.5rem', cursor: 'pointer', transition: 'all 0.2s', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '0.25rem' }}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = '#e05046'; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = '#111'; }}
-                    >
-                      Adjust Price
+                    <button className="adjust-price-btn">
+                      Adjust price
                     </button>
                   )}
-                  <button 
-                    title="View Item"
-                    style={{ width: '26px', height: '26px', borderRadius: '6px', border: '1px solid rgba(0,0,0,0.06)', background: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#111'; e.currentTarget.querySelector('svg').style.color = '#fff'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; e.currentTarget.querySelector('svg').style.color = '#6B7280'; }}
-                  >
-                    <Eye size={12} color="#6B7280" strokeWidth={1.5} />
+                  <button className="hover-action-btn" title="View Item">
+                    <Eye size={14} />
                   </button>
                   <button 
+                    className="hover-action-btn" 
                     title="Dismiss"
                     onClick={(e) => { e.stopPropagation(); setDismissedAlerts(prev => [...prev, alert.id]); }}
-                    style={{ width: '26px', height: '26px', borderRadius: '6px', border: '1px solid rgba(0,0,0,0.06)', background: 'rgba(255,255,255,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'all 0.2s' }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239,68,68,0.08)'; e.currentTarget.style.borderColor = 'rgba(239,68,68,0.2)'; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; e.currentTarget.style.borderColor = 'rgba(0,0,0,0.06)'; }}
                   >
-                    <X size={12} color="#9CA3AF" strokeWidth={1.5} />
+                    <X size={14} />
                   </button>
                 </div>
               </div>
