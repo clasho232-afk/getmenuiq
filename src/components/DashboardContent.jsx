@@ -60,6 +60,8 @@ const DashboardContent = () => {
   const [dismissedAlerts, setDismissedAlerts] = React.useState([]);
   const [priceAlertFilter, setPriceAlertFilter] = React.useState('all');
   const [showMarketReport, setShowMarketReport] = React.useState(false);
+  const [imageErrors, setImageErrors] = React.useState({});
+
 
   // Supabase live data
   const [restaurant, setRestaurant] = useState(null);
@@ -442,6 +444,17 @@ const DashboardContent = () => {
             const pBg = platformColors[alert.platform] || '#10B981';
             const pLetter = platformLetters[alert.platform] || 'U';
 
+            const hasError = imageErrors[alert.id];
+            const getInitials = (name) => {
+              if (!name) return '??';
+              const parts = name.trim().split(/\s+/);
+              if (parts.length >= 2) {
+                return (parts[0][0] + parts[1][0]).toUpperCase();
+              }
+              return name.slice(0, 2).toUpperCase();
+            };
+            const initials = getInitials(alert.competitor);
+
             return (
               <div 
                 key={alert.id}
@@ -449,7 +462,30 @@ const DashboardContent = () => {
               >
                 {/* Competitor Photo */}
                 <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
-                  <img src={alert.image} alt={alert.competitor} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(0,0,0,0.06)' }} />
+                  {hasError ? (
+                    <div style={{
+                      width: '44px',
+                      height: '44px',
+                      borderRadius: '50%',
+                      background: alert.logoColor || '#6B7280',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      color: '#fff',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      border: '1px solid rgba(0,0,0,0.06)'
+                    }}>
+                      {initials}
+                    </div>
+                  ) : (
+                    <img 
+                      src={alert.image} 
+                      alt={alert.competitor} 
+                      onError={() => setImageErrors(prev => ({ ...prev, [alert.id]: true }))}
+                      style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(0,0,0,0.06)' }} 
+                    />
+                  )}
                   <div style={{
                     position: 'absolute',
                     bottom: '-2px',
@@ -470,7 +506,7 @@ const DashboardContent = () => {
                 </div>
 
                 {/* Text Block */}
-                <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ minWidth: '150px', flexShrink: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
                     <span style={{ fontSize: '13px', fontWeight: 500, color: '#111', lineHeight: 1.2 }}>{alert.competitor}</span>
                     {alert.youSellThis && (
@@ -490,7 +526,7 @@ const DashboardContent = () => {
                 </div>
 
                 {/* Price Change */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '2px', flexShrink: 0, marginLeft: '12px' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                     <span style={{ fontSize: '12px', color: '#9CA3AF', textDecoration: 'line-through' }}>£{alert.oldPrice.toFixed(2)}</span>
                     {isUp ? (
@@ -507,7 +543,7 @@ const DashboardContent = () => {
                 </div>
 
                 {/* Action Buttons */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginLeft: 'auto' }}>
                   {alert.youSellThis && (
                     <button className="adjust-price-btn">
                       Adjust price
