@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { ArrowRight, AlertTriangle, Sparkles, Send, Wallet, Satellite, Megaphone, ChefHat, TrendingUp, TrendingDown, X, Eye, Clock, BarChart3, ChevronRight } from 'lucide-react';
 import './DashboardContent.css';
 import MarketPositionReport from './MarketPositionReport';
+import { supabase } from '../supabase';
 
 const PricingCard = ({ title, count, items, colorClass, onShowMore }) => {
   const displayedItems = items.slice(0, 2);
@@ -60,6 +61,62 @@ const DashboardContent = () => {
   const [priceAlertFilter, setPriceAlertFilter] = React.useState('all');
   const [showMarketReport, setShowMarketReport] = React.useState(false);
 
+  // Supabase live data
+  const [restaurant, setRestaurant] = useState(null);
+  const [livePromos, setLivePromos] = useState([]);
+  const [liveMenuItems, setLiveMenuItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchDashboardData = async () => {
+      try {
+        // Fetch first restaurant — replace .limit(1) with user's restaurant later
+        const { data: restaurantData, error: restError } = await supabase
+          .from('restaurants')
+          .select('id, name, hero_image_url, rating, rating_count, delivery_fee, estimated_delivery_time, cuisines, areas, address, city, is_open, price_range')
+          .limit(1);
+
+        if (restError) throw restError;
+        const rest = restaurantData?.[0] || null;
+        setRestaurant(rest);
+
+        if (!rest) {
+          console.log('No restaurant found');
+          setLoading(false);
+          return;
+        }
+
+        // Fetch menu items for this restaurant
+        const { data: allItems, error: itemsError } = await supabase
+          .from('menu_items')
+          .select('id, name, description, price, image_url, is_available, section_name')
+          .eq('restaurant_id', rest.id);
+
+        if (itemsError) throw itemsError;
+        setLiveMenuItems(allItems || []);
+
+        // Fetch competitor restaurants in same areas for promo tracker
+        if (rest.areas && rest.areas.length > 0) {
+          const { data: competitors, error: compError } = await supabase
+            .from('restaurants')
+            .select('id, name, hero_image_url, rating, delivery_fee, cuisines, areas')
+            .overlaps('areas', rest.areas)
+            .neq('id', rest.id)
+            .limit(8);
+
+          if (!compError) setLivePromos(competitors || []);
+        }
+
+      } catch (err) {
+        console.error('Dashboard data fetch error:', err.message);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchDashboardData();
+  }, []);
+
   const priceAlerts = [
     { id: 1, competitor: 'Pizza Express', logo: 'PE', logoColor: '#1D4ED8', item: 'Margherita Pizza', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=64&q=80', oldPrice: 11.50, newPrice: 12.95, direction: 'up', time: '12 min ago', isNew: true, youSellThis: true, isMine: true, platform: 'deliveroo' },
     { id: 2, competitor: 'Burger King', logo: 'BK', logoColor: '#D97706', item: 'Whopper Meal', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=64&q=80', oldPrice: 8.99, newPrice: 7.49, direction: 'down', time: '34 min ago', isNew: true, youSellThis: false, isMine: true, platform: 'ubereats' },
@@ -94,7 +151,7 @@ const DashboardContent = () => {
           <div style={{ 
             flex: 1, 
             position: 'relative', 
-            backgroundImage: 'linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.3) 60%, transparent 100%), url(/gordos-hero.png)', 
+            backgroundImage: `linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.3) 60%, transparent 100%), url(${restaurant?.hero_image_url || '/gordos-hero.png'})`, 
             backgroundSize: 'cover', 
             backgroundPosition: 'center',
             minHeight: '320px',
@@ -106,10 +163,14 @@ const DashboardContent = () => {
             {/* Brand Text */}
             <div style={{ position: 'relative', zIndex: 2 }}>
               <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', fontWeight: 400, marginBottom: '0.25rem' }}>Good evening,</p>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', fontFamily: 'Playfair Display, serif', lineHeight: 1.2, marginBottom: '0.75rem' }}>Gordo's Pizzeria</h2>
+              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', fontFamily: 'Playfair Display, serif', lineHeight: 1.2, marginBottom: '0.75rem' }}>
+                {restaurant?.name || 'Your Restaurant'}
+              </h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                 <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} />
-                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>Live on UberEats · Deliveroo</span>
+                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                  {restaurant?.estimated_delivery_time ? `Est. delivery ${restaurant.estimated_delivery_time}` : 'Live on UberEats'}
+                </span>
               </div>
             </div>
           </div>
