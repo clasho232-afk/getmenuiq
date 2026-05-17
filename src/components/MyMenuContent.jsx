@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Edit2, Activity, Zap, TrendingDown, X, Download, RefreshCw, CheckCircle, AlertTriangle, ArrowRight, Bell, BarChart3, Target, MapPin } from 'lucide-react';
+import { Search, Filter, Plus, Edit2, Activity, Zap, TrendingDown, X, Download, RefreshCw, CheckCircle, AlertTriangle, ArrowRight, Bell, BarChart3, Target, MapPin, UtensilsCrossed } from 'lucide-react';
 import MarketPositionReport from './MarketPositionReport';
+import { supabase } from '../supabase';
+import './MyMenuContent.css';
 
 const mockMenuItems = [
   { id: 1, name: 'Spicy Chicken Burger', category: 'Burgers', price: '£8.50', cost: '£3.20', margin: '62%', status: 'Active', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80' },
@@ -109,6 +111,64 @@ const MyMenuContent = () => {
   const [showMarketReport, setShowMarketReport] = useState(false);
   const [showAnalysisSelector, setShowAnalysisSelector] = useState(false);
 
+  // Live data from Supabase
+  const [menuItems, setMenuItems] = useState([]);
+  const [categories, setCategories] = useState(['All']);
+  const [loadingMenu, setLoadingMenu] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  useEffect(() => {
+    const fetchMenuData = async () => {
+      try {
+        // Get first restaurant
+        const { data: restaurants, error: restError } = await supabase
+          .from('restaurants')
+          .select('id, name')
+          .limit(1);
+
+        if (restError) throw restError;
+        const restaurant = restaurants?.[0];
+        if (!restaurant) return;
+
+        // Get menu items for this restaurant
+        const { data: items, error: itemsError } = await supabase
+          .from('menu_items')
+          .select('id, name, description, price, image_url, is_available, section_name')
+          .eq('restaurant_id', restaurant.id)
+          .order('section_name');
+
+        if (itemsError) throw itemsError;
+
+        // Map to format the rest of the component expects
+        const mapped = (items || []).map(item => ({
+          id: item.id,
+          name: item.name,
+          category: item.section_name || 'Other',
+          price: `£${parseFloat(item.price || 0).toFixed(2)}`,
+          priceNum: parseFloat(item.price || 0),
+          cost: '—',
+          margin: '—',
+          status: item.is_available ? 'Active' : 'Inactive',
+          image: item.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80',
+          description: item.description || ''
+        }));
+
+        setMenuItems(mapped);
+
+        // Build categories from real section names
+        const uniqueCats = ['All', ...new Set(mapped.map(i => i.category))];
+        setCategories(uniqueCats);
+
+      } catch (err) {
+        console.error('Menu fetch error:', err.message);
+      } finally {
+        setLoadingMenu(false);
+      }
+    };
+
+    fetchMenuData();
+  }, []);
+
   const handleFullAnalyze = () => {
     setShowFullAnalysis(true);
     setFullAnalysisState('loading');
@@ -134,18 +194,15 @@ const MyMenuContent = () => {
     { name: 'Milkshake', price: 4.00, image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=64&q=80', signal: 'Local Diner just launched a 20% off milkshake promo — monitor if this becomes permanent pricing' },
   ];
 
-  const categories = ['All', 'Burgers', 'Pizzas', 'Sides', 'Wraps', 'Drinks'];
-
-  const filteredItems = activeCategory === 'All' 
-    ? mockMenuItems 
-    : mockMenuItems.filter(item => item.category === activeCategory);
+  const filteredItems = (activeCategory === 'All' ? menuItems : menuItems.filter(item => item.category === activeCategory))
+    .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
   const handleAnalyze = (id) => {
     setAnalyzingItem(id);
     setAnalysisState('scraping');
     setActivePricePoint(null);
     
-    const item = mockMenuItems.find(i => i.id === id);
+    const item = menuItems.find(i => i.id === id);
     if (item) {
       const mData = getMarketData(item);
       setRangeMin(mData.lowPrice);
@@ -155,7 +212,6 @@ const MyMenuContent = () => {
       setRangeMax('');
     }
 
-    
     setTimeout(() => {
       setAnalysisState('rendering');
       setTimeout(() => {
@@ -189,7 +245,7 @@ const MyMenuContent = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: '1.875rem', fontWeight: 700 }}>My Menu</div>
+        <div style={{ fontSize: '1.875rem', fontWeight: 700 }}>My Menu {loadingMenu && <span style={{ fontSize: '0.875rem', color: '#9CA3AF', fontWeight: 400 }}>Loading...</span>}</div>
         <div style={{ display: 'flex', gap: '0.5rem' }}>
           <button onClick={() => setShowAnalysisSelector(true)} style={{ background: 'transparent', color: '#111', padding: '0.75rem 1.5rem', borderRadius: '9999px', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid rgba(0,0,0,0.12)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#111'; e.currentTarget.style.color = '#fff'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#111'; }}>
             <Activity size={16} /> Analyze Menu
@@ -230,6 +286,8 @@ const MyMenuContent = () => {
               <input 
                 type="text" 
                 placeholder="Search items..." 
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
                 style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '9999px', padding: '0.5rem 1rem 0.5rem 2.5rem', outline: 'none', fontSize: '0.875rem', width: '200px' }} 
               />
               <Search size={16} color="#9CA3AF" style={{ position: 'absolute', left: '1rem', top: '50%', transform: 'translateY(-50%)' }} />
@@ -240,55 +298,65 @@ const MyMenuContent = () => {
           </div>
         </div>
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', overflowY: 'auto', paddingRight: '0.5rem', paddingBottom: '1rem' }}>
-          {filteredItems.map(item => (
-            <div key={item.id} style={{ background: 'rgba(255,255,255,0.7)', borderRadius: '24px', padding: '1.5rem', border: '1px solid rgba(255,255,255,0.9)', display: 'flex', flexDirection: 'column', transition: 'box-shadow 0.2s, transform 0.2s', backdropFilter: 'blur(10px)', boxShadow: analyzingItem === item.id ? '0 10px 30px rgba(0,0,0,0.06)' : 'none', transform: analyzingItem === item.id ? 'scale(1.01)' : 'scale(1)' }}>
-              
-              {/* Row Header */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '2rem' }}>
-                <img src={item.image} alt={item.name} style={{ width: '80px', height: '80px', borderRadius: '16px', objectFit: 'cover', boxShadow: '0 4px 10px rgba(0,0,0,0.08)' }} />
-                
-                <div style={{ flex: 1 }}>
-                  <h3 style={{ fontSize: '1.5rem', fontWeight: 700, margin: '0 0 0.5rem 0', color: '#111', fontFamily: 'Playfair Display, serif' }}>{item.name}</h3>
-                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                    <span style={{ fontSize: '0.875rem', color: '#6B7280', fontWeight: 500, background: '#F3F4F6', padding: '0.2rem 0.6rem', borderRadius: '6px' }}>{item.category}</span>
-                    <span style={{ fontSize: '0.875rem', color: '#6B7280', fontWeight: 500 }}>Margin: <span style={{ color: '#10B981', fontWeight: 700 }}>{item.margin}</span></span>
-                    <span style={{ fontSize: '0.875rem', color: '#6B7280', fontWeight: 500 }}>Cost: <span style={{ color: '#111', fontWeight: 600 }}>{item.cost}</span></span>
+        <div className="menu-card-grid">
+          {filteredItems.length === 0 ? (
+            <div className="menu-empty-state">
+              <UtensilsCrossed className="menu-empty-icon" />
+              <p className="menu-empty-title">No items found</p>
+              <button
+                className="menu-empty-clear"
+                onClick={() => { setActiveCategory('All'); setSearchQuery(''); }}
+              >
+                Clear filters
+              </button>
+            </div>
+          ) : filteredItems.map(item => {
+            const isAnalyzing = analyzingItem === item.id;
+            const isLoading = isAnalyzing && (analysisState === 'scraping' || analysisState === 'rendering');
+            return (
+              <div
+                key={item.id}
+                className={`menu-item-card${isAnalyzing ? ' analyzing' : ''}`}
+              >
+                {/* Image */}
+                <div className="menu-card-image-wrap">
+                  <img src={item.image} alt={item.name} />
+                  <div className="menu-card-overlay">
+                    {isLoading ? (
+                      <div className="menu-card-spinner" />
+                    ) : (
+                      <button
+                        className="menu-card-analyze-btn"
+                        onClick={() => handleAnalyze(item.id)}
+                      >
+                        <Activity size={14} />
+                        Analyze &amp; Render
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '3rem' }}>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.7rem', color: '#9CA3AF', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.25rem' }}>Current Price</div>
-                    <div style={{ fontSize: '1.75rem', fontWeight: 700, color: '#111', fontFamily: 'Playfair Display, serif' }}>{item.price}</div>
+                {/* Content */}
+                <div className="menu-card-content">
+                  <p className="menu-card-name">{item.name}</p>
+                  <span className="menu-card-category">{item.category}</span>
+                  <div className="menu-card-footer">
+                    <span className="menu-card-price">{item.price}</span>
+                    <span className="menu-card-status">
+                      <span className={`menu-card-status-dot ${item.status === 'Active' ? 'active' : 'inactive'}`} />
+                      {item.status}
+                    </span>
                   </div>
-                  
-                  <button 
-                    onClick={() => handleAnalyze(item.id)}
-                    style={{ background: '#27272A', color: '#fff', padding: '0.875rem 1.5rem', borderRadius: '9999px', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', cursor: 'pointer', transition: 'background 0.2s', boxShadow: '0 4px 15px rgba(0,0,0,0.2)' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = '#111'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = '#27272A'}
-                  >
-                    <Activity size={18} />
-                    Analyze & Render
-                  </button>
                 </div>
               </div>
-
-              {/* Analyzer Overlay */}
-              {analyzingItem === item.id && (
-                <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-                  {renderAnalysis(item)}
-                </div>
-              )}
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
 
       {/* Audit Command Center Modal */}
       {analysisState === 'complete' && analyzingItem && (() => {
-        const activeItem = mockMenuItems.find(i => i.id === analyzingItem);
+        const activeItem = menuItems.find(i => i.id === analyzingItem);
         const marketData = getMarketData(activeItem);
         const currentPricePoint = (!rangeMin && !rangeMax && !activePricePoint) ? marketData.avgPrice : activePricePoint;
         
