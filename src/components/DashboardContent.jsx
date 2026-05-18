@@ -138,484 +138,497 @@ const DashboardContent = () => {
       return 0;
     });
   const newCount = visibleAlerts.filter(a => a.isNew).length;
-  const affectsYouCount = visibleAlerts.filter(a => a.youSellThis).length;
-
-  return (
+  const affectsYouCount = visibleAlerts.filter(a => a.youSellThis).length;  return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ fontSize: '1.875rem', fontWeight: 700 }}>Menu Pricing Health</div>
       
-      {/* Top Row: Competitive Score & AI Assistant */}
-      <div style={{ display: 'flex', gap: '1.5rem' }}>
-        {/* Pro-Report Split Card */}
-        <div className="glass-panel breathing-glow" style={{ flex: 2, display: 'flex', overflow: 'hidden', padding: 0 }}>
+      {/* Master Two-Column Grid Layout */}
+      <div style={{ display: 'grid', gridTemplateColumns: '60% 40%', gap: '1.5rem' }}>
+        
+        {/* LEFT COLUMN (60% Width) */}
+        <div style={{ display: 'contents' }}>
           
-          {/* LEFT — Brand Identity Hero */}
-          <div style={{ 
-            flex: 1, 
-            position: 'relative', 
-            backgroundImage: `linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.3) 60%, transparent 100%), url(${restaurant?.hero_image_url || '/gordos-hero.png'})`, 
-            backgroundSize: 'cover', 
-            backgroundPosition: 'center',
-            minHeight: '320px',
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: 'flex-end',
-            padding: '2rem'
-          }}>
-            {/* Brand Text */}
-            <div style={{ position: 'relative', zIndex: 2 }}>
-              <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', fontWeight: 400, marginBottom: '0.25rem' }}>Good evening,</p>
-              <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', fontFamily: 'Playfair Display, serif', lineHeight: 1.2, marginBottom: '0.75rem' }}>
-                {restaurant?.name || 'Your Restaurant'}
-              </h2>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} />
-                <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
-                  {restaurant?.estimated_delivery_time ? `Est. delivery ${restaurant.estimated_delivery_time}` : 'Live on UberEats'}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* RIGHT — Score & Breakdown */}
-          <div style={{ flex: 1, padding: '1.75rem 2rem', display: 'flex', flexDirection: 'column' }}>
-            {/* Header with Promo Pill */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-              <div>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.01em' }}>Restaurant Health</h2>
-                <p style={{ color: '#9CA3AF', fontSize: '0.75rem', marginTop: '0.15rem' }}>Compared to 8 local competitors</p>
+          {/* Pro-Report Split Card */}
+          <div className="glass-panel breathing-glow" style={{ display: 'flex', overflow: 'hidden', padding: 0, gridColumn: '1', gridRow: '1', height: '100%' }}>
+            {/* LEFT — Brand Identity Hero */}
+            <div style={{ 
+              flex: 1, 
+              position: 'relative', 
+              backgroundImage: `linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.3) 60%, transparent 100%), url(${restaurant?.hero_image_url || '/gordos-hero.png'})`, 
+              backgroundSize: 'cover', 
+              backgroundPosition: 'center',
+              minHeight: '320px',
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'flex-end',
+              padding: '2rem'
+            }}>
+              {/* Brand Text */}
+              <div style={{ position: 'relative', zIndex: 2 }}>
+                <p style={{ fontSize: '0.875rem', color: 'rgba(255,255,255,0.7)', fontWeight: 400, marginBottom: '0.25rem' }}>Good evening,</p>
+                <h2 style={{ fontSize: '1.75rem', fontWeight: 800, color: '#fff', fontFamily: 'Playfair Display, serif', lineHeight: 1.2, marginBottom: '0.75rem' }}>
+                  {restaurant?.name || 'Your Restaurant'}
+                </h2>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981' }} />
+                  <span style={{ fontSize: '0.75rem', color: 'rgba(255,255,255,0.6)', fontWeight: 500 }}>
+                    {restaurant?.estimated_delivery_time ? `Est. delivery ${restaurant.estimated_delivery_time}` : 'Live on UberEats'}
+                  </span>
+                </div>
               </div>
             </div>
 
-            {/* Sub-split: Donut Left | Breakdown Right — vertically centered */}
-            <div style={{ flex: 1, display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-              {/* Donut Score */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
-                <div style={{ position: 'relative', width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,0,0,0.05)" strokeWidth="10" />
-                    <circle cx="50" cy="50" r="45" fill="none" stroke="#000" strokeWidth="10" strokeDasharray="282.7" strokeDashoffset="101.7" strokeLinecap="round" />
-                  </svg>
-                  <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                    <span style={{ fontSize: '2.25rem', fontWeight: 800, lineHeight: 1, letterSpacing: '-0.02em' }}>64</span>
-                    <span style={{ fontSize: '0.7rem', color: '#9CA3AF', fontWeight: 600 }}>/ 100</span>
-                  </div>
-                </div>
-                
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(239, 68, 68, 0.08)', color: '#EF4444', padding: '0.3rem 0.65rem', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 600 }}>
-                  <AlertTriangle size={12} /> Needs Attention
+            {/* RIGHT — Score & Breakdown */}
+            <div style={{ flex: 1, padding: '1.75rem 2rem', display: 'flex', flexDirection: 'column' }}>
+              {/* Header with Promo Pill */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
+                <div>
+                  <h2 style={{ fontSize: '1.1rem', fontWeight: 700, letterSpacing: '-0.01em' }}>Restaurant Health</h2>
+                  <p style={{ color: '#9CA3AF', fontSize: '0.75rem', marginTop: '0.15rem' }}>Compared to 8 local competitors</p>
                 </div>
               </div>
 
-              {/* Breakdown List */}
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
-                {[
-                  { name: 'Price Positioning', icon: Wallet, weight: '30%', score: 42, isWarning: true, details: 'Your combos are priced 15% higher than the local average. Burger King and Five Guys both offer competitive lunch deals that undercut your main offerings.' },
-                  { name: 'Platform Coverage', icon: Satellite, weight: '20%', score: 85, isWarning: false, details: 'You are listed on UberEats and Deliveroo, capturing 85% of the delivery market. Consider adding JustEat to reach 100% coverage.' },
-                  { name: 'Offer Activity', icon: Megaphone, weight: '15%', score: 60, isWarning: false, details: 'You ran 2 promotions this month compared to the local average of 4. Competitors are aggressively using BOGO offers.' },
-                  { name: 'Menu Variety', icon: ChefHat, weight: '15%', score: 75, isWarning: false, details: 'Good coverage of main categories. However, you lack a dedicated vegan option which 3 of your top competitors have recently introduced.' }
-                ].map((metric, i) => (
-                  <div 
-                    key={i}
-                    onClick={() => setSelectedMetric(metric)}
-                    style={{ cursor: 'pointer', padding: '0.3rem', margin: '-0.3rem', borderRadius: '6px', transition: 'background 0.2s' }}
-                    onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'}
-                    onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.3rem', color: '#6B7280' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: metric.isWarning ? '#EF4444' : '#6B7280' }}>
-                        <metric.icon size={13} strokeWidth={1.5} style={{ color: metric.isWarning ? '#EF4444' : '#9CA3AF' }} />
-                        {metric.name} <span style={{ color: '#D1D5DB', fontSize: '0.65rem' }}>({metric.weight})</span>
-                      </span>
-                      <span style={{ fontWeight: 800, color: metric.isWarning ? '#EF4444' : '#111', fontSize: '0.8rem', letterSpacing: '-0.01em' }}>{metric.score}/100</span>
+              {/* Sub-split: Donut Left | Breakdown Right — vertically centered */}
+              <div style={{ flex: 1, display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
+                {/* Donut Score */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+                  <div style={{ position: 'relative', width: '120px', height: '120px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
+                      <circle cx="50" cy="50" r="45" fill="none" stroke="rgba(0,0,0,0.05)" strokeWidth="10" />
+                      <circle cx="50" cy="50" r="45" fill="none" stroke="#000" strokeWidth="10" strokeDasharray="282.7" strokeDashoffset="101.7" strokeLinecap="round" />
+                    </svg>
+                    <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                      <span style={{ fontSize: '2.25rem', fontWeight: 800, lineHeight: 1, letterSpacing: '-0.02em' }}>64</span>
+                      <span style={{ fontSize: '0.7rem', color: '#9CA3AF', fontWeight: 600 }}>/ 100</span>
                     </div>
-                    <div className="metric-bar-bg" style={{ height: '5px' }}><div className={`metric-bar-fill ${metric.isWarning ? 'warning' : ''}`} style={{ width: `${metric.score}%` }}></div></div>
                   </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </div>
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: 'rgba(239, 68, 68, 0.08)', color: '#EF4444', padding: '0.3rem 0.65rem', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 600 }}>
+                    <AlertTriangle size={12} /> Needs Attention
+                  </div>
+                </div>
 
-        <div className="glass-panel" style={{ flex: 1, padding: '2rem', display: 'flex', flexDirection: 'column' }}>
-          <div onClick={() => setShowPromos(true)} className="promo-pill-header" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.12)', borderRadius: '9999px', padding: '0.6rem 1.25rem', marginBottom: '1.5rem', cursor: 'pointer', transition: 'all 0.3s', alignSelf: 'flex-start' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.06)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.12)'; }}>
-            <div className="pulse-dot" style={{ width: '10px', height: '10px' }}></div>
-            <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#EF4444' }}>4</span>
-            <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111' }}>Promo Tracker</span>
-          </div>
-
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
-            {[
-              { restaurant: 'Burger King', promo: '2 for £5 Mix & Match', type: 'Discount', threat: 'high', platform: 'ubereats', active: 'Started today', image: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?auto=format&fit=crop&w=64&q=80', description: 'Offering any two signature burgers for £5 to combat our recent price increase. This is directly targeting our lunch rush.' },
-              { restaurant: 'Five Guys', promo: 'Free Delivery over £15', type: 'Delivery', threat: 'low', platform: 'deliveroo', active: 'Ends in 2 hrs', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=64&q=80', description: 'Pushing volume through delivery apps with free delivery during peak hours. High threat to our delivery metrics today.' },
-              { restaurant: 'Local Diner', promo: '20% off all Milkshakes', type: 'Happy Hour', threat: 'low', platform: 'justeat', active: 'Live now', image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=64&q=80', description: 'Afternoon happy hour targeting students. Strong overlap with our newly launched dessert menu.' },
-              { restaurant: 'Pizza Express', promo: 'Buy 1 Get 1 Free', type: 'BOGO', threat: 'high', platform: 'deliveroo', active: 'Ends tomorrow', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=64&q=80', description: 'Aggressive BOGO on all 12" pizzas for the weekend to drive foot traffic.' }
-            ].map((promo, i) => {
-              const isHighThreat = promo.threat === 'high';
-              const heatGradient = isHighThreat 
-                ? 'linear-gradient(to right, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.02) 40%, transparent 100%)' 
-                : 'linear-gradient(to right, rgba(147,197,253,0.1) 0%, rgba(147,197,253,0.03) 40%, transparent 100%)';
-              
-              const platformIcons = {
-                ubereats: (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.5, flexShrink: 0 }}>
-                    <rect width="24" height="24" rx="6" fill="#06C167"/>
-                    <text x="12" y="16" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">U</text>
-                  </svg>
-                ),
-                deliveroo: (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.5, flexShrink: 0 }}>
-                    <rect width="24" height="24" rx="6" fill="#00CCBC"/>
-                    <text x="12" y="16" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">D</text>
-                  </svg>
-                ),
-                justeat: (
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.5, flexShrink: 0 }}>
-                    <rect width="24" height="24" rx="6" fill="#F36D00"/>
-                    <text x="12" y="16" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">J</text>
-                  </svg>
-                )
-              };
-
-              return (
-                <div 
-                  key={i} 
-                  onClick={() => setSelectedPromoDetail(promo)}
-                  style={{ 
-                    position: 'relative',
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    alignItems: 'center', 
-                    background: heatGradient,
-                    backdropFilter: 'blur(10px)',
-                    WebkitBackdropFilter: 'blur(10px)',
-                    borderRadius: '8px', 
-                    padding: '0.7rem 0.85rem', 
-                    border: `1px solid ${isHighThreat ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.6)'}`,
-                    cursor: 'pointer', 
-                    transition: 'transform 0.2s, border-color 0.2s' 
-                  }}
-                  onMouseEnter={(e) => {e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.borderColor = isHighThreat ? 'rgba(239,68,68,0.25)' : 'rgba(147,197,253,0.4)';}}
-                  onMouseLeave={(e) => {e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.borderColor = isHighThreat ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.6)';}}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
-                    <img src={promo.image} alt={promo.restaurant} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(0,0,0,0.06)' }} />
-                    <div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#111' }}>{promo.restaurant}</span>
-                        {platformIcons[promo.platform]}
+                {/* Breakdown List */}
+                <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.65rem' }}>
+                  {[
+                    { name: 'Price Positioning', icon: Wallet, weight: '30%', score: 42, isWarning: true, details: 'Your combos are priced 15% higher than the local average. Burger King and Five Guys both offer competitive lunch deals that undercut your main offerings.' },
+                    { name: 'Platform Coverage', icon: Satellite, weight: '20%', score: 85, isWarning: false, details: 'You are listed on UberEats and Deliveroo, capturing 85% of the delivery market. Consider adding JustEat to reach 100% coverage.' },
+                    { name: 'Offer Activity', icon: Megaphone, weight: '15%', score: 60, isWarning: false, details: 'You ran 2 promotions this month compared to the local average of 4. Competitors are aggressively using BOGO offers.' },
+                    { name: 'Menu Variety', icon: ChefHat, weight: '15%', score: 75, isWarning: false, details: 'Good coverage of main categories. However, you lack a dedicated vegan option which 3 of your top competitors have recently introduced.' }
+                  ].map((metric, i) => (
+                    <div 
+                      key={i}
+                      onClick={() => setSelectedMetric(metric)}
+                      style={{ cursor: 'pointer', padding: '0.3rem', margin: '-0.3rem', borderRadius: '6px', transition: 'background 0.2s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(0,0,0,0.02)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.75rem', fontWeight: 500, marginBottom: '0.3rem', color: '#6B7280' }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', color: metric.isWarning ? '#EF4444' : '#6B7280' }}>
+                          <metric.icon size={13} strokeWidth={1.5} style={{ color: metric.isWarning ? '#EF4444' : '#9CA3AF' }} />
+                          {metric.name} <span style={{ color: '#D1D5DB', fontSize: '0.65rem' }}>({metric.weight})</span>
+                        </span>
+                        <span style={{ fontWeight: 800, color: metric.isWarning ? '#EF4444' : '#111', fontSize: '0.8rem', letterSpacing: '-0.01em' }}>{metric.score}/100</span>
                       </div>
-                      <div style={{ fontSize: '0.7rem', color: '#6B7280', marginTop: '0.1rem' }}>{promo.promo}</div>
+                      <div className="metric-bar-bg" style={{ height: '5px' }}><div className={`metric-bar-fill ${metric.isWarning ? 'warning' : ''}`} style={{ width: `${metric.score}%` }}></div></div>
                     </div>
-                  </div>
-                  <ArrowRight size={14} color="#9CA3AF" />
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
-
-      {/* Bottom Row: Pricing Health */}
-      <div style={{ display: 'flex', gap: '1.5rem' }}>
-        <PricingCard 
-          title="Overpriced" count="12" colorClass="text-red-500"
-          gradient="linear-gradient(to bottom, rgba(226, 75, 74, 0.30) 0%, rgba(255,255,255,0) 55%)"
-          items={[
-            { name: 'Spicy Chicken Burger', impact: -240, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Truffle Fries', impact: -120, image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Margherita Pizza', impact: -95, image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Cola Zero', impact: -40, image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=64&q=80' }
-          ]}
-          onShowMore={() => setSelectedCard({ title: 'Overpriced', items: [
-            { name: 'Spicy Chicken Burger', impact: -240, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Truffle Fries', impact: -120, image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Margherita Pizza', impact: -95, image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Cola Zero', impact: -40, image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=64&q=80' }
-          ]})}
-        />
-        <PricingCard 
-          title="Priced Right" count="45" colorClass="text-green-500"
-
-          items={[
-            { name: 'Classic Cheeseburger', impact: 850, image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Onion Rings', impact: 320, image: 'https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=64&q=80' },
-            { name: 'BBQ Wings', impact: 210, image: 'https://images.unsplash.com/photo-1524114664604-cd8133cd67ad?auto=format&fit=crop&w=64&q=80' }
-          ]}
-          onShowMore={() => setSelectedCard({ title: 'Priced Right', items: [
-            { name: 'Classic Cheeseburger', impact: 850, image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Onion Rings', impact: 320, image: 'https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=64&q=80' },
-            { name: 'BBQ Wings', impact: 210, image: 'https://images.unsplash.com/photo-1524114664604-cd8133cd67ad?auto=format&fit=crop&w=64&q=80' }
-          ]})}
-        />
-        <PricingCard 
-          title="Underpriced" count="8" colorClass="text-yellow-500"
-
-          items={[
-            { name: 'Vegan Wrap', impact: -450, image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Milkshake', impact: -180, image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Sweet Potato Fries', impact: -150, image: 'https://images.unsplash.com/photo-1596649285097-70b1cb3b3209?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Iced Coffee', impact: -85, image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba1?auto=format&fit=crop&w=64&q=80' }
-          ]}
-          onShowMore={() => setSelectedCard({ title: 'Underpriced', items: [
-            { name: 'Vegan Wrap', impact: -450, image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Milkshake', impact: -180, image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Sweet Potato Fries', impact: -150, image: 'https://images.unsplash.com/photo-1596649285097-70b1cb3b3209?auto=format&fit=crop&w=64&q=80' },
-            { name: 'Iced Coffee', impact: -85, image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba1?auto=format&fit=crop&w=64&q=80' }
-          ]})}
-        />
-      </div>
-
-      {/* Price Change Alerts */}
-      <div 
-        className="price-changes-gradient-card" 
-        style={{ 
-          background: 'linear-gradient(to bottom, #D63B1F 0%, rgba(214,59,31,0.5) 25%, rgba(214,59,31,0.15) 50%, #FAF8F4 70%, #FAF8F4 100%)',
-          borderRadius: '16px',
-          border: 'none',
-          padding: '1.5rem',
-          boxShadow: 'none'
-        }}
-      >
-        {/* Header */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-          <div>
-            <div style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.75)', textTransform: 'uppercase', marginBottom: '4px' }}>
-              PRICE CHANGES
-            </div>
-            <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>
-              Instant price alerts
-              {newCount > 0 && (
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#D63B1F', background: '#FFFFFF', padding: '2px 8px', borderRadius: '9999px' }}>{newCount} new</span>
-              )}
-            </h3>
-            <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '6px', lineHeight: 1.5 }}>
-              Get notified the moment a rival changes their pricing
-            </p>
-          </div>
-          <button style={{ fontSize: '12px', fontWeight: 600, color: '#FFFFFF', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '3px' }}
-            onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.8)'}
-            onMouseLeave={(e) => e.currentTarget.style.color = '#FFFFFF'}
-          >View all price changes</button>
-        </div>
-
-        {/* Category Tabs */}
-        <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '1rem', background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.25rem', alignSelf: 'flex-start', width: 'fit-content' }}>
-          {[
-            { key: 'all', label: 'All', count: priceAlerts.filter(a => !dismissedAlerts.includes(a.id)).length },
-            { key: 'mine', label: 'My Competitors', count: priceAlerts.filter(a => !dismissedAlerts.includes(a.id) && a.isMine).length }
-          ].map((tab) => {
-            const isActive = priceAlertFilter === tab.key;
-            return (
-              <button
-                key={tab.key}
-                onClick={() => setPriceAlertFilter(tab.key)}
-                style={{
-                  padding: '0.4rem 0.85rem',
-                  borderRadius: '6px',
-                  border: 'none',
-                  fontSize: '0.75rem',
-                  fontWeight: isActive ? 700 : 500,
-                  color: isActive ? '#D63B1F' : '#FFFFFF',
-                  background: isActive ? '#FFFFFF' : 'transparent',
-                  boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.35rem'
-                }}
-              >
-                {tab.label}
-                <span style={{ 
-                  fontSize: '0.6rem', fontWeight: 700, 
-                  color: isActive ? '#D63B1F' : 'rgba(255,255,255,0.8)',
-                  background: isActive ? 'rgba(214,59,31,0.08)' : 'rgba(255,255,255,0.15)', 
-                  padding: '0.1rem 0.35rem', borderRadius: '4px',
-                  transition: 'all 0.2s'
-                }}>{tab.count}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* Alerts Feed */}
-        <div style={{ display: 'flex', flexDirection: 'column' }}>
-          {visibleAlerts.slice(0, 6).map((alert) => {
-            const isUp = alert.direction === 'up';
-            const platformColors = {
-              ubereats: '#10B981',
-              deliveroo: '#00CDBC',
-              justeat: '#F36F21'
-            };
-            const platformLetters = {
-              ubereats: 'U',
-              deliveroo: 'D',
-              justeat: 'J'
-            };
-            const pBg = platformColors[alert.platform] || '#10B981';
-            const pLetter = platformLetters[alert.platform] || 'U';
-
-            const hasError = imageErrors[alert.id];
-            const getInitials = (name) => {
-              if (!name) return '??';
-              const parts = name.trim().split(/\s+/);
-              if (parts.length >= 2) {
-                return (parts[0][0] + parts[1][0]).toUpperCase();
-              }
-              return name.slice(0, 2).toUpperCase();
-            };
-            const initials = getInitials(alert.competitor);
-
-            const diff = alert.newPrice - alert.oldPrice;
-            const diffSign = diff > 0 ? '+' : '';
-            const diffText = `${diffSign}£${Math.abs(diff).toFixed(2)}`;
-
-            return (
-              <div 
-                key={alert.id}
-                className="price-change-row"
-              >
-                {/* Competitor Photo */}
-                <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
-                  {hasError ? (
-                    <div style={{
-                      width: '44px',
-                      height: '44px',
-                      borderRadius: '50%',
-                      background: alert.logoColor || '#6B7280',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      color: '#fff',
-                      fontSize: '14px',
-                      fontWeight: 700,
-                      border: '1px solid rgba(0,0,0,0.06)'
-                    }}>
-                      {initials}
-                    </div>
-                  ) : (
-                    <img 
-                      src={alert.image} 
-                      alt={alert.competitor} 
-                      onError={() => setImageErrors(prev => ({ ...prev, [alert.id]: true }))}
-                      style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(0,0,0,0.06)' }} 
-                    />
-                  )}
-                  <div style={{
-                    position: 'absolute',
-                    bottom: '-2px',
-                    right: '-2px',
-                    width: '16px',
-                    height: '16px',
-                    borderRadius: '50%',
-                    background: pBg,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    border: '1.5px solid #fff',
-                    boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-                    zIndex: 10
-                  }}>
-                    <span style={{ fontSize: '7px', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{pLetter}</span>
-                  </div>
-                </div>
-
-                {/* Text Block */}
-                <div style={{ minWidth: '150px', flexShrink: 0 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: '13px', fontWeight: 600, color: '#111111', lineHeight: 1.2 }}>{alert.competitor}</span>
-                    {alert.youSellThis && (
-                      <span style={{
-                        background: '#FDECEA',
-                        color: '#D63B1F',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        padding: '2px 7px',
-                        borderRadius: '10px',
-                        lineHeight: 1,
-                        whiteSpace: 'nowrap'
-                      }}>You sell this</span>
-                    )}
-                  </div>
-                  <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alert.item}</div>
-                </div>
-
-                {/* Price Change Info */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto', flexShrink: 0 }}>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <span style={{ fontSize: '12px', color: '#9CA3AF', textDecoration: 'line-through' }}>£{alert.oldPrice.toFixed(2)}</span>
-                      {isUp ? (
-                        <TrendingUp size={14} color="#D63B1F" strokeWidth={2.5} />
-                      ) : (
-                        <TrendingDown size={14} color="#1D9E75" strokeWidth={2.5} />
-                      )}
-                      <span style={{ fontSize: '14px', fontWeight: 600, color: isUp ? '#D63B1F' : '#1D9E75' }}>£{alert.newPrice.toFixed(2)}</span>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#9CA3AF' }}>
-                      <Clock size={11} strokeWidth={1.5} />
-                      <span style={{ fontSize: '11px' }}>{alert.time}</span>
-                    </div>
-                  </div>
-
-                  {/* Pill Badge */}
-                  <div style={{
-                    background: isUp ? '#D63B1F' : '#1D9E75',
-                    color: '#FFFFFF',
-                    borderRadius: '9999px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    padding: '4px 10px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    minWidth: '55px'
-                  }}>
-                    {diffText}
-                  </div>
-                </div>
-
-                {/* Action Buttons */}
-                <div className="row-hover-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
-                  {alert.youSellThis && (
-                    <button className="adjust-price-btn-outline">
-                      Adjust price
-                    </button>
-                  )}
-                  <button className="hover-action-btn-light" title="View Item">
-                    <Eye size={14} />
-                  </button>
-                  <button 
-                    className="hover-action-btn-light" 
-                    title="Dismiss"
-                    onClick={(e) => { e.stopPropagation(); setDismissedAlerts(prev => [...prev, alert.id]); }}
-                  >
-                    <X size={14} />
-                  </button>
+                  ))}
                 </div>
               </div>
-            );
-          })}
+            </div>
+          </div>
+
+          {/* Bottom Pricing Cards in 3-column Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.5rem', gridColumn: '1', gridRow: '2', height: '100%' }}>
+            <PricingCard 
+              title="Overpriced" count="12" colorClass="text-red-500"
+              gradient="linear-gradient(to bottom, rgba(226, 75, 74, 0.30) 0%, rgba(255,255,255,0) 55%)"
+              items={[
+                { name: 'Spicy Chicken Burger', impact: -240, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Truffle Fries', impact: -120, image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Margherita Pizza', impact: -95, image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Cola Zero', impact: -40, image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=64&q=80' }
+              ]}
+              onShowMore={() => setSelectedCard({ title: 'Overpriced', items: [
+                { name: 'Spicy Chicken Burger', impact: -240, image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Truffle Fries', impact: -120, image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Margherita Pizza', impact: -95, image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Cola Zero', impact: -40, image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=64&q=80' }
+              ]})}
+            />
+            <PricingCard 
+              title="Priced Right" count="45" colorClass="text-green-500"
+              items={[
+                { name: 'Classic Cheeseburger', impact: 850, image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Onion Rings', impact: 320, image: 'https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=64&q=80' },
+                { name: 'BBQ Wings', impact: 210, image: 'https://images.unsplash.com/photo-1524114664604-cd8133cd67ad?auto=format&fit=crop&w=64&q=80' }
+              ]}
+              onShowMore={() => setSelectedCard({ title: 'Priced Right', items: [
+                { name: 'Classic Cheeseburger', impact: 850, image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Onion Rings', impact: 320, image: 'https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=64&q=80' },
+                { name: 'BBQ Wings', impact: 210, image: 'https://images.unsplash.com/photo-1524114664604-cd8133cd67ad?auto=format&fit=crop&w=64&q=80' }
+              ]})}
+            />
+            <PricingCard 
+              title="Underpriced" count="8" colorClass="text-yellow-500"
+              items={[
+                { name: 'Vegan Wrap', impact: -450, image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Milkshake', impact: -180, image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Sweet Potato Fries', impact: -150, image: 'https://images.unsplash.com/photo-1596649285097-70b1cb3b3209?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Iced Coffee', impact: -85, image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba1?auto=format&fit=crop&w=64&q=80' }
+              ]}
+              onShowMore={() => setSelectedCard({ title: 'Underpriced', items: [
+                { name: 'Vegan Wrap', impact: -450, image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Milkshake', impact: -180, image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Sweet Potato Fries', impact: -150, image: 'https://images.unsplash.com/photo-1596649285097-70b1cb3b3209?auto=format&fit=crop&w=64&q=80' },
+                { name: 'Iced Coffee', impact: -85, image: 'https://images.unsplash.com/photo-1517701550927-30cf4ba1dba1?auto=format&fit=crop&w=64&q=80' }
+              ]})}
+            />
+          </div>
         </div>
 
-        {/* Bottom View All Link */}
-        <div style={{ textAlign: 'center', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: '8px' }}>
-          <span 
-            className="price-changes-bottom-link"
-            style={{
-              fontSize: '13px',
-              color: '#6B7280',
-              textDecoration: 'none',
-              cursor: 'pointer',
-              fontWeight: 600,
-              transition: 'color 0.2s ease'
+        {/* RIGHT COLUMN (40% Width) */}
+        <div style={{ display: 'contents' }}>
+          
+          {/* Promo Tracker */}
+          <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', height: '100%', alignSelf: 'stretch', gridColumn: '2', gridRow: '1', boxSizing: 'border-box' }}>
+            <div onClick={() => setShowPromos(true)} className="promo-pill-header" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.6rem', background: 'rgba(239, 68, 68, 0.06)', border: '1px solid rgba(239, 68, 68, 0.12)', borderRadius: '9999px', padding: '0.4rem 1rem', marginBottom: '1rem', cursor: 'pointer', transition: 'all 0.3s', alignSelf: 'flex-start' }} onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.12)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.25)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(239, 68, 68, 0.06)'; e.currentTarget.style.borderColor = 'rgba(239, 68, 68, 0.12)'; }}>
+              <div className="pulse-dot" style={{ width: '10px', height: '10px' }}></div>
+              <span style={{ fontSize: '0.95rem', fontWeight: 800, color: '#EF4444' }}>4</span>
+              <span style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111' }}>Promo Tracker</span>
+            </div>
+
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: '0.5rem', overflowY: 'auto', paddingRight: '0.5rem' }}>
+              {[
+                { restaurant: 'Burger King', promo: '2 for £5 Mix & Match', type: 'Discount', threat: 'high', platform: 'ubereats', active: 'Started today', image: 'https://images.unsplash.com/photo-1571091718767-18b5b1457add?auto=format&fit=crop&w=64&q=80', description: 'Offering any two signature burgers for £5 to combat our recent price increase. This is directly targeting our lunch rush.' },
+                { restaurant: 'Five Guys', promo: 'Free Delivery over £15', type: 'Delivery', threat: 'low', platform: 'deliveroo', active: 'Ends in 2 hrs', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=64&q=80', description: 'Pushing volume through delivery apps with free delivery during peak hours. High threat to our delivery metrics today.' },
+                { restaurant: 'Local Diner', promo: '20% off all Milkshakes', type: 'Happy Hour', threat: 'low', platform: 'justeat', active: 'Live now', image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=64&q=80', description: 'Afternoon happy hour targeting students. Strong overlap with our newly launched dessert menu.' },
+                { restaurant: 'Pizza Express', promo: 'Buy 1 Get 1 Free', type: 'BOGO', threat: 'high', platform: 'deliveroo', active: 'Ends tomorrow', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=64&q=80', description: 'Aggressive BOGO on all 12" pizzas for the weekend to drive foot traffic.' }
+              ].map((promo, i) => {
+                const isHighThreat = promo.threat === 'high';
+                const heatGradient = isHighThreat 
+                  ? 'linear-gradient(to right, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.02) 40%, transparent 100%)' 
+                  : 'linear-gradient(to right, rgba(147,197,253,0.1) 0%, rgba(147,197,253,0.03) 40%, transparent 100%)';
+                
+                const platformIcons = {
+                  ubereats: (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.5, flexShrink: 0 }}>
+                      <rect width="24" height="24" rx="6" fill="#06C167"/>
+                      <text x="12" y="16" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">U</text>
+                    </svg>
+                  ),
+                  deliveroo: (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.5, flexShrink: 0 }}>
+                      <rect width="24" height="24" rx="6" fill="#00CCBC"/>
+                      <text x="12" y="16" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">D</text>
+                    </svg>
+                  ),
+                  justeat: (
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style={{ opacity: 0.5, flexShrink: 0 }}>
+                      <rect width="24" height="24" rx="6" fill="#F36D00"/>
+                      <text x="12" y="16" textAnchor="middle" fill="white" fontSize="11" fontWeight="bold">J</text>
+                    </svg>
+                  )
+                };
+
+                return (
+                  <div 
+                    key={i} 
+                    onClick={() => setSelectedPromoDetail(promo)}
+                    style={{ 
+                      position: 'relative',
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center', 
+                      background: heatGradient,
+                      backdropFilter: 'blur(10px)',
+                      WebkitBackdropFilter: 'blur(10px)',
+                      borderRadius: '8px', 
+                      padding: '0.7rem 0.85rem', 
+                      border: `1px solid ${isHighThreat ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.6)'}`,
+                      cursor: 'pointer', 
+                      transition: 'transform 0.2s, border-color 0.2s' 
+                    }}
+                    onMouseEnter={(e) => {e.currentTarget.style.transform = 'translateX(4px)'; e.currentTarget.style.borderColor = isHighThreat ? 'rgba(239,68,68,0.25)' : 'rgba(147,197,253,0.4)';}}
+                    onMouseLeave={(e) => {e.currentTarget.style.transform = 'translateX(0)'; e.currentTarget.style.borderColor = isHighThreat ? 'rgba(239,68,68,0.1)' : 'rgba(255,255,255,0.6)';}}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <img src={promo.image} alt={promo.restaurant} style={{ width: '32px', height: '32px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(0,0,0,0.06)' }} />
+                      <div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <span style={{ fontWeight: 700, fontSize: '0.8rem', color: '#111' }}>{promo.restaurant}</span>
+                          {platformIcons[promo.platform]}
+                        </div>
+                        <div style={{ fontSize: '0.7rem', color: '#6B7280', marginTop: '0.1rem' }}>{promo.promo}</div>
+                      </div>
+                    </div>
+                    <ArrowRight size={14} color="#9CA3AF" />
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Price Change Alerts */}
+          <div 
+            className="price-changes-gradient-card" 
+            style={{ 
+              background: 'linear-gradient(to bottom, #D63B1F 0%, rgba(214,59,31,0.6) 20%, rgba(214,59,31,0.2) 40%, #FAF8F4 65%, #FAF8F4 100%)',
+              gridColumn: '2',
+              gridRow: '2',
+              height: '100%',
+              alignSelf: 'stretch',
+              display: 'flex',
+              flexDirection: 'column',
+              boxSizing: 'border-box',
+              borderRadius: '16px',
+              border: 'none',
+              padding: '1.5rem',
+              boxShadow: 'none'
             }}
           >
-            View all price changes &rarr;
-          </span>
+            {/* Header */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.75rem' }}>
+              <div>
+                <div style={{ fontSize: '11px', fontWeight: 500, letterSpacing: '0.08em', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', marginBottom: '4px' }}>
+                  PRICE CHANGES
+                </div>
+                <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#FFFFFF', display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>
+                  Instant price alerts
+                  {newCount > 0 && (
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#D63B1F', background: '#FFFFFF', padding: '2px 8px', borderRadius: '9999px' }}>{newCount} new</span>
+                  )}
+                </h3>
+                <p style={{ fontSize: '14px', color: 'rgba(255,255,255,0.8)', marginTop: '6px', lineHeight: 1.5 }}>
+                  Get notified the moment a rival changes their pricing
+                </p>
+              </div>
+              <button style={{ fontSize: '12px', fontWeight: 600, color: '#FFFFFF', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline', textUnderlineOffset: '3px' }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.8)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#FFFFFF'}
+              >View all price changes</button>
+            </div>
+
+            {/* Category Tabs */}
+            <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '0.75rem', background: 'rgba(255,255,255,0.2)', borderRadius: '8px', padding: '0.25rem', alignSelf: 'flex-start', width: 'fit-content' }}>
+              {[
+                { key: 'all', label: 'All', count: priceAlerts.filter(a => !dismissedAlerts.includes(a.id)).length },
+                { key: 'mine', label: 'My Competitors', count: priceAlerts.filter(a => !dismissedAlerts.includes(a.id) && a.isMine).length }
+              ].map((tab) => {
+                const isActive = priceAlertFilter === tab.key;
+                return (
+                  <button
+                    key={tab.key}
+                    onClick={() => setPriceAlertFilter(tab.key)}
+                    style={{
+                      padding: '0.4rem 0.85rem',
+                      borderRadius: '6px',
+                      border: 'none',
+                      fontSize: '0.75rem',
+                      fontWeight: isActive ? 700 : 500,
+                      color: isActive ? '#D63B1F' : '#FFFFFF',
+                      background: isActive ? '#FFFFFF' : 'transparent',
+                      boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem'
+                    }}
+                  >
+                    {tab.label}
+                    <span style={{ 
+                      fontSize: '0.6rem', fontWeight: 700, 
+                      color: isActive ? '#D63B1F' : 'rgba(255,255,255,0.8)',
+                      background: isActive ? 'rgba(214,59,31,0.08)' : 'rgba(255,255,255,0.15)', 
+                      padding: '0.1rem 0.35rem', borderRadius: '4px',
+                      transition: 'all 0.2s'
+                    }}>{tab.count}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Alerts Feed */}
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingRight: '0.25rem', gap: '0.25rem' }}>
+              {visibleAlerts.slice(0, 4).map((alert) => {
+                const isUp = alert.direction === 'up';
+                const platformColors = {
+                  ubereats: '#10B981',
+                  deliveroo: '#00CDBC',
+                  justeat: '#F36F21'
+                };
+                const platformLetters = {
+                  ubereats: 'U',
+                  deliveroo: 'D',
+                  justeat: 'J'
+                };
+                const pBg = platformColors[alert.platform] || '#10B981';
+                const pLetter = platformLetters[alert.platform] || 'U';
+
+                const hasError = imageErrors[alert.id];
+                const getInitials = (name) => {
+                  if (!name) return '??';
+                  const parts = name.trim().split(/\s+/);
+                  if (parts.length >= 2) {
+                    return (parts[0][0] + parts[1][0]).toUpperCase();
+                  }
+                  return name.slice(0, 2).toUpperCase();
+                };
+                const initials = getInitials(alert.competitor);
+
+                const diff = alert.newPrice - alert.oldPrice;
+                const diffSign = diff > 0 ? '+' : '';
+                const diffText = `${diffSign}£${Math.abs(diff).toFixed(2)}`;
+
+                return (
+                  <div 
+                    key={alert.id}
+                    className="price-change-row"
+                  >
+                    {/* Competitor Photo */}
+                    <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
+                      {hasError ? (
+                        <div style={{
+                          width: '44px',
+                          height: '44px',
+                          borderRadius: '50%',
+                          background: alert.logoColor || '#6B7280',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: '#fff',
+                          fontSize: '14px',
+                          fontWeight: 700,
+                          border: '1px solid rgba(0,0,0,0.06)'
+                        }}>
+                          {initials}
+                        </div>
+                      ) : (
+                        <img 
+                          src={alert.image} 
+                          alt={alert.competitor} 
+                          onError={() => setImageErrors(prev => ({ ...prev, [alert.id]: true }))}
+                          style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(0,0,0,0.06)' }} 
+                        />
+                      )}
+                      <div style={{
+                        position: 'absolute',
+                        bottom: '-2px',
+                        right: '-2px',
+                        width: '16px',
+                        height: '16px',
+                        borderRadius: '50%',
+                        background: pBg,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        border: '1.5px solid #fff',
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+                        zIndex: 10
+                      }}>
+                        <span style={{ fontSize: '7px', fontWeight: 900, color: '#fff', lineHeight: 1 }}>{pLetter}</span>
+                      </div>
+                    </div>
+
+                    {/* Text Block */}
+                    <div style={{ minWidth: '150px', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#111111', lineHeight: 1.2 }}>{alert.competitor}</span>
+                        {alert.youSellThis && (
+                          <span style={{
+                            background: '#FDECEA',
+                            color: '#D63B1F',
+                            fontSize: '10px',
+                            fontWeight: 600,
+                            padding: '2px 7px',
+                            borderRadius: '10px',
+                            lineHeight: 1,
+                            whiteSpace: 'nowrap'
+                          }}>You sell this</span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6B7280', marginTop: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{alert.item}</div>
+                    </div>
+
+                    {/* Price Change Info */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginLeft: 'auto', flexShrink: 0 }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '2px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontSize: '12px', color: '#9CA3AF', textDecoration: 'line-through' }}>£{alert.oldPrice.toFixed(2)}</span>
+                          {isUp ? (
+                            <TrendingUp size={14} color="#D63B1F" strokeWidth={2.5} />
+                          ) : (
+                            <TrendingDown size={14} color="#1D9E75" strokeWidth={2.5} />
+                          )}
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: isUp ? '#D63B1F' : '#1D9E75' }}>£{alert.newPrice.toFixed(2)}</span>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '3px', color: '#9CA3AF' }}>
+                          <Clock size={11} strokeWidth={1.5} />
+                          <span style={{ fontSize: '11px' }}>{alert.time}</span>
+                        </div>
+                      </div>
+
+                      {/* Pill Badge */}
+                      <div style={{
+                        background: isUp ? '#D63B1F' : '#1D9E75',
+                        color: '#FFFFFF',
+                        borderRadius: '9999px',
+                        fontSize: '12px',
+                        fontWeight: 600,
+                        padding: '4px 10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        minWidth: '55px'
+                      }}>
+                        {diffText}
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="row-hover-actions" style={{ display: 'flex', alignItems: 'center', gap: '6px', flexShrink: 0, marginLeft: '8px' }}>
+                      {alert.youSellThis && (
+                        <button className="adjust-price-btn-outline">
+                          Adjust price
+                        </button>
+                      )}
+                      <button className="hover-action-btn-light" title="View Item">
+                        <Eye size={14} />
+                      </button>
+                      <button 
+                        className="hover-action-btn-light" 
+                        title="Dismiss"
+                        onClick={(e) => { e.stopPropagation(); setDismissedAlerts(prev => [...prev, alert.id]); }}
+                      >
+                        <X size={14} />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Bottom View All Link */}
+            <div style={{ textAlign: 'center', paddingTop: '12px', borderTop: '1px solid rgba(0,0,0,0.06)', marginTop: '8px' }}>
+              <span 
+                className="price-changes-bottom-link"
+                style={{
+                  fontSize: '13px',
+                  color: '#6B7280',
+                  textDecoration: 'none',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  transition: 'color 0.2s ease'
+                }}
+              >
+                View all price changes &rarr;
+              </span>
+            </div>
+          </div>
         </div>
       </div>
+
 
       {/* Modal Overlay for "Show more" */}
       {selectedCard && (

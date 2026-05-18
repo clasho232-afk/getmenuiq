@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import LandingPage from './components/LandingPage';
 import MenuIQLogin from './components/Login';
 import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
@@ -11,8 +12,13 @@ import AIInsightsContent from './components/AIInsightsContent';
 import CompetitorFinderContent from './components/CompetitorFinderContent';
 
 function App() {
+  const [showLanding, setShowLanding] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
   const [activeTab, setActiveTab] = useState('Dashboard');
+
+  if (showLanding) {
+    return <LandingPage onLaunchDashboard={() => setShowLanding(false)} />;
+  }
 
   if (!loggedIn) {
     return (
