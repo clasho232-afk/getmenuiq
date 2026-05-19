@@ -30,6 +30,37 @@ export default function LandingPage({ onLaunchDashboard }) {
       if (iframe && iframe.contentDocument) {
         // Attach click listeners to intercept navigation/CTA triggers
         iframe.contentDocument.addEventListener('click', handleIframeClick);
+
+        // Inject background wallpaper style block
+        const style = iframe.contentDocument.createElement('style');
+        style.textContent = `
+          /* Apply the fixed background wallpaper */
+          body, #__bundler_thumbnail, #root {
+            background-image: url('/bg-sketch.png') !important;
+            background-size: 1450px !important;
+            background-position: right -50px top -20px !important;
+            background-repeat: no-repeat !important;
+            background-attachment: fixed !important;
+            background-color: #FAF7F2 !important;
+          }
+          
+          /* Make container overlays transparent so the wallpaper shines through beautifully */
+          main, section, div[style*="background-color"], div[class*="bg-"] {
+            background-color: transparent !important;
+          }
+          
+          /* Ensure cards and overlays remain solid and high-contrast */
+          div.bg-white, div[class*="bg-white"], div[class*="rounded-"], .shadow-sm, form, footer {
+            background-color: #ffffff !important;
+          }
+          
+          /* Keep the ticker background dark and contrasty */
+          div[style*="background-color: rgb(17, 16, 9)"], div.bg-black, rect[fill="#111009"] {
+            background-color: #111009 !important;
+            fill: #111009 !important;
+          }
+        `;
+        iframe.contentDocument.head.appendChild(style);
       }
     };
 
