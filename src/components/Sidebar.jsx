@@ -43,22 +43,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
         position: 'relative'
       }}
     >
-      {/* London Skyline Shadow — fades into sidebar */}
-      <div style={{
-        position: 'absolute',
-        top: 0, left: 0, right: 0,
-        height: '180px',
-        backgroundImage: 'url(/bg-sketch.png)',
-        backgroundSize: '600px',
-        backgroundPosition: 'left -30px top -10px',
-        backgroundRepeat: 'no-repeat',
-        opacity: 0.06,
-        mixBlendMode: 'multiply',
-        pointerEvents: 'none',
-        maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
-        WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
-      }} />
-
       {/* Main Navigation */}
       <div style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', position: 'relative', zIndex: 1 }}>
         {mainNavItems.map((item) => {

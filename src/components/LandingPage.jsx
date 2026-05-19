@@ -34,22 +34,18 @@ export default function LandingPage({ onLaunchDashboard }) {
         // Inject background wallpaper style block
         const style = iframe.contentDocument.createElement('style');
         style.textContent = `
-          /* Apply the fixed background wallpaper */
+          /* Apply the solid cream background without the wallpaper */
           body, #__bundler_thumbnail, #root {
-            background-image: url('/bg-sketch.png') !important;
-            background-size: 1450px !important;
-            background-position: right -50px top -20px !important;
-            background-repeat: no-repeat !important;
-            background-attachment: fixed !important;
             background-color: #FAF7F2 !important;
+            background-image: none !important;
           }
           
-          /* Make container overlays transparent so the wallpaper shines through beautifully */
-          main, section, div[style*="background-color"], div[class*="bg-"] {
+          /* Make middle section wrappers transparent so the body's cream background and wallpaper overlay show through */
+          main, section, div[style*="background-color: rgb(250, 247, 242)"], div[class*="bg-[#FAF7F2]"] {
             background-color: transparent !important;
           }
           
-          /* Ensure cards and overlays remain solid and high-contrast */
+          /* Ensure cards and other white overlays remain solid white and high-contrast */
           div.bg-white, div[class*="bg-white"], div[class*="rounded-"], .shadow-sm, form, footer {
             background-color: #ffffff !important;
           }
