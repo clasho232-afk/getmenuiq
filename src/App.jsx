@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import LandingPage from './components/LandingPage';
+import CommandPalette from './components/CommandPalette';
 import MenuIQLogin from './components/Login';
+import OnboardingFlow from './components/OnboardingFlow';
 import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
 import DashboardContent from './components/DashboardContent';
@@ -10,11 +12,38 @@ import BlindSpotContent from './components/BlindSpotContent';
 import MarketNicheContent from './components/MarketNicheContent';
 import AIInsightsContent from './components/AIInsightsContent';
 import CompetitorFinderContent from './components/CompetitorFinderContent';
+import SearchContent from './components/SearchContent';
+
 
 function App() {
   const [showLanding, setShowLanding] = useState(true);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [onboardingComplete, setOnboardingComplete] = useState(false);
+  const [selectedRestaurant, setSelectedRestaurant] = useState(null);
+  const [userGoal, setUserGoal] = useState(null);
   const [activeTab, setActiveTab] = useState('Dashboard');
+  const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
+  const [analyzeTrigger, setAnalyzeTrigger] = useState(0);
+
+  useEffect(() => {
+    const handleOpenAnalysis = () => {
+      setActiveTab('My Menu');
+      setAnalyzeTrigger(prev => prev + 1);
+    };
+    window.addEventListener('open-menu-analysis', handleOpenAnalysis);
+    return () => window.removeEventListener('open-menu-analysis', handleOpenAnalysis);
+  }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setIsCommandPaletteOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   if (showLanding) {
     return <LandingPage onLaunchDashboard={() => setShowLanding(false)} />;
@@ -29,6 +58,10 @@ function App() {
         onForgotPassword={() => alert('Password reset coming soon')}
       />
     );
+  }
+
+  if (!onboardingComplete) {
+    return <OnboardingFlow onComplete={({ restaurant, goal }) => { setSelectedRestaurant(restaurant); setUserGoal(goal); setOnboardingComplete(true); }} />;
   }
 
   return (
@@ -60,17 +93,19 @@ function App() {
 
         {/* Foreground Content */}
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-          <TopNav activeTab={activeTab} setActiveTab={setActiveTab} />
+          <TopNav activeTab={activeTab} setActiveTab={setActiveTab} onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
+
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
             <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
             <main className="main-content" style={{ padding: '0 2rem 2rem 1rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
-              {activeTab === 'Dashboard' && <DashboardContent />}
-              {activeTab === 'My Menu' && <MyMenuContent />}
+              {activeTab === 'Dashboard' && <DashboardContent userGoal={userGoal} selectedRestaurant={selectedRestaurant} />}
+              {activeTab === 'My Menu' && <MyMenuContent selectedRestaurant={selectedRestaurant} analyzeTrigger={analyzeTrigger} />}
               {activeTab === 'Competitors' && <CompetitorsContent />}
               {activeTab === 'Blind Spot' && <BlindSpotContent />}
               {activeTab === 'Market Niche' && <MarketNicheContent />}
               {activeTab === 'AI Strategy' && <AIInsightsContent />}
               {activeTab === 'Competitor Finder' && <CompetitorFinderContent />}
+              {activeTab === 'Search' && <SearchContent />}
             </main>
           </div>
           
@@ -98,6 +133,7 @@ function App() {
           </div>
         </div>
       </div>
+      <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
     </>
   );
 }

@@ -4,26 +4,26 @@
 
 .menu-card-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   gap: 16px;
   align-items: stretch;
 }
 
-@media (max-width: 1024px) {
+@media (min-width: 768px) {
   .menu-card-grid {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(4, 1fr);
   }
 }
 
-@media (max-width: 640px) {
+@media (min-width: 1024px) {
   .menu-card-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(5, 1fr);
   }
 }
 
 /* Individual Card */
 .menu-item-card {
-  min-width: 240px;
+  min-width: 0;
   border-radius: 16px;
   border: 0.5px solid rgba(0, 0, 0, 0.09);
   background: linear-gradient(135deg, #FFFFFF 0%, #FAF8F4 100%);
@@ -48,7 +48,7 @@
 .menu-card-image-wrap {
   position: relative;
   width: 100%;
-  padding-top: 55%; /* 55% height relative to width */
+  height: 8rem;
   overflow: hidden;
   border-radius: 16px 16px 0 0;
   flex-shrink: 0;
@@ -115,7 +115,7 @@
 
 /* Content Area */
 .menu-card-content {
-  padding: 0.85rem 1.1rem 1rem;
+  padding: 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
@@ -134,7 +134,7 @@
 
 .menu-card-category {
   display: inline-block;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: #6B7280;
   background: rgba(0, 0, 0, 0.05);

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Mail, Bell, UtensilsCrossed, Menu, X } from 'lucide-react';
 
-const TopNav = ({ activeTab, setActiveTab }) => {
+const TopNav = ({ activeTab, setActiveTab, onOpenCommandPalette }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   const navLinks = [
@@ -10,6 +10,7 @@ const TopNav = ({ activeTab, setActiveTab }) => {
     { id: 'Competitors', label: 'Competitors' },
     { id: 'AI Strategy', label: 'AI Strategy' },
     { id: 'Market Niche', label: 'Market Niche' },
+    { id: 'Search', label: 'Search' },
   ];
 
   return (
@@ -26,10 +27,8 @@ const TopNav = ({ activeTab, setActiveTab }) => {
       zIndex: 100
     }}>
       {/* Logo Area */}
-      <div className="flex items-center gap-2 font-bold text-xl" style={{ color: '#e05046', flexShrink: 0 }}>
-        <UtensilsCrossed size={24} color="#e05046" />
-        <span className="desktop-only">MenuIQ Dashboard</span>
-        <span className="mobile-only">MenuIQ</span>
+      <div className="flex items-center gap-2" style={{ color: '#e05046', flexShrink: 0, fontFamily: "'Lufga', sans-serif", fontSize: '24px', fontWeight: 800 }}>
+        <span>MenuIQ</span>
       </div>
       
       {/* Desktop Navigation Links */}
@@ -59,7 +58,7 @@ const TopNav = ({ activeTab, setActiveTab }) => {
 
       {/* Right Actions */}
       <div className="flex items-center gap-2 sm:gap-4" style={{ flexShrink: 0 }}>
-        <button className="btn-icon desktop-only">
+        <button className="btn-icon desktop-only" onClick={onOpenCommandPalette}>
           <Search size={20} />
         </button>
         <button className="btn-icon">

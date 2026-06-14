@@ -6,7 +6,7 @@ const styles = `
   .menuiq-login * { box-sizing: border-box; margin: 0; padding: 0; }
 
   .menuiq-login {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Outfit', sans-serif;
     background: #F7F5F0;
     color: #111111;
     min-height: 100vh;
@@ -39,22 +39,12 @@ const styles = `
     display: flex;
     align-items: center;
     gap: 8px;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 18px;
-    font-weight: 500;
-    letter-spacing: -0.02em;
+    font-family: 'Lufga', sans-serif;
+    font-size: 24px; /* text-2xl */
+    font-weight: 800; /* font-extrabold */
+    letter-spacing: normal;
     text-decoration: none;
-    color: #111111;
-  }
-  .miq-logo-badge {
-    font-size: 10px;
-    font-weight: 500;
-    letter-spacing: 0.06em;
-    color: #fff;
-    background: #D63B1F;
-    padding: 2px 6px;
-    border-radius: 3px;
-    text-transform: uppercase;
+    color: #e05046;
   }
 
   .miq-left-body {
@@ -88,7 +78,7 @@ const styles = `
   }
 
   .miq-tagline {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Outfit', sans-serif;
     font-size: clamp(32px, 3.5vw, 46px);
     font-weight: 700;
     line-height: 1.12;
@@ -189,7 +179,7 @@ const styles = `
     margin-top: 40px;
   }
   .miq-stat-num {
-    font-family: 'Playfair Display', serif;
+    font-family: 'Outfit', sans-serif;
     font-size: 26px;
     font-weight: 700;
     color: #111111;
@@ -239,7 +229,7 @@ const styles = `
   }
 
   .miq-form-heading {
-    font-family: 'Playfair Display', Georgia, serif;
+    font-family: 'Outfit', sans-serif;
     font-size: 32px;
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -267,7 +257,7 @@ const styles = `
     padding: 12px 16px;
     border: 1.5px solid #E2DDD6;
     border-radius: 6px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Outfit', sans-serif;
     font-size: 14px;
     color: #111111;
     background: #F7F5F0;
@@ -298,7 +288,7 @@ const styles = `
     background: none;
     border: none;
     cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Outfit', sans-serif;
   }
   .miq-forgot:hover { color: #B83018; }
 
@@ -330,7 +320,7 @@ const styles = `
     color: #fff;
     border: none;
     border-radius: 6px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Outfit', sans-serif;
     font-size: 15px;
     font-weight: 500;
     letter-spacing: 0.01em;
@@ -357,7 +347,7 @@ const styles = `
     background: transparent;
     border: 1.5px solid #E2DDD6;
     border-radius: 6px;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'Outfit', sans-serif;
     font-size: 14px;
     font-weight: 400;
     color: #111111;
@@ -427,7 +417,7 @@ export default function MenuIQLogin({
         {/* LEFT: brand / value prop */}
         <div className="miq-left">
           <a className="miq-logo" href="#">
-            MenuIQ <span className="miq-logo-badge">Beta</span>
+            <span>MenuIQ</span>
           </a>
 
           <div className="miq-left-body">

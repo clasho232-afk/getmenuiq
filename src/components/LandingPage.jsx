@@ -31,32 +31,67 @@ export default function LandingPage({ onLaunchDashboard }) {
         // Attach click listeners to intercept navigation/CTA triggers
         iframe.contentDocument.addEventListener('click', handleIframeClick);
 
-        // Inject background wallpaper style block
-        const style = iframe.contentDocument.createElement('style');
-        style.textContent = `
-          /* Apply the solid cream background without the wallpaper */
-          body, #__bundler_thumbnail, #root {
-            background-color: #FAF7F2 !important;
-            background-image: none !important;
+        // Inject background wallpaper style block and logo modifier via MutationObserver
+        // to handle async bundler and React hydration inside the iframe
+        let initialized = false;
+        const observer = new MutationObserver(() => {
+          const doc = iframe.contentDocument;
+          if (!doc) return;
+
+          // Inject custom styles if they haven't been injected yet
+          if (!doc.getElementById('menuiq-custom-styles') && doc.head) {
+            const style = doc.createElement('style');
+            style.id = 'menuiq-custom-styles';
+            style.textContent = `
+              @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+              /* Apply Outfit font globally */
+              * {
+                font-family: 'Outfit', sans-serif !important;
+              }
+
+              /* Apply the solid cream background without the wallpaper */
+              body, #__bundler_thumbnail, #root {
+                background-color: #FAF7F2 !important;
+                background-image: none !important;
+              }
+              
+              /* Make middle section wrappers transparent so the body's cream background and wallpaper overlay show through */
+              main, section, div[style*="background-color: rgb(250, 247, 242)"], div[class*="bg-[#FAF7F2]"] {
+                background-color: transparent !important;
+              }
+              
+              /* Ensure cards and other white overlays remain solid white and high-contrast */
+              div.bg-white, div[class*="bg-white"], div[class*="rounded-"], .shadow-sm, form, footer {
+                background-color: #ffffff !important;
+              }
+              
+              /* Keep the ticker background dark and contrasty */
+              div[style*="background-color: rgb(17, 16, 9)"], div.bg-black, rect[fill="#111009"] {
+                background-color: #111009 !important;
+                fill: #111009 !important;
+              }
+            `;
+            doc.head.appendChild(style);
           }
-          
-          /* Make middle section wrappers transparent so the body's cream background and wallpaper overlay show through */
-          main, section, div[style*="background-color: rgb(250, 247, 242)"], div[class*="bg-[#FAF7F2]"] {
-            background-color: transparent !important;
+
+          // Modify the "MenuIQ Beta" logo
+          const els = doc.querySelectorAll('a, div, span, h1, h2, h3, p');
+          for (const el of els) {
+            const text = (el.textContent || '').trim().replace(/\s+/g, ' ');
+            if (text === 'MenuIQ BETA' || text === 'MenuIQ Beta') {
+              el.innerHTML = '<span style="color: #e05046; font-weight: 800; font-size: 1.5rem; font-family: \'Lufga\', sans-serif; letter-spacing: normal;">MenuIQ</span>';
+              el.style.textDecoration = 'none';
+              // If it's a link, remove underline
+              if (el.tagName.toLowerCase() === 'a') {
+                el.style.border = 'none';
+                el.style.textDecoration = 'none';
+              }
+            }
           }
-          
-          /* Ensure cards and other white overlays remain solid white and high-contrast */
-          div.bg-white, div[class*="bg-white"], div[class*="rounded-"], .shadow-sm, form, footer {
-            background-color: #ffffff !important;
-          }
-          
-          /* Keep the ticker background dark and contrasty */
-          div[style*="background-color: rgb(17, 16, 9)"], div.bg-black, rect[fill="#111009"] {
-            background-color: #111009 !important;
-            fill: #111009 !important;
-          }
-        `;
-        iframe.contentDocument.head.appendChild(style);
+        });
+        
+        observer.observe(iframe.contentDocument, { childList: true, subtree: true, characterData: true });
       }
     };
 

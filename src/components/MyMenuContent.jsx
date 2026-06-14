@@ -392,24 +392,24 @@ const MyMenuContent = () => {
                 <img src={activeItem.image} alt={activeItem.name} style={{ width: '100%', height: '260px', objectFit: 'cover', borderRadius: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
                 
                 <div>
-                  <h2 style={{ fontSize: '2.25rem', fontFamily: 'Playfair Display, serif', fontWeight: 700, color: '#111', margin: '0 0 2rem 0', lineHeight: 1.2 }}>{activeItem.name}</h2>
+                  <h2 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#111', margin: '0 0 2rem 0', lineHeight: 1.2 }}>{activeItem.name}</h2>
                   
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
                     <div>
                       <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.5rem' }}>Your Price</div>
-                      <div style={{ fontSize: '2rem', fontFamily: 'Playfair Display, serif', fontWeight: 700, color: '#EF4444' }}>£{marketData.myPrice}</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#D63B1F' }}>£{marketData.myPrice}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.5rem' }}>Avg Market Price</div>
-                      <div style={{ fontSize: '2rem', fontFamily: 'Playfair Display, serif', fontWeight: 700, color: '#3B82F6' }}>£{marketData.avgPrice}</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#3B82F6' }}>£{marketData.avgPrice}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.5rem' }}>Lowest Price</div>
-                      <div style={{ fontSize: '1.5rem', fontFamily: 'Playfair Display, serif', fontWeight: 700, color: '#6B7280' }}>£{marketData.lowPrice}</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6B7280' }}>£{marketData.lowPrice}</div>
                     </div>
                     <div>
                       <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.5rem' }}>Highest Price</div>
-                      <div style={{ fontSize: '1.5rem', fontFamily: 'Playfair Display, serif', fontWeight: 700, color: '#6B7280' }}>£{marketData.highPrice}</div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6B7280' }}>£{marketData.highPrice}</div>
                     </div>
                   </div>
                 </div>
@@ -419,7 +419,7 @@ const MyMenuContent = () => {
               <div style={{ width: '40%', padding: '3rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(0,0,0,0.05)' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
                   <div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111', fontFamily: 'Playfair Display, serif' }}>Audit Command Center</div>
+                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111' }}>Audit Command Center</div>
                     <div style={{ fontSize: '0.875rem', color: '#6B7280', marginTop: '0.25rem' }}>Local Market Position Analysis</div>
                   </div>
                 </div>
@@ -486,19 +486,19 @@ const MyMenuContent = () => {
                   <button onClick={() => setAnalyzingItem(null)} style={{ background: '#F3F4F6', border: 'none', cursor: 'pointer', color: '#4B5563', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#E5E7EB'} onMouseLeave={e => e.currentTarget.style.background = '#F3F4F6'}><X size={20} /></button>
                 </div>
 
-                <div style={{ marginTop: 'auto', marginBottom: 'auto', background: 'rgba(59, 130, 246, 0.04)', border: '1px solid rgba(59, 130, 246, 0.15)', borderRadius: '20px', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#2563EB', fontWeight: 700, fontSize: '1.125rem' }}>
-                    <Zap size={20} /> Strategy Recommendation
+                <div style={{ marginTop: 'auto', marginBottom: 'auto', background: '#FAFAF8', border: '1px solid #E5E0D8', borderRadius: '20px', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#111', fontWeight: 700, fontSize: '1.125rem' }}>
+                    <Zap size={20} color="#D63B1F" /> Strategy Recommendation
                   </div>
-                  <p style={{ fontSize: '1.05rem', color: '#1E3A8A', margin: 0, lineHeight: 1.6 }}>
+                  <p style={{ fontSize: '1.05rem', color: '#4B5563', margin: 0, lineHeight: 1.6 }}>
                     Your {activeItem.name} are currently in the 90th percentile for price. Moving to the £{marketData.avgPrice} bracket will align you with the highest-volume competitors like {topRival} and is projected to boost sales by 15%.
                   </p>
                   <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
                     <button 
                       onClick={() => setAnalyzingItem(null)}
-                      style={{ background: '#2563EB', color: '#fff', padding: '1rem 2rem', borderRadius: '9999px', fontSize: '0.9rem', fontWeight: 600, border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px rgba(37, 99, 235, 0.3)', transition: 'transform 0.2s', width: '100%' }}
-                      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                      onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                      style={{ background: '#D63B1F', color: '#fff', padding: '1rem 2rem', borderRadius: '9999px', fontSize: '0.9rem', fontWeight: 600, border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px rgba(214, 59, 31, 0.25)', transition: 'transform 0.2s, background 0.2s', width: '100%' }}
+                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#B42F15'; }}
+                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#D63B1F'; }}
                     >
                       Apply £{recommendedPrice} Recommendation
                     </button>
