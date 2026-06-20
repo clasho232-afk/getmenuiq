@@ -261,6 +261,9 @@ export default function OnboardingFlow({ onComplete }) {
   }, [step, onComplete, userGoal, selectedRestaurant]);
 
   const handleSelectRestaurant = (restaurant) => {
+    console.log("🎯 Onboarding selection recorded. Target ID:", restaurant.id);
+    localStorage.setItem('menu_iq_active_store_id', restaurant.id);
+    localStorage.removeItem('macro_zoom_active');
     setSelectedRestaurant(restaurant);
     setStep(2);
   };

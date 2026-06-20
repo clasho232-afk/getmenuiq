@@ -154,8 +154,7 @@
 .menu-card-price {
   font-size: 1.125rem;
   font-weight: 700;
-  color: #111;
-  font-family: 'Playfair Display', serif;
+  color: #e05046;
 }
 
 .menu-card-status {
@@ -217,4 +216,152 @@
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 3px;
+}
+
+/* Update Titles and Labels to Brand Color */
+.audit-title, .manual-range-label {
+    color: #e05046 !important;
+    font-weight: 600;
+}
+
+/* Tooltip Container & Icon Styling */
+.tooltip-container {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+}
+
+.info-icon {
+    color: #e05046;
+    opacity: 0.6;
+    cursor: help;
+    margin-left: 6px;
+}
+
+/* Tooltip Card Styling */
+.tooltip-card {
+    visibility: hidden;
+    position: absolute;
+    bottom: 120%;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #ffffff;
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    padding: 0.75rem 1rem;
+    border-radius: 8px;
+    color: #1F2937;
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.5;
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    z-index: 100;
+    text-transform: none;
+    letter-spacing: normal;
+}
+
+.tooltip-container:hover .tooltip-card {
+    visibility: visible;
+    opacity: 1;
+}
+
+/* Header Container - Flexbox to handle the new spacing */
+.header-container {
+    display: flex;
+    justify-content: flex-end; /* Pushes the button to the right */
+    align-items: center;
+    gap: 20px; /* Space between the text and the button */
+    padding: 16px 0;
+}
+
+/* Analyze Menu Button - Clean & Wide */
+.analyze-menu-button {
+    background-color: #e05046;
+    color: #FFFFFF;
+    font-weight: 500;
+    padding: 10px 24px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+.analyze-menu-button:hover {
+    opacity: 0.9;
+}
+
+/* System Authority Group (Timestamp + Badge) */
+.system-authority-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.85rem;
+    color: #6B7280;
+}
+
+/* The Green Live Badge */
+.live-badge {
+    width: 8px;
+    height: 8px;
+    background-color: #10B981;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+/* Apply this to your main card section */
+.main-menu-content-card {
+    /* 
+       This pushes the card down, creating a gutter 
+       between the header actions and the menu items. 
+    */
+    margin-top: 24px; 
+}
+
+/* 1. Shrink Title for Single-Line */
+.item-title {
+    font-size: 1.15rem; /* Reduced from current size */
+    font-weight: 700;
+    color: #111;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 12px;
+}
+
+/* 2. Reposition Platform Selector */
+.platform-selector-row {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: -10px; /* Shifted up closer to image */
+    margin-bottom: 20px;
+}
+
+/* Base button styling */
+.platform-btn {
+    padding: 0.4rem 1rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    text-transform: capitalize;
+    cursor: pointer;
+    transition: all 0.2s;
+    background-color: #F3F4F6;
+    color: #6B7280;
+    font-weight: 500;
+    border: 1px solid transparent;
+}
+
+/* 3. Apply Official Platform Colors */
+.btn-deliveroo.active { background-color: #00CCBC; color: white; border-color: #00CCBC; font-weight: 700; box-shadow: 0 2px 4px rgba(0,204,188,0.2); }
+.btn-ubereats.active { background-color: #06C167; color: white; border-color: #06C167; font-weight: 700; box-shadow: 0 2px 4px rgba(6,193,103,0.2); }
+.btn-justeat.active { background-color: #FF5B00; color: white; border-color: #FF5B00; font-weight: 700; box-shadow: 0 2px 4px rgba(255,91,0,0.2); }
+.btn-all.active { background-color: #FAFAF8; color: #e05046; border-color: rgba(224,80,70,0.2); font-weight: 700; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+/* 4. Footer Alignment */
+.pricing-footer {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 3rem 2rem;
+    margin-top: auto; /* Push to bottom of card container */
+    padding-top: 10px;
 }

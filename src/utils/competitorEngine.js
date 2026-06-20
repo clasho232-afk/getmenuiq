@@ -524,9 +524,135 @@ export async function fetchCompetitors(supabase, owner) {
  *   const ranked = await getRankedCompetitors(supabase, ownerRestaurant);
  *   const directCompetitors = ranked.filter(c => c.tier === TIER.DIRECT);
  */
+export const MOCK_DATASET = [
+  {
+    id: 1,
+    name: "Yummie Pizza and Peri Peri",
+    tier: 1,
+    lat: 51.5272, // Bethnal Green coordinate baseline
+    lng: -0.0556,
+    areaName: "Barking, Bethnal Green",
+    cuisine: "Pizza, Turkish",
+    hasActivePromos: true,
+    isWatchlisted: false,
+    threatScore: 75,
+    platforms: ["Uber Eats"],
+    avatarUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=80&auto=format&fit=crop&q=60",
+    promotions: [
+      { platform: "Uber Eats", type: "Free Delivery", desc: "Free delivery over £15", productImageUrl: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=40&auto=format&fit=crop&q=60" }
+    ]
+  },
+  {
+    id: 2,
+    name: "Simply Pizza",
+    tier: 1,
+    lat: 51.5276, // Bromley by Bow baseline
+    lng: -0.0108,
+    areaName: "Barking, Bromley by Bow",
+    cuisine: "Pizza, American",
+    hasActivePromos: true,
+    isWatchlisted: true, // Sample item added to watchlist
+    threatScore: 75,
+    platforms: ["Uber Eats"],
+    avatarUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=80&auto=format&fit=crop&q=60",
+    promotions: [
+      { platform: "Uber Eats", type: "Tiered Discount", desc: "Spend £25, Save £5", productImageUrl: "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?w=40&auto=format&fit=crop&q=60" }
+    ]
+  },
+  {
+    id: 3,
+    name: "The White Haus",
+    tier: 2,
+    lat: 51.5305, // Adjacent border zone coordinate
+    lng: -0.0384,
+    areaName: "Bethnal Green, Bromley by Bow",
+    cuisine: "Burgers, Indian",
+    hasActivePromos: false,
+    isWatchlisted: false,
+    threatScore: 23,
+    platforms: ["Uber Eats"],
+    avatarUrl: "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?w=80&auto=format&fit=crop&q=60",
+    promotions: []
+  },
+  {
+    id: 4,
+    name: "King Pizza & Grill",
+    tier: 1,
+    lat: 51.5585, // Core Ilford area grid
+    lng: 0.0555,
+    areaName: "Ilford Central",
+    cuisine: "Pizza, Halal",
+    hasActivePromos: true,
+    isWatchlisted: true, // Watchlisted item
+    threatScore: 88,
+    platforms: ["Deliveroo", "Uber Eats"],
+    avatarUrl: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?w=80&auto=format&fit=crop&q=60",
+    promotions: [
+      { platform: "Deliveroo", type: "BOGO", desc: "Buy 1 Get 1 Free on Sides", productImageUrl: "https://images.unsplash.com/photo-1590947132387-155cc02f3212?w=40&auto=format&fit=crop&q=60" }
+    ]
+  },
+  {
+    id: 5,
+    name: "Mamma Mia Pizzeria",
+    tier: 1,
+    lat: 51.5542,
+    lng: 0.0610,
+    areaName: "Ilford South",
+    cuisine: "Italian, Pizza",
+    hasActivePromos: false,
+    isWatchlisted: false,
+    threatScore: 45,
+    platforms: ["Just Eat"],
+    avatarUrl: "https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=80&auto=format&fit=crop&q=60",
+    promotions: []
+  },
+  {
+    id: 6,
+    name: "Waltham Grill",
+    tier: 2,
+    lat: 51.5682, // Waltham Forest adjacent border zone
+    lng: 0.0124,
+    areaName: "Waltham Forest Corridor",
+    cuisine: "Gourmet Kebabs",
+    hasActivePromos: true,
+    isWatchlisted: false,
+    threatScore: 61,
+    platforms: ["Deliveroo"],
+    avatarUrl: "https://images.unsplash.com/photo-1561651823-34fed022540d?w=80&auto=format&fit=crop&q=60",
+    promotions: [
+      { platform: "Deliveroo", type: "10% Off", desc: "10% off entire menu basket", productImageUrl: "https://images.unsplash.com/photo-1561651823-34fed022540d?w=40&auto=format&fit=crop&q=60" }
+    ]
+  }
+];
+
 export async function getRankedCompetitors(supabase, owner) {
-  const candidates = await fetchCompetitors(supabase, owner);
-  return sortByRelevance(owner, candidates);
+  // Return the mock dataset formatted exactly like the components expect
+  return MOCK_DATASET.map(mock => {
+    return {
+      restaurant: {
+        id: mock.id.toString(),
+        name: mock.name,
+        lat: mock.lat,
+        lng: mock.lng,
+        areas: mock.areaName.split(', '),
+        cuisines: mock.cuisine.split(', '),
+        promo_count: mock.hasActivePromos ? mock.promotions.length : 0,
+        delivery_fee: "0.00",
+        hero_image_url: mock.avatarUrl,
+        ubereats_url: mock.platforms.includes("Uber Eats") ? "https://ubereats.com" : null,
+        deliveroo_url: mock.platforms.includes("Deliveroo") ? "https://deliveroo.co.uk" : null,
+        justeat_url: mock.platforms.includes("Just Eat") ? "https://just-eat.co.uk" : null,
+        isWatchlisted: mock.isWatchlisted
+      },
+      tier: mock.tier,
+      score: mock.threatScore,
+      threat: threatFromScore(mock.threatScore),
+      classification: {
+        sharedAreas: mock.tier === 1 ? mock.areaName.split(', ') : [],
+        neighbouringAreas: mock.tier === 2 ? mock.areaName.split(', ') : []
+      }
+    };
+  });
 }
 
 

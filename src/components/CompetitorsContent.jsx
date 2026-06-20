@@ -3,7 +3,7 @@ import {
   Star, Search, X, ShieldAlert, Shield, Layers,
   TrendingUp, MapPin, Wifi, BarChart2, RefreshCw
 } from 'lucide-react';
-import { MapContainer, TileLayer, Circle, Marker, Tooltip, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, Marker, Tooltip, Popup, useMap, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import CompetitorSummaryModal from './CompetitorSummaryModal';
@@ -26,12 +26,12 @@ const makeCustomPin = (restaurant, score) => {
   const threatColor = score >= 70 ? '#E86A58' : score >= 40 ? '#D97706' : '#10B981';
   const avatar = restaurant.hero_image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80';
   return L.divIcon({
-    className: '',
+    className: 'custom-leaflet-banner-container',
     html: `
-      <div style="display: flex; align-items: center; background: white; padding: 3px 8px 3px 3px; border-radius: 9999px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #E5E7EB; width: max-content;">
-        <img src="${avatar}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80'" />
-        <div style="padding: 0 8px; font-weight: 700; font-size: 11px; color: #111;">${restaurant.name}</div>
-        <div style="width: 8px; height: 8px; border-radius: 50%; background: ${threatColor}; box-shadow: 0 0 0 2px rgba(255,255,255,0.8);"></div>
+      <div class="map-inline-banner">
+        <img class="banner-avatar" src="${avatar}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80'" />
+        <div class="banner-name" style="padding: 0 4px; font-weight: 700; font-size: 11px; color: #111;">${restaurant.name}</div>
+        <div class="banner-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: ${threatColor}; box-shadow: 0 0 0 2px rgba(255,255,255,0.8);"></div>
       </div>
     `,
     iconSize: [null, null],
@@ -39,17 +39,51 @@ const makeCustomPin = (restaurant, score) => {
   });
 };
 
-const ownerIcon   = L.divIcon({
-  className: '',
-  html: `<div style="width:20px;height:20px;background:#111;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 10px rgba(0,0,0,0.3);"></div>`,
-  iconSize: [20, 20],
-  iconAnchor: [10, 10],
+// Calculates distance between two sets of coordinates
+function getDistance(lat1, lng1, lat2, lng2) {
+  const radlat1 = Math.PI * lat1 / 180;
+  const radlat2 = Math.PI * lat2 / 180;
+  const theta = lng1 - lng2;
+  const radtheta = Math.PI * theta / 180;
+  
+  let dist = Math.sin(radlat1) * Math.sin(radlat2) + Math.cos(radlat1) * Math.cos(radlat2) * Math.cos(radtheta);
+  if (dist > 1) dist = 1;
+  dist = Math.acos(dist);
+  dist = dist * 180 / Math.PI;
+  dist = dist * 60 * 1.1515 * 1.609344; // Converts distance strictly to Kilometers
+  return dist;
+}
+
+function getNearestCompetitors(ownerLat, ownerLng, fullDataset, count = 5) {
+  if (!ownerLat || !ownerLng) return fullDataset.slice(0, count);
+  return fullDataset
+    .map(entry => {
+      const shop = entry.restaurant;
+      const distance = (shop.lat && shop.lng) ? getDistance(ownerLat, ownerLng, parseFloat(shop.lat), parseFloat(shop.lng)) : 9999;
+      return { ...entry, distance };
+    })
+    .sort((a, b) => a.distance - b.distance)
+    .slice(0, count);
+}
+
+const ownerMarkup = `
+  <div class="map-inline-banner owner-pin-base">
+    <span class="owner-core-pulse"></span>
+    <span class="owner-title-text">Your Shop</span>
+  </div>
+`.trim();
+
+const ownerIcon = L.divIcon({
+  html: ownerMarkup,
+  className: 'custom-owner-banner-wrapper',
+  iconSize: [null, null],
+  iconAnchor: [50, 15]
 });
 
 // ─── Tier config (colours / labels) ───────────────────────────────────────────
 const TIER_CONFIG = {
-  [TIER.DIRECT]:   { label: 'Direct',   shortLabel: 'Tier 1', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
-  [TIER.ADJACENT]: { label: 'Adjacent', shortLabel: 'Tier 2', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
+  [TIER.DIRECT]:   { label: 'El Food',   shortLabel: 'El Food', color: '#DC2626', bg: '#FEF2F2', border: '#FECACA' },
+  [TIER.ADJACENT]: { label: 'Neighborhood', shortLabel: 'Neighborhood', color: '#D97706', bg: '#FFFBEB', border: '#FDE68A' },
 };
 
 // ─── Detect which platforms a restaurant is on from its URL fields ─────────────
@@ -62,138 +96,6 @@ function detectPlatforms(restaurant) {
 
 // ─── East London default centre ───────────────────────────────────────────────
 const EAST_LONDON = [51.538, 0.018];
-
-// ==========================================
-// 1. GLOBAL INSTANCE LIFELINE
-// ==========================================
-// Make absolutely sure your map instance is attached to the window object 
-// when you initialize it, like this: window.map = L.map('map-id', ...);
-window.competitorLayerGroup = null; 
-
-function createPopupContent(entry) {
-  const { restaurant, tier, score } = entry;
-  const cfg = TIER_CONFIG[tier] || {};
-  return `
-    <div style="padding: 0.25rem;">
-      <div style="font-weight: 800; font-size: 0.85rem; color: #111827; margin-bottom: 2px;">${restaurant.name}</div>
-      <div style="color: ${cfg.color || '#6B7280'}; font-size: 0.7rem; font-weight: 600; text-transform: uppercase; margin-bottom: 8px;">
-        ${cfg.shortLabel || ''} · Score: ${score || 0}
-      </div>
-      <div style="font-size: 0.75rem; color: #4B5563; display: flex; flex-direction: column; gap: 4px;">
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: #9CA3AF;">Delivery:</span>
-          <strong>${restaurant.delivery_fee ? '£' + parseFloat(restaurant.delivery_fee).toFixed(2) : 'Free'}</strong>
-        </div>
-        <div style="display: flex; justify-content: space-between;">
-          <span style="color: #9CA3AF;">Promos:</span>
-          <strong>${restaurant.promo_count || 0} Active</strong>
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-/**
- * Core rendering pipeline. Call this function inside EVERY tab click handler
- * passing the filtered array of competitors.
- * @param {Array} dataset - Array of restaurant objects containing lat and lng
- */
-function populateWorkspaceMap(dataset) {
-  // DIAGNOSTIC LOG 1: Verify data is actually reaching the map pipeline
-  console.log("🗺️ Map Sync Triggered! Input dataset size:", dataset.length);
-  if (dataset.length > 0) console.log("📦 Active Data Sample:", dataset[0]);
-
-  // Fail-safe guard clause: If the map object isn't globally accessible, stop execution
-  if (!window.map) {
-    console.error("❌ CRITICAL: 'window.map' is undefined. Ensure your main map variable is assigned to window.map during initialization.");
-    return;
-  }
-
-  // ==========================================
-  // 2. LAYER CLEANING & RESET
-  // ==========================================
-  // If the layer group already exists, wipe it completely off the map grid
-  if (window.competitorLayerGroup) {
-    console.log("🧹 Clearing previous layer group markers...");
-    window.competitorLayerGroup.clearLayers();
-  } else {
-    // If running for the first time, initialize a fresh Leaflet LayerGroup container
-    console.log("🚀 Initializing new competitor LayerGroup container...");
-    window.competitorLayerGroup = L.layerGroup().addTo(window.map);
-  }
-
-  // If the clicked tab dataset is empty (like an empty watchlist), stop here cleanly
-  if (!dataset || dataset.length === 0) {
-    console.warn("⚠️ Empty dataset passed. No markers to draw.");
-    return;
-  }
-
-  // ==========================================
-  // 3. MARKER INJECTION LOOP
-  // ==========================================
-  dataset.forEach((entry, index) => {
-    const { restaurant, score } = entry;
-    const lat = parseFloat(restaurant.lat);
-    const lng = parseFloat(restaurant.lng);
-    const hasActivePromos = restaurant.promo_count > 0;
-    const avatarUrl = restaurant.hero_image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80';
-
-    // Fail-safe coordinate check: Skip malformed data objects
-    if (!lat || !lng) {
-      console.error(`❌ Data Error at index ${index}: Missing 'lat' or 'lng' for`, restaurant);
-      return; // Skip to next item
-    }
-
-    const threatColor = score >= 70 ? '#E86A58' : score >= 40 ? '#D97706' : '#10B981';
-
-    // High-end custom HTML markup token container holding the logo thumbnail
-    const customIconMarkup = `
-      <div class="map-inline-banner" style="display: flex; align-items: center; background: white; padding: 3px 8px 3px 3px; border-radius: 9999px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); border: 1px solid #E5E7EB; width: max-content;">
-        <img class="banner-avatar" src="${avatarUrl}" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80'" alt="" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" />
-        <span class="banner-name" style="padding: 0 8px; font-weight: 700; font-size: 11px; color: #111;">${restaurant.name}</span>
-        <span class="banner-status-dot ${hasActivePromos ? 'active-promo' : 'standard'}" style="width: 8px; height: 8px; border-radius: 50%; background: ${threatColor}; box-shadow: 0 0 0 2px rgba(255,255,255,0.8);"></span>
-      </div>
-    `;
-
-    const customDivIcon = L.divIcon({
-      html: customIconMarkup,
-      className: 'custom-leaflet-banner-container', // Strips Leaflet default box wrapper styles
-      iconSize: [null, null],                        // Allows dimensions to scale automatically via content font length
-      iconAnchor: [15, 15]                           // Centers the text anchor point smoothly over coordinates
-    });
-
-    // Instantiate fresh marker coordinates
-    const markerInstance = L.marker([lat, lng], { icon: customDivIcon });
-
-    // Build and bind your responsive, unified promo layout popups
-    const promoPopup = L.popup({
-      autoPanPaddingTopLeft: L.point(20, 160),
-      autoPanPaddingBottomRight: L.point(20, 20),
-      className: 'custom-premium-popup-container'
-    }).setContent(createPopupContent(entry));
-
-    markerInstance.bindPopup(promoPopup);
-
-    // Push marker directly into the dynamic layer group
-    window.competitorLayerGroup.addLayer(markerInstance);
-  });
-
-  // ==========================================
-  // 4. AUTOMATED VIEWPORT FRAMING
-  // ==========================================
-  const activeLayers = window.competitorLayerGroup.getLayers();
-  console.log(`✅ Successfully mounted ${activeLayers.length} pins to window.competitorLayerGroup.`);
-
-  if (activeLayers.length > 0) {
-    // Self-calculate the precise bounding box of all pins and glide the camera to frame it
-    const featureBounds = L.featureGroup(activeLayers).getBounds();
-    window.map.flyToBounds(featureBounds, {
-      padding: [50, 50],
-      maxZoom: 15,
-      duration: 1.0 // Cinematic camera transition transition speed
-    });
-  }
-}
 
 // ══════════════════════════════════════════════════════════════════════════════
 const CompetitorsContent = () => {
@@ -212,8 +114,36 @@ const CompetitorsContent = () => {
   const [activePills,    setActivePills]    = useState([]);   // 'No Delivery Fee' | 'Active Promos'
   const [isMapExpanded,  setIsMapExpanded]  = useState(true);
 
-  // ── Refs ─────────────────────────────────────────────────────────────────────
+  // ── Refs & Progressive Zoom State ───────────────────────────────────────────────
   const mapRef = useRef(null);
+  const [isMacroView, setIsMacroView] = useState(false);
+
+  // Dynamic area label for Tier 1
+  const primaryAreaName = ownerRestaurant?.primaryArea || (ownerRestaurant?.areas && ownerRestaurant.areas.length > 0 ? ownerRestaurant.areas[0] : "Local Area");
+
+  // Hardcoded owner coordinates for progressive load
+  const ownerLat = 51.5285;
+  const ownerLng = -0.0450;
+  
+  const GEOGRAPHIC_DETAIL_THRESHOLD = 14;
+  const ZoomListener = () => {
+    useMapEvents({
+      zoomend: (e) => {
+        const currentZoomLevel = e.target.getZoom();
+        const mapContainerElement = e.target.getContainer();
+
+        if (currentZoomLevel <= GEOGRAPHIC_DETAIL_THRESHOLD) {
+          if (!isMacroView) setIsMacroView(true);
+          mapContainerElement.classList.add('macro-zoom-active');
+        } else {
+          if (isMacroView) setIsMacroView(false);
+          mapContainerElement.classList.remove('macro-zoom-active');
+        }
+      }
+    });
+    return null;
+  };
+
 
   const handleRowClick = (entry) => {
     setSelectedItem(entry);
@@ -241,6 +171,7 @@ const CompetitorsContent = () => {
 
       const ranked = await getRankedCompetitors(supabase, owner);
       setRankedCompetitors(ranked);
+      setWatchlistIds(ranked.filter(r => r.restaurant.isWatchlisted).map(r => r.restaurant.id));
     } catch (err) {
       console.error('[Competitors] fetch error:', err.message);
       setError('Could not load competitors. Check your connection.');
@@ -256,7 +187,7 @@ const CompetitorsContent = () => {
   const tier2Count = rankedCompetitors.filter(c => c.tier === TIER.ADJACENT).length;
 
   // ── Filtered list ─────────────────────────────────────────────────────────────
-  const displayList = rankedCompetitors.filter(c => {
+  const baseDisplayList = rankedCompetitors.filter(c => {
     if (activeTier === 'WATCHLIST' && !watchlistIds.includes(c.restaurant.id)) return false;
     if (activeTier !== 'WATCHLIST' && activeTier !== null && c.tier !== activeTier) return false;
     if (searchQuery && !c.restaurant.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
@@ -264,6 +195,10 @@ const CompetitorsContent = () => {
     if (activePills.includes('No Delivery Fee') && !(parseFloat(c.restaurant.delivery_fee || 1) === 0)) return false;
     return true;
   });
+
+  const displayList = isMacroView 
+    ? baseDisplayList 
+    : getNearestCompetitors(ownerLat, ownerLng, baseDisplayList, 5);
 
   // ── Top 3 threats (Tier 1, sorted by score) ───────────────────────────────────
   const topThreats = [...rankedCompetitors]
@@ -309,18 +244,8 @@ const CompetitorsContent = () => {
       menuCategories: [],    // populated when RestaurantProfilePage fetches full menu
       sharedAreas: classification.sharedAreas || [],
       neighbouringAreas: classification.neighbouringAreas || [],
-      tierLabel:   cfg.shortLabel || '',
+      tierLabel:   tier === TIER.DIRECT ? primaryAreaName : (cfg.shortLabel || ''),
     };
-  };
-
-  // ─── MapSyncController (Binds Leaflet map instance to global script) ──────────
-  const MapSyncController = ({ dataset }) => {
-    const map = useMap();
-    useEffect(() => {
-      window.map = map;
-      populateWorkspaceMap(dataset);
-    }, [dataset, map]);
-    return null;
   };
 
   // ════════════════════════════════════════════════════════════════════════════
@@ -331,20 +256,52 @@ const CompetitorsContent = () => {
         {/* ── MAP ─────────────────────────────────────────────────────────── */}
         {isMapExpanded && (
         <div style={{ position: 'relative', height: '240px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-          <MapContainer center={mapCenter} zoom={12} zoomControl={true} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }} ref={mapRef}>
+          <MapContainer center={[ownerLat, ownerLng]} zoom={15} zoomControl={true} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }} ref={mapRef}>
             <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="© CartoDB" />
-            <MapSyncController dataset={displayList} />
+            <ZoomListener />
+            
+            {/* Owner pin */}
+            <Marker position={[ownerLat, ownerLng]} icon={ownerIcon} zIndexOffset={1000} />
+
+            {/* Competitor pins */}
+            {displayList.map(({ restaurant, tier, score }) => {
+              if (!restaurant.lat || !restaurant.lng) return null;
+              const icon = makeCustomPin(restaurant, score);
+              const cfg  = TIER_CONFIG[tier] || {};
+              return (
+                <Marker key={restaurant.id} position={[parseFloat(restaurant.lat), parseFloat(restaurant.lng)]} icon={icon}>
+                  <Popup autoPanPaddingTopLeft={[20, 160]} className="custom-premium-popup-container">
+                    <div style={{ padding: '0.25rem' }}>
+                      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#111827', marginBottom: '2px' }}>{restaurant.name}</div>
+                      <div style={{ color: cfg.color || '#6B7280', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '8px' }}>
+                        {cfg.shortLabel} · Score: {score}
+                      </div>
+                      <div style={{ fontSize: '0.75rem', color: '#4B5563', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: '#9CA3AF' }}>Delivery:</span>
+                          <strong>{restaurant.delivery_fee ? '£' + parseFloat(restaurant.delivery_fee).toFixed(2) : 'Free'}</strong>
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <span style={{ color: '#9CA3AF' }}>Promos:</span>
+                          <strong>{restaurant.promo_count || 0} Active</strong>
+                        </div>
+                      </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
           </MapContainer>
 
           {/* Legend pill */}
           <div style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 30, background: 'rgba(255,255,255,0.95)', borderRadius: '12px', padding: '0.5rem 0.85rem', display: 'flex', gap: '0.85rem', boxShadow: '0 2px 10px rgba(0,0,0,0.12)', backdropFilter: 'blur(6px)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem', fontWeight: 700, color: '#374151' }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#DC2626' }} />
-              Tier 1 — Same area
+              {primaryAreaName} — Same area
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem', fontWeight: 700, color: '#374151' }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#D97706' }} />
-              Tier 2 — Bordering
+              Neighborhood — Bordering
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem', fontWeight: 700, color: '#374151' }}>
               <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#111' }} />
@@ -417,13 +374,13 @@ const CompetitorsContent = () => {
             {/* Tier 1 */}
             <button onClick={() => setActiveTier(activeTier === TIER.DIRECT ? null : TIER.DIRECT)}
               style={{ background: 'transparent', border: 'none', fontSize: '0.85rem', fontWeight: 600, color: activeTier === TIER.DIRECT ? '#E86A58' : '#6B7280', cursor: 'pointer', position: 'relative', paddingBottom: '0.25rem', fontFamily: 'inherit' }}>
-              Tier 1 — Direct ({tier1Count})
+              {primaryAreaName} ({tier1Count})
               {activeTier === TIER.DIRECT && <div style={{ position: 'absolute', bottom: '-12px', left: 0, right: 0, height: '2px', background: '#E86A58', borderRadius: '2px' }} />}
             </button>
             {/* Tier 2 */}
             <button onClick={() => setActiveTier(activeTier === TIER.ADJACENT ? null : TIER.ADJACENT)}
               style={{ background: 'transparent', border: 'none', fontSize: '0.85rem', fontWeight: 600, color: activeTier === TIER.ADJACENT ? '#E86A58' : '#6B7280', cursor: 'pointer', position: 'relative', paddingBottom: '0.25rem', fontFamily: 'inherit' }}>
-              Tier 2 — Adjacent ({tier2Count})
+              Neighborhood ({tier2Count})
               {activeTier === TIER.ADJACENT && <div style={{ position: 'absolute', bottom: '-12px', left: 0, right: 0, height: '2px', background: '#E86A58', borderRadius: '2px' }} />}
             </button>
             {/* Watchlist */}

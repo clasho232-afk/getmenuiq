@@ -11,6 +11,7 @@ import RecommendationsSimulationWidget from './RecommendationsSimulationWidget';
 import AIGreeting from './AIGreeting';
 import AICommandOverlay from './AICommandOverlay';
 import { supabase } from '../supabase';
+import InstantPriceAlertsWidget from './InstantPriceAlertsWidget';
 
 const PricingCard = ({ title, count, items, colorClass, onShowMore }) => {
   const displayedItems = items.slice(0, 2);
@@ -74,6 +75,25 @@ const DashboardContent = () => {
   const [isAIOverlayOpen, setIsAIOverlayOpen] = React.useState(false);
   const [isRecommendationsModalOpen, setIsRecommendationsModalOpen] = React.useState(false);
   const [selectedItemDetails, setSelectedItemDetails] = React.useState(null);
+  // 1. Pull the active, user-selected ID string token directly out of local storage
+  const savedSessionId = localStorage.getItem('menu_iq_active_store_id');
+  if (!savedSessionId) {
+    console.warn("⚠️ No active session found. Routing back to find-your-restaurant portal.");
+  }
+  const finalSessionId = savedSessionId || "602"; // Fallback to prevent crash if accessed directly
+
+  // Simulating Platform-Wide Scaling Matrix (Mock Session)
+  const storeSessionProfileB = { 
+    id: finalSessionId,
+    restaurantId: finalSessionId, 
+    name: "Chesters Ilford",
+    estimated_delivery_time: "Est. 20 Min",
+    hero_image_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800",
+    primaryArea: "Ilford", 
+    areaSublabel: "Redbridge" 
+  };
+  const activeUserSession = storeSessionProfileB;
+
   // Supabase live data
   const [restaurant, setRestaurant] = useState(null);
   const [livePromos, setLivePromos] = useState([]);
@@ -83,20 +103,35 @@ const DashboardContent = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        // Fetch first restaurant — replace .limit(1) with user's restaurant later
+        console.log(`📡 Fetching profile header definitions for Restaurant ID: [${activeUserSession.restaurantId}]`);
+        
+        // 1. Run the Supabase query select pipeline
         const { data: restaurantData, error: restError } = await supabase
           .from('restaurants')
           .select('id, name, hero_image_url, rating, rating_count, delivery_fee, estimated_delivery_time, cuisines, areas, address, city, is_open, price_range')
-          .limit(1);
+          .eq('id', activeUserSession.restaurantId)
+          .maybeSingle(); // .maybeSingle() is safer than .single() because it returns null instead of throwing an error if 0 rows match
 
+        // 2. Critical Catch: If there's an explicit database network network error, step out to fallback
         if (restError) throw restError;
-        const rest = restaurantData?.[0] || null;
-        setRestaurant(rest);
 
-        if (!rest) {
-          console.log('No restaurant found');
-          setLoading(false);
-          return;
+        let rest = restaurantData;
+
+        // 3. Evaluation Check: If row exists, hydrate the UI layers with live database values
+        if (rest) {
+          console.log("✅ Row match verified. Hydrating layout with live database items:", rest.name);
+          setRestaurant(rest);
+        } else {
+          // 4. Fallback Execution: If restaurant is null (0 rows returned), force recovery with session state
+          console.warn(`⚠️ Supabase returned 0 rows for ID: [${activeUserSession.restaurantId}]. Triggering fallback recovery state...`);
+          rest = {
+            id: activeUserSession.restaurantId,
+            name: activeUserSession.name || "Chesters Ilford",
+            estimated_delivery_time: activeUserSession.estimated_delivery_time || "Est. 20 Min",
+            hero_image_url: activeUserSession.hero_image_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800',
+            areas: [activeUserSession.primaryArea]
+          };
+          setRestaurant(rest);
         }
 
         // Fetch menu items for this restaurant
@@ -105,8 +140,7 @@ const DashboardContent = () => {
           .select('id, name, description, price, image_url, is_available, section_name')
           .eq('restaurant_id', rest.id);
 
-        if (itemsError) throw itemsError;
-        setLiveMenuItems(allItems || []);
+        if (!itemsError) setLiveMenuItems(allItems || []);
 
         // Fetch competitor restaurants in same areas for promo tracker
         if (rest.areas && rest.areas.length > 0) {
@@ -121,7 +155,15 @@ const DashboardContent = () => {
         }
 
       } catch (err) {
-        console.error('Dashboard data fetch error:', err.message);
+        console.error("❌ Supabase Data Sync Interrupted:", err.message);
+        // If the network request fails entirely, apply fallback values to unfreeze the UI state instantly
+        setRestaurant({
+          id: activeUserSession.restaurantId,
+          name: activeUserSession.name || "Chesters Ilford",
+          estimated_delivery_time: activeUserSession.estimated_delivery_time || "Est. 20 Min",
+          hero_image_url: activeUserSession.hero_image_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800',
+          areas: [activeUserSession.primaryArea]
+        });
       } finally {
         setLoading(false);
       }
@@ -154,6 +196,9 @@ const DashboardContent = () => {
   let bgGradientClass = 'bg-gradient-to-br from-[#E86A58] to-[#D55A48]'; // High
   if (promoCount <= 3) bgGradientClass = 'bg-gradient-to-br from-emerald-400 to-emerald-600'; // Low
   else if (promoCount <= 6) bgGradientClass = 'bg-gradient-to-br from-amber-400 to-orange-500'; // Medium
+  
+
+
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '3rem', width: '100%' }}>
@@ -169,14 +214,14 @@ const DashboardContent = () => {
         {/* TOP ROW - 12-Column Grid matching 5-3-4 red box layout */}
         <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* Child 1: Restaurant Health */}
-          <div className="col-span-12 md:col-span-5">
+          <div className="col-span-12 md:col-span-5 dashboard-card restaurant-hero-card">
             <div className="glass-panel breathing-glow rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)]" style={{ display: 'flex', overflow: 'hidden', padding: 0, height: '100%', background: '#fff' }}>
               {/* LEFT — Brand Identity Hero */}
-              <div style={{ 
+              <div id="dashboard-hero-bg" className="hero-image-cover-wrapper" style={{ 
                 flex: 1, 
                 width: '50%',
                 position: 'relative', 
-                backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.1) 40%, rgba(0, 0, 0, 0.6) 100%), url('https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80')`, 
+                backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.1) 40%, rgba(0, 0, 0, 0.6) 100%), url('${restaurant?.hero_image_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80'}')`, 
                 backgroundSize: 'cover', 
                 backgroundPosition: 'center',
                 minHeight: '260px',
@@ -187,18 +232,21 @@ const DashboardContent = () => {
                 justifyContent: 'space-between',
                 padding: '2rem'
               }}>
-                <div style={{ position: 'relative', zIndex: 2 }}>
-                  <h2 style={{ fontSize: '1.4rem', fontWeight: 400, color: '#fff', fontFamily: '"Playfair Display", serif', lineHeight: 1.2, margin: 0 }}>
-                    Good evening,<br/>免果記<br/>Durian Pizza.
-                  </h2>
-                </div>
-                <div style={{ position: 'relative', zIndex: 2 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                    <Truck size={14} color="#fff" strokeWidth={2} />
-                    <span style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 500 }}>
-                      Est. 25 Min
-                    </span>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ADE80', marginLeft: '0.25rem', boxShadow: '0 0 8px rgba(74, 222, 128, 0.6)' }} />
+                <div className="hero-card-dark-overlay" style={{ display: 'contents' }}>
+                  <div className="hero-card-content" style={{ position: 'relative', zIndex: 2 }}>
+                    <h2 id="dashboard-restaurant-name" className="restaurant-name-heading" style={{ fontSize: '1.4rem', fontWeight: 400, color: '#fff', fontFamily: '"Playfair Display", serif', lineHeight: 1.2, margin: 0 }}>
+                      <span className="greeting-text">Good evening,</span><br/>
+                      {restaurant?.name || 'Loading...'}
+                    </h2>
+                  </div>
+                  <div style={{ position: 'relative', zIndex: 2 }}>
+                    <div className="delivery-time-badge" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                      <span className="delivery-icon" style={{ display: 'flex' }}><Truck size={14} color="#fff" strokeWidth={2} /></span>
+                      <span id="dashboard-est-time" style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 500 }}>
+                        {restaurant?.estimated_delivery_time || 'Calculating...'}
+                      </span>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ADE80', marginLeft: '0.25rem', boxShadow: '0 0 8px rgba(74, 222, 128, 0.6)' }} />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -290,7 +338,10 @@ const DashboardContent = () => {
 
           {/* Child 3: Territory Alert Card */}
           <div className="col-span-12 md:col-span-4">
-            <TerritoryAlertCard onClick={() => setShowDeliveryShadow(true)} />
+            <TerritoryAlertCard 
+              onClick={() => setShowDeliveryShadow(true)} 
+              activeSession={activeUserSession} 
+            />
           </div>
         </div>
 
@@ -298,9 +349,9 @@ const DashboardContent = () => {
         <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Pricing Overview Consolidated Card */}
         <div className="col-span-12 md:col-span-5">
-          <div className="glass-panel rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)] bg-[#FAF8F4]" style={{ height: '100%', padding: '1.75rem 2rem', display: 'flex', flexDirection: 'column' }}>
-            <h3 className="font-sans text-xl font-bold text-gray-900 tracking-tight" style={{ marginBottom: '1.5rem', margin: 0 }}>Pricing Overview</h3>
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, justifyContent: 'center' }}>
+          <div className="glass-panel rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)] bg-[#FAF8F4]" style={{ height: '280px', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+            <h3 className="font-sans text-xl font-bold text-gray-900 tracking-tight" style={{ marginBottom: '1rem', margin: 0 }}>Pricing Overview</h3>
+            <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
               {[
                 { title: 'Parity Violations (Fix Now)', count: 2, color: '#EF4444', items: [
                   { name: 'Margherita Pizza', category: 'Mains', price: '£12.99', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=120&q=80', description: 'Platform Price: £12.99. Base Price: £13.50. You are violating pricing parity (UberEats price is lower than in-store).', platform: 'Uber Eats' },
@@ -331,19 +382,19 @@ const DashboardContent = () => {
                 <div 
                   key={i}
                   onClick={() => setSelectedCard({ title: row.title, items: row.items, color: row.color })}
-                  className="flex flex-row justify-between items-center py-3 border-b border-gray-100 last:border-0"
+                  className="flex flex-row justify-between items-center py-2 border-b border-gray-100 last:border-0"
                   style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '1px solid transparent', borderRight: '1px solid transparent', borderTop: '1px solid transparent' }}
                   onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; e.currentTarget.querySelector('.chevron').style.opacity = '1'; e.currentTarget.querySelector('.chevron').style.transform = 'translateX(0)'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.querySelector('.chevron').style.opacity = '0'; e.currentTarget.querySelector('.chevron').style.transform = 'translateX(-8px)'; }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: row.color }}></div>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 600, color: '#374151' }}>{row.title}</span>
+                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: row.color }}></div>
+                    <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#374151' }}>{row.title}</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <span style={{ fontSize: '1.5rem', fontWeight: 800, color: '#111' }}>{row.count}</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111' }}>{row.count}</span>
                     <span className="chevron" style={{ opacity: 0, transform: 'translateX(-8px)', transition: 'all 0.2s', color: '#9CA3AF', display: 'flex', alignItems: 'center' }}>
-                      <ArrowRight size={18} />
+                      <ArrowRight size={16} />
                     </span>
                   </div>
                 </div>
@@ -351,171 +402,19 @@ const DashboardContent = () => {
             </div>
           </div>
         </div>
-
+ 
         {/* Recommendations Widget (Moved to Row 2) */}
         <div className="col-span-12 md:col-span-3">
-          <RecommendationsSimulationWidget onClick={() => setIsRecommendationsModalOpen(true)} />
-        </div>
-
-        {/* Empty col-span-4 to fill out 12 columns in bottom row */}
-        <div className="hidden md:block md:col-span-4"></div>
-
-        {/* Price Change Alerts (Grouped by Competitor) */}
-        <div className="col-span-12">
-          <div 
-            className="glass-panel rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)] bg-[#FAF8F4]" 
-            style={{ 
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              boxSizing: 'border-box',
-              padding: '1.5rem'
-            }}
-          >
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.25rem' }}>
-              <div>
-                <div className="text-xs font-semibold text-gray-400 uppercase tracking-wider" style={{ marginBottom: '6px' }}>
-                  PRICE CHANGES
-                </div>
-                <h3 className="font-sans text-xl font-bold text-gray-900 tracking-tight" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', margin: 0 }}>
-                  Instant price alerts
-                  {newCount > 0 && (
-                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#C85A17', background: 'rgba(214, 90, 49, 0.1)', padding: '2px 8px', borderRadius: '9999px', border: '1px solid rgba(214, 90, 49, 0.2)' }}>{newCount} new</span>
-                  )}
-                </h3>
-              </div>
-            </div>
-
-            {/* Category Tabs */}
-            <div style={{ display: 'flex', gap: '0.35rem', marginBottom: '1rem', background: '#F3F4F6', borderRadius: '8px', padding: '0.25rem', alignSelf: 'flex-start', width: 'fit-content' }}>
-              {[
-                { key: 'all', label: 'All', count: priceAlerts.filter(a => !dismissedAlerts.includes(a.id)).length },
-                { key: 'mine', label: 'My Competitors', count: priceAlerts.filter(a => !dismissedAlerts.includes(a.id) && a.isMine).length }
-              ].map((tab) => {
-                const isActive = priceAlertFilter === tab.key;
-                return (
-                  <button
-                    key={tab.key}
-                    onClick={() => setPriceAlertFilter(tab.key)}
-                    style={{
-                      padding: '0.4rem 0.85rem',
-                      borderRadius: '6px',
-                      border: 'none',
-                      fontSize: '0.75rem',
-                      fontWeight: isActive ? 700 : 500,
-                      color: isActive ? '#111' : '#6B7280',
-                      background: isActive ? '#FFFFFF' : 'transparent',
-                      boxShadow: isActive ? '0 1px 3px rgba(0,0,0,0.06)' : 'none',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s',
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '0.35rem'
-                    }}
-                  >
-                    {tab.label}
-                    <span style={{ 
-                      fontSize: '0.6rem', fontWeight: 700, 
-                      color: isActive ? '#111' : '#9CA3AF',
-                      background: isActive ? '#F3F4F6' : 'transparent', 
-                      padding: '0.1rem 0.35rem', borderRadius: '4px',
-                      transition: 'all 0.2s'
-                    }}>{tab.count}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Alerts Feed (Grouped) */}
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingRight: '0.25rem', gap: '0.5rem' }}>
-              {Object.entries(
-                visibleAlerts.reduce((acc, alert) => {
-                  if (!acc[alert.competitor]) {
-                    acc[alert.competitor] = { 
-                      name: alert.competitor, 
-                      logo: alert.logo, 
-                      logoColor: alert.logoColor, 
-                      image: alert.image, 
-                      changes: [], 
-                      youSellMatchCount: 0 
-                    };
-                  }
-                  acc[alert.competitor].changes.push(alert);
-                  if (alert.youSellThis) acc[alert.competitor].youSellMatchCount++;
-                  return acc;
-                }, {})
-              ).map(([compName, compData]) => {
-                return (
-                  <div 
-                    key={compName}
-                    onClick={() => setSelectedCompetitorForModal(compData)}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'space-between',
-                      padding: '1rem',
-                      background: '#FFFFFF',
-                      borderRadius: '12px',
-                      border: '1px solid #E5E0D8',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease',
-                      boxShadow: '0 2px 4px rgba(0,0,0,0.01)'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)';
-                      e.currentTarget.style.borderColor = '#D1D5DB';
-                      e.currentTarget.style.transform = 'translateY(-1px)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.01)';
-                      e.currentTarget.style.borderColor = '#E5E0D8';
-                      e.currentTarget.style.transform = 'translateY(0)';
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <img 
-                        src={compData.image} 
-                        alt={compName} 
-                        style={{ width: '40px', height: '40px', borderRadius: '50%', objectFit: 'cover', border: '1px solid rgba(0,0,0,0.06)' }} 
-                      />
-                      <div>
-                        <div style={{ fontSize: '0.95rem', fontWeight: 600, color: '#111', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                          {compName}
-                          {compData.changes.some(c => c.watchlisted) && (
-                            <span style={{ background: '#FEF3C7', color: '#D97706', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '4px', fontWeight: 800 }}>WATCHLIST</span>
-                          )}
-                        </div>
-                        {compData.youSellMatchCount > 0 ? (
-                          <div style={{ fontSize: '0.75rem', color: '#C85A17', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', marginTop: '2px' }}>
-                            <AlertCircle size={10} /> {compData.youSellMatchCount} matching items
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '2px' }}>General updates</div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{
-                        background: 'rgba(0,0,0,0.03)',
-                        color: '#4B5563',
-                        padding: '4px 10px',
-                        borderRadius: '9999px',
-                        fontSize: '0.75rem',
-                        fontWeight: 600,
-                        border: '1px solid rgba(0,0,0,0.05)'
-                      }}>
-                        {compData.changes.length} changes
-                      </div>
-                      <ChevronRight size={18} color="#9CA3AF" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+          <div style={{ height: '280px', overflow: 'hidden' }}>
+            <RecommendationsSimulationWidget onClick={() => setIsRecommendationsModalOpen(true)} />
           </div>
         </div>
+
+        {/* Price Change Alerts (Grouped by Competitor) - Moved to Red Box */}
+        <div className="col-span-12 md:col-span-4" style={{ display: 'flex', flexDirection: 'column' }}>
+          <InstantPriceAlertsWidget />
+        </div>
+      </div>
 
         {/* ROW 3 - Blind Spots & Email Preview */}
         <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -602,7 +501,6 @@ const DashboardContent = () => {
         </div>
       </div>
       {/* End Master Dashboard Wrapper */}
-      </div>
 
 
       {/* Modal Overlay for "Pricing Overview" Drill-down */}

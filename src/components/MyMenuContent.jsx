@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Filter, Plus, Edit2, Activity, Zap, TrendingDown, X, Download, RefreshCw, CheckCircle, AlertTriangle, ArrowRight, Bell, BarChart3, Target, MapPin, UtensilsCrossed } from 'lucide-react';
+import { Search, Filter, Plus, Edit2, Activity, Zap, TrendingDown, X, Download, RefreshCw, CheckCircle, AlertTriangle, ArrowRight, Bell, BarChart3, Target, MapPin, UtensilsCrossed, Info } from 'lucide-react';
 import MarketPositionReport from './MarketPositionReport';
 import { supabase } from '../supabase';
 import './MyMenuContent.css';
@@ -15,8 +15,14 @@ const mockMenuItems = [
   { id: 8, name: 'Sweet Potato Fries', category: 'Sides', price: '£5.00', cost: '£1.40', margin: '72%', status: 'Active', image: 'https://images.unsplash.com/photo-1596649285097-70b1cb3b3209?auto=format&fit=crop&w=150&q=80' }
 ];
 
-const getMarketData = (item) => {
-  const myPrice = parseFloat(item.price.replace('£', ''));
+const getMarketData = (item, platform = 'all') => {
+  let myPrice = parseFloat(item.price.replace('£', ''));
+  
+  // Simulate platform differences
+  if (platform === 'deliveroo') myPrice *= 1.05;
+  if (platform === 'ubereats') myPrice *= 1.08;
+  if (platform === 'justeat') myPrice *= 1.02;
+
   const avgPrice = (myPrice * 0.8).toFixed(2);
   const lowPrice = (myPrice * 0.6).toFixed(2);
   const highPrice = myPrice >= (myPrice * 0.9) ? myPrice.toFixed(2) : (myPrice * 1.1).toFixed(2);
@@ -82,23 +88,23 @@ const DualRangeSlider = ({ minBound, maxBound, minVal, maxVal, onMinChange, onMa
   const maxPct = ((maxValNum - minBoundNum) / (maxBoundNum - minBoundNum)) * 100;
 
   return (
-    <div ref={trackRef} style={{ position: 'relative', height: '16px', background: 'linear-gradient(90deg, #93C5FD, #FCD34D, #FCA5A5)', borderRadius: '8px', margin: '0 1rem' }}>
+    <div ref={trackRef} style={{ position: 'relative', height: '16px', background: 'linear-gradient(90deg, #EAB308, #FF5E3A, #EF4444)', borderRadius: '8px', margin: '0 1rem' }}>
       <div 
         onPointerDown={e => handlePointerDown(e, 'min')}
-        style={{ position: 'absolute', left: `${minPct}%`, top: '50%', transform: 'translate(-50%, -50%)', width: '24px', height: '24px', borderRadius: '50%', background: '#fff', border: '4px solid #111', cursor: 'grab', zIndex: 10, boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}
+        style={{ position: 'absolute', left: `${minPct}%`, top: '50%', transform: 'translate(-50%, -50%)', width: '24px', height: '24px', borderRadius: '50%', background: '#fff', border: '4px solid #FF5E3A', cursor: 'grab', zIndex: 10, boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}
       />
-      <div style={{ position: 'absolute', left: `${minPct}%`, top: '30px', transform: 'translateX(-50%)', fontSize: '1rem', fontFamily: 'Playfair Display, serif', fontWeight: 700, color: '#111' }}>£{minVal}</div>
+      <div style={{ position: 'absolute', left: `${minPct}%`, top: '30px', transform: 'translateX(-50%)', fontSize: '1rem', fontWeight: 700, color: '#111' }}>£{minVal}</div>
       
       <div 
         onPointerDown={e => handlePointerDown(e, 'max')}
-        style={{ position: 'absolute', left: `${maxPct}%`, top: '50%', transform: 'translate(-50%, -50%)', width: '24px', height: '24px', borderRadius: '50%', background: '#fff', border: '4px solid #111', cursor: 'grab', zIndex: 10, boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}
+        style={{ position: 'absolute', left: `${maxPct}%`, top: '50%', transform: 'translate(-50%, -50%)', width: '24px', height: '24px', borderRadius: '50%', background: '#fff', border: '4px solid #FF5E3A', cursor: 'grab', zIndex: 10, boxShadow: '0 4px 10px rgba(0,0,0,0.3)' }}
       />
-      <div style={{ position: 'absolute', left: `${maxPct}%`, top: '30px', transform: 'translateX(-50%)', fontSize: '1rem', fontFamily: 'Playfair Display, serif', fontWeight: 700, color: '#111' }}>£{maxVal}</div>
+      <div style={{ position: 'absolute', left: `${maxPct}%`, top: '30px', transform: 'translateX(-50%)', fontSize: '1rem', fontWeight: 700, color: '#111' }}>£{maxVal}</div>
     </div>
   );
 };
 
-const MyMenuContent = () => {
+const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
   const [activeCategory, setActiveCategory] = useState('All');
   const [analyzingItem, setAnalyzingItem] = useState(null);
   const [analysisState, setAnalysisState] = useState('idle'); // 'scraping', 'rendering', 'complete'
@@ -110,6 +116,7 @@ const MyMenuContent = () => {
   const [pricedRightOpen, setPricedRightOpen] = useState(false);
   const [showMarketReport, setShowMarketReport] = useState(false);
   const [showAnalysisSelector, setShowAnalysisSelector] = useState(false);
+  const [platform, setPlatform] = useState('all');
 
   // Live data from Supabase
   const [menuItems, setMenuItems] = useState([]);
@@ -119,22 +126,20 @@ const MyMenuContent = () => {
 
   useEffect(() => {
     const fetchMenuData = async () => {
+      // Wait for a valid restaurant profile ID from the app context
+      if (!selectedRestaurant?.id) return;
+      
       try {
-        // Get first restaurant
-        const { data: restaurants, error: restError } = await supabase
-          .from('restaurants')
-          .select('id, name')
-          .limit(1);
+        setLoadingMenu(true);
+        setMenuItems([]); // Wipe previous menu container state completely
+        
+        console.log(`📡 Fetching schema records for restaurant_id: ${selectedRestaurant.id}`);
 
-        if (restError) throw restError;
-        const restaurant = restaurants?.[0];
-        if (!restaurant) return;
-
-        // Get menu items for this restaurant
+        // Query step matching your exact columns
         const { data: items, error: itemsError } = await supabase
           .from('menu_items')
           .select('id, name, description, price, image_url, is_available, section_name')
-          .eq('restaurant_id', restaurant.id)
+          .eq('restaurant_id', selectedRestaurant.id)
           .order('section_name');
 
         if (itemsError) throw itemsError;
@@ -155,19 +160,20 @@ const MyMenuContent = () => {
 
         setMenuItems(mapped);
 
-        // Build categories from real section names
+        // 1. Map 'section_name' directly to generate your top category filter pills row
         const uniqueCats = ['All', ...new Set(mapped.map(i => i.category))];
         setCategories(uniqueCats);
+        setActiveCategory('All'); // Real-time fast client-side navigation filter toggle initialization
 
       } catch (err) {
-        console.error('Menu fetch error:', err.message);
+        console.error("❌ Schema Data Retrieval Failure:", err.message);
       } finally {
         setLoadingMenu(false);
       }
     };
 
     fetchMenuData();
-  }, []);
+  }, [selectedRestaurant]);
 
   const handleFullAnalyze = () => {
     setShowFullAnalysis(true);
@@ -243,20 +249,25 @@ const MyMenuContent = () => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%', position: 'relative' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div style={{ fontSize: '1.875rem', fontWeight: 700 }}>My Menu {loadingMenu && <span style={{ fontSize: '0.875rem', color: '#9CA3AF', fontWeight: 400 }}>Loading...</span>}</div>
-        <div style={{ display: 'flex', gap: '0.5rem' }}>
-          <button onClick={() => setShowAnalysisSelector(true)} style={{ background: 'transparent', color: '#111', padding: '0.75rem 1.5rem', borderRadius: '9999px', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', border: '1px solid rgba(0,0,0,0.12)', cursor: 'pointer', transition: 'all 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#111'; e.currentTarget.style.color = '#fff'; }} onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#111'; }}>
-            <Activity size={16} /> Analyze Menu
-          </button>
-          <button style={{ background: '#000', color: '#fff', padding: '0.75rem 1.5rem', borderRadius: '9999px', fontSize: '0.875rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '0.5rem', border: 'none', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
-            <Plus size={16} /> Add New Item
-          </button>
-        </div>
       </div>
 
-      <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
+      <div className="header-container" style={{ position: 'absolute', right: 0, top: '40px', zIndex: 10 }}>
+        <div className="system-authority-wrapper">
+          <span>Last analyzed: 2 hours ago.</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <span className="live-badge"></span>
+            <span style={{ fontWeight: 600, color: '#111' }}>System Live</span>
+          </div>
+        </div>
+        <button className="analyze-menu-button" onClick={() => setShowAnalysisSelector(true)}>
+          Analyze Menu
+        </button>
+      </div>
+
+      <div className="glass-panel main-menu-content-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
           <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
             {categories.map(cat => (
@@ -300,15 +311,9 @@ const MyMenuContent = () => {
 
         <div className="menu-card-grid">
           {filteredItems.length === 0 ? (
-            <div className="menu-empty-state">
-              <UtensilsCrossed className="menu-empty-icon" />
-              <p className="menu-empty-title">No items found</p>
-              <button
-                className="menu-empty-clear"
-                onClick={() => { setActiveCategory('All'); setSearchQuery(''); }}
-              >
-                Clear filters
-              </button>
+            <div style={{ gridColumn: '1/-1', textAlign: 'center', padding: '60px', color: '#8c8c8c' }}>
+              <h4 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', color: '#4B5563' }}>No Menu Items Found</h4>
+              <p style={{ fontSize: '13px', margin: 0 }}>This restaurant has no records inside the menu_items table.</p>
             </div>
           ) : filteredItems.map(item => {
             const isAnalyzing = analyzingItem === item.id;
@@ -357,7 +362,7 @@ const MyMenuContent = () => {
       {/* Audit Command Center Modal */}
       {analysisState === 'complete' && analyzingItem && (() => {
         const activeItem = menuItems.find(i => i.id === analyzingItem);
-        const marketData = getMarketData(activeItem);
+        const marketData = getMarketData(activeItem, platform);
         const currentPricePoint = (!rangeMin && !rangeMax && !activePricePoint) ? marketData.avgPrice : activePricePoint;
         
         let displayedRivals = [];
@@ -382,51 +387,78 @@ const MyMenuContent = () => {
 
         const recommendedPrice = marketData.avgPrice;
         const topRival = marketData.intervals.find(i => i.price === marketData.avgPrice)?.rivals[0]?.name || 'your top rival';
+        const lowestPriceRival = marketData.intervals.find(i => i.price === marketData.lowPrice)?.rivals[0]?.name || 'a local competitor';
+        const highestPriceRival = marketData.intervals.find(i => i.price === marketData.highPrice)?.rivals[0]?.name || 'a local competitor';
         
         return (
           <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem' }} onClick={() => setAnalyzingItem(null)}>
-            <div style={{ background: '#fff', borderRadius: '24px', width: '95%', maxWidth: '1400px', display: 'flex', overflow: 'hidden', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', animation: 'modalFadeIn 0.3s ease-out', height: '640px' }} onClick={e => e.stopPropagation()}>
+            <div className="audit-command-card" style={{ background: '#FFFFFF', backgroundImage: 'linear-gradient(180deg, rgba(224, 80, 70, 0.06) 0%, rgba(255, 255, 255, 0) 25%)', border: '1px solid rgba(224, 80, 70, 0.15)', borderRadius: '24px', width: '95%', maxWidth: '1400px', display: 'flex', gap: '32px', overflow: 'hidden', boxShadow: '0 10px 25px -5px rgba(0, 0, 0, 0.05)', animation: 'modalFadeIn 0.3s ease-out', height: '640px' }} onClick={e => e.stopPropagation()}>
               
               {/* Left Column - Visual Header & Core Stats */}
-              <div style={{ width: '32%', background: '#F8FAFC', padding: '3rem', display: 'flex', flexDirection: 'column', gap: '2rem', borderRight: '1px solid rgba(0,0,0,0.05)' }}>
+              <div style={{ flex: '1.1', background: 'transparent', padding: '3rem', display: 'flex', flexDirection: 'column', gap: '2rem' }}>
                 <img src={activeItem.image} alt={activeItem.name} style={{ width: '100%', height: '260px', objectFit: 'cover', borderRadius: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
                 
-                <div>
-                  <h2 style={{ fontSize: '2.25rem', fontWeight: 700, color: '#111', margin: '0 0 2rem 0', lineHeight: 1.2 }}>{activeItem.name}</h2>
+                <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+                  <h2 className="item-title" title={activeItem.name}>{activeItem.name}</h2>
                   
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '2rem' }}>
+                  <div className="platform-selector-row">
+                    {['all', 'deliveroo', 'ubereats', 'justeat'].map(p => (
+                      <button
+                        key={p}
+                        onClick={() => setPlatform(p)}
+                        className={`platform-btn ${platform === p ? `btn-${p} active` : ''}`}
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                  
+                  <div className="pricing-footer">
                     <div>
-                      <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.5rem' }}>Your Price</div>
-                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#D63B1F' }}>£{marketData.myPrice}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.75rem' }}>Your Price</div>
+                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#FF5E3A' }}>£{marketData.myPrice}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.5rem' }}>Avg Market Price</div>
-                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#3B82F6' }}>£{marketData.avgPrice}</div>
+                      <div className="tooltip-container" style={{ fontSize: '0.8rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.75rem' }}>
+                        Avg Market Price <Info className="info-icon" size={14} />
+                        <div className="tooltip-card">
+                          <div>Ilford Avg: £1.70</div>
+                          <div>Neighborhood Avg: £1.50</div>
+                          <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid rgba(0,0,0,0.05)', fontWeight: 700 }}>Aggregate: £1.60</div>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#22C55E' }}>£{marketData.avgPrice}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.5rem' }}>Lowest Price</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6B7280' }}>£{marketData.lowPrice}</div>
+                      <div className="tooltip-container" style={{ fontSize: '0.8rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.75rem' }}>
+                        Lowest Price <Info className="info-icon" size={14} />
+                        <div className="tooltip-card">Lowest Price provided by: {lowestPriceRival}</div>
+                      </div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#EAB308' }}>£{marketData.lowPrice}</div>
                     </div>
                     <div>
-                      <div style={{ fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.5rem' }}>Highest Price</div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#6B7280' }}>£{marketData.highPrice}</div>
+                      <div className="tooltip-container" style={{ fontSize: '0.8rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.75rem' }}>
+                        Highest Price <Info className="info-icon" size={14} />
+                        <div className="tooltip-card">Highest Price provided by: {highestPriceRival}</div>
+                      </div>
+                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#EF4444' }}>£{marketData.highPrice}</div>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Center Column - Interactive Market Hub */}
-              <div style={{ width: '40%', padding: '3rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid rgba(0,0,0,0.05)' }}>
+              <div style={{ flex: '1.4', padding: '3rem 1rem', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
                   <div>
-                    <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#111' }}>Audit Command Center</div>
+                    <div className="audit-title" style={{ fontSize: '1.5rem' }}>Audit Command Center</div>
                     <div style={{ fontSize: '0.875rem', color: '#6B7280', marginTop: '0.25rem' }}>Local Market Position Analysis</div>
                   </div>
                 </div>
 
                 {/* Thermometer Section */}
                 <div style={{ marginBottom: '2.5rem' }}>
-                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#4B5563', marginBottom: '2.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Interactive Price Thermometer</div>
+                  <div style={{ fontSize: '0.875rem', fontWeight: 600, color: '#4B5563', marginBottom: '2.5rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Price Bar</div>
                   
                   <DualRangeSlider 
                     minBound={marketData.lowPrice} 
@@ -439,7 +471,7 @@ const MyMenuContent = () => {
                   
                   {/* Manual Range Input */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '3.5rem', marginBottom: '1.5rem' }}>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manual Range:</span>
+                    <span className="manual-range-label" style={{ fontSize: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Manual Range:</span>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                       <span style={{ fontSize: '0.875rem', color: '#6B7280', fontWeight: 600 }}>£</span>
                       <input 
@@ -464,7 +496,7 @@ const MyMenuContent = () => {
                   </div>
 
                   {/* Rivals Panel */}
-                  <div style={{ background: '#F8FAFC', borderRadius: '16px', padding: '1.5rem', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '1rem', height: '240px', overflowY: 'auto' }}>
+                  <div style={{ background: 'rgba(255,255,255,0.4)', borderRadius: '16px', padding: '1.5rem', border: '1px solid rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '1rem', height: '240px', overflowY: 'auto' }}>
                     <div style={{ width: '100%', fontSize: '0.75rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px' }}>{panelTitle}</div>
                     <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignContent: 'flex-start' }}>
                       {displayedRivals.length > 0 ? displayedRivals.map((rival, idx) => (
@@ -481,28 +513,20 @@ const MyMenuContent = () => {
               </div>
 
               {/* Right Column - Strategic Action Center */}
-              <div style={{ width: '28%', padding: '3rem', display: 'flex', flexDirection: 'column', background: '#fff' }}>
+              <div style={{ flex: '1', padding: '3rem', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
                   <button onClick={() => setAnalyzingItem(null)} style={{ background: '#F3F4F6', border: 'none', cursor: 'pointer', color: '#4B5563', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#E5E7EB'} onMouseLeave={e => e.currentTarget.style.background = '#F3F4F6'}><X size={20} /></button>
                 </div>
 
-                <div style={{ marginTop: 'auto', marginBottom: 'auto', background: '#FAFAF8', border: '1px solid #E5E0D8', borderRadius: '20px', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
+                <div style={{ marginTop: 'auto', marginBottom: 'auto', background: 'rgba(224, 80, 70, 0.05)', border: '1px solid rgba(224, 80, 70, 0.1)', borderRadius: '20px', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#111', fontWeight: 700, fontSize: '1.125rem' }}>
-                    <Zap size={20} color="#D63B1F" /> Strategy Recommendation
+                    Strategy Recommendation
                   </div>
                   <p style={{ fontSize: '1.05rem', color: '#4B5563', margin: 0, lineHeight: 1.6 }}>
-                    Your {activeItem.name} are currently in the 90th percentile for price. Moving to the £{marketData.avgPrice} bracket will align you with the highest-volume competitors like {topRival} and is projected to boost sales by 15%.
+                    {platform === 'all' 
+                      ? `Your ${activeItem.name} are currently in the 90th percentile for price. Moving to the £${marketData.avgPrice} bracket will align you with the highest-volume competitors like ${topRival} and is projected to boost sales by 15%.`
+                      : `Your ${platform.charAt(0).toUpperCase() + platform.slice(1)} commission is ${platform === 'deliveroo' ? '30%' : platform === 'ubereats' ? '28%' : '25%'}; increasing this item to £${marketData.avgPrice} will maintain your margin while keeping you competitive in the local ${platform.charAt(0).toUpperCase() + platform.slice(1)} market.`}
                   </p>
-                  <div style={{ display: 'flex', justifyContent: 'flex-start', marginTop: '1rem' }}>
-                    <button 
-                      onClick={() => setAnalyzingItem(null)}
-                      style={{ background: '#D63B1F', color: '#fff', padding: '1rem 2rem', borderRadius: '9999px', fontSize: '0.9rem', fontWeight: 600, border: 'none', cursor: 'pointer', boxShadow: '0 10px 25px rgba(214, 59, 31, 0.25)', transition: 'transform 0.2s, background 0.2s', width: '100%' }}
-                      onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.background = '#B42F15'; }}
-                      onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.background = '#D63B1F'; }}
-                    >
-                      Apply £{recommendedPrice} Recommendation
-                    </button>
-                  </div>
                 </div>
               </div>
 

@@ -24,7 +24,7 @@ const TopNav = ({ activeTab, setActiveTab, onOpenCommandPalette }) => {
       justifyContent: 'space-between',
       position: 'sticky',
       top: 0,
-      zIndex: 100
+      zIndex: 9999
     }}>
       {/* Logo Area */}
       <div className="flex items-center gap-2" style={{ color: '#e05046', flexShrink: 0, fontFamily: "'Lufga', sans-serif", fontSize: '24px', fontWeight: 800 }}>

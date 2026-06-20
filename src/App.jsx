@@ -10,7 +10,7 @@ import MyMenuContent from './components/MyMenuContent';
 import CompetitorsContent from './components/CompetitorsContent';
 import BlindSpotContent from './components/BlindSpotContent';
 import MarketNicheContent from './components/MarketNicheContent';
-import AIInsightsContent from './components/AIInsightsContent';
+import IntelligenceHub from './components/IntelligenceHub';
 import CompetitorFinderContent from './components/CompetitorFinderContent';
 import SearchContent from './components/SearchContent';
 
@@ -90,24 +90,35 @@ function App() {
           pointerEvents: 'none',
           zIndex: 0
         }} />
-
         {/* Foreground Content */}
         <div style={{ position: 'relative', zIndex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
           <TopNav activeTab={activeTab} setActiveTab={setActiveTab} onOpenCommandPalette={() => setIsCommandPaletteOpen(true)} />
 
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-            <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />
-            <main className="main-content" style={{ padding: '0 2rem 2rem 1rem', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column' }}>
+            {activeTab !== 'AI Strategy' && <Sidebar activeTab={activeTab} setActiveTab={setActiveTab} />}
+            <main
+              className="main-content"
+              style={{
+                padding: activeTab === 'AI Strategy' || activeTab === 'Market Niche' ? '0' : '0 2rem 2rem 1rem',
+                overflowY: activeTab === 'AI Strategy' || activeTab === 'Market Niche' ? 'hidden' : 'auto',
+                overflow: activeTab === 'AI Strategy' || activeTab === 'Market Niche' ? 'hidden' : undefined,
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+              }}
+            >
               {activeTab === 'Dashboard' && <DashboardContent userGoal={userGoal} selectedRestaurant={selectedRestaurant} />}
               {activeTab === 'My Menu' && <MyMenuContent selectedRestaurant={selectedRestaurant} analyzeTrigger={analyzeTrigger} />}
               {activeTab === 'Competitors' && <CompetitorsContent />}
               {activeTab === 'Blind Spot' && <BlindSpotContent />}
               {activeTab === 'Market Niche' && <MarketNicheContent />}
-              {activeTab === 'AI Strategy' && <AIInsightsContent />}
+              {activeTab === 'AI Strategy' && <IntelligenceHub />}
               {activeTab === 'Competitor Finder' && <CompetitorFinderContent />}
               {activeTab === 'Search' && <SearchContent />}
             </main>
           </div>
+
           
           {/* Mobile Bottom Navigation Bar */}
           <div className="mobile-bottom-nav mobile-only">
