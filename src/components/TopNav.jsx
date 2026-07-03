@@ -10,6 +10,7 @@ const TopNav = ({ activeTab, setActiveTab, onOpenCommandPalette }) => {
     { id: 'Competitors', label: 'Competitors' },
     { id: 'AI Strategy', label: 'AI Strategy' },
     { id: 'Market Niche', label: 'Market Niche' },
+    { id: 'Promo Intelligence', label: 'Promo Intel' },
     { id: 'Search', label: 'Search' },
   ];
 

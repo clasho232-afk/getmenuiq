@@ -5,13 +5,17 @@ import MarketPositionReport from './MarketPositionReport';
 import DeliveryShadowModal from './DeliveryShadowModal';
 import PromoTrackerModal from './PromoTrackerModal';
 import CompetitorPriceModal from './CompetitorPriceModal';
-import TerritoryAlertCard from './TerritoryAlertCard';
+
 import RecommendationsModal from './RecommendationsModal';
 import RecommendationsSimulationWidget from './RecommendationsSimulationWidget';
 import AIGreeting from './AIGreeting';
 import AICommandOverlay from './AICommandOverlay';
 import { supabase } from '../supabase';
 import InstantPriceAlertsWidget from './InstantPriceAlertsWidget';
+import MarketStatusCard from './MarketStatusCard';
+import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import eastLondonAreas from './east_london_areas.json';
 
 const PricingCard = ({ title, count, items, colorClass, onShowMore }) => {
   const displayedItems = items.slice(0, 2);
@@ -198,6 +202,36 @@ const DashboardContent = () => {
   else if (promoCount <= 6) bgGradientClass = 'bg-gradient-to-br from-amber-400 to-orange-500'; // Medium
   
 
+  // Map bounds logic
+  const currentBoroughName = activeUserSession?.primaryArea || 'Ilford';
+  
+  const primarySector = eastLondonAreas.find(s => 
+    s.name.toLowerCase().includes(currentBoroughName.toLowerCase()) || 
+    (currentBoroughName === 'Ilford' && s.type === 'primary')
+  );
+  
+  let bounds = null;
+  let centerLat = 51.55;
+  let centerLng = 0.08;
+  if (primarySector && primarySector.bounds) {
+    const lats = primarySector.bounds.map(b => b[0]);
+    const lngs = primarySector.bounds.map(b => b[1]);
+    bounds = [
+      [Math.min(...lats), Math.min(...lngs)],
+      [Math.max(...lats), Math.max(...lngs)]
+    ];
+    centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
+    centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
+  }
+
+  const mockCompetitors = [
+    { id: 1, lat: centerLat + 0.005, lng: centerLng + 0.005, threat: 'high' },
+    { id: 2, lat: centerLat - 0.008, lng: centerLng + 0.002, threat: 'medium' },
+    { id: 3, lat: centerLat + 0.002, lng: centerLng - 0.006, threat: 'high' },
+    { id: 4, lat: centerLat - 0.004, lng: centerLng - 0.008, threat: 'medium' },
+    { id: 5, lat: centerLat + 0.008, lng: centerLng - 0.002, threat: 'medium' },
+  ];
+
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
@@ -255,7 +289,7 @@ const DashboardContent = () => {
               <div style={{ flex: 1, width: '50%', padding: '2rem', display: 'flex', flexDirection: 'column', background: '#fff', justifyContent: 'center' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
                   <h2 className="font-sans" style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.05em', color: '#111', textTransform: 'uppercase' }}>Health Overview</h2>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: '#FCE7E7', color: '#991B1B', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 800 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: '#FCE7E7', color: '#D63B1F', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 800 }}>
                     <AlertCircle size={12} strokeWidth={2.5} /> 64/100
                   </div>
                 </div>
@@ -265,35 +299,20 @@ const DashboardContent = () => {
                   
                   {/* Row 1: Local Rank */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#FCE7E7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <MapPin size={16} color="#991B1B" />
-                      </div>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.05em' }}>LOCAL RANK</span>
-                    </div>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#991B1B', lineHeight: 1 }}>#14</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.05em' }}>LOCAL RANK</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#D63B1F', lineHeight: 1 }}>#14</span>
                   </div>
 
                   {/* Row 2: Price Gap */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#FCE7E7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Tag size={16} color="#991B1B" />
-                      </div>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.05em' }}>PRICE GAP</span>
-                    </div>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#991B1B', lineHeight: 1 }}>+8%</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.05em' }}>PRICE GAP</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#D63B1F', lineHeight: 1 }}>+8%</span>
                   </div>
 
                   {/* Row 3: Promo Threat */}
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                      <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#DCFCE7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Shield size={16} color="#166534" />
-                      </div>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.05em' }}>PROMO THREAT</span>
-                    </div>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#166534', lineHeight: 1 }}>40%</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.05em' }}>PROMO THREAT</span>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#D63B1F', lineHeight: 1 }}>40%</span>
                   </div>
 
                 </div>
@@ -301,7 +320,7 @@ const DashboardContent = () => {
             </div>
           </div>
 
-          {/* Child 2: Promo Tracker */}
+          {/* Child 2: Promo Tracker (Combined Map & Tracker) */}
           <div className="col-span-12 md:col-span-3">
             <div onClick={() => setShowPromos(true)} className="w-full h-full bg-white rounded-[24px] p-6 shadow-sm border border-gray-100 flex items-center justify-between relative cursor-pointer group transition-transform duration-300 hover:-translate-y-1">
               
@@ -314,7 +333,7 @@ const DashboardContent = () => {
                   Promo Tracker
                 </h2>
                 <div className="flex items-end gap-2">
-                  <span className="text-6xl font-black text-[#E86A58] leading-none tracking-tighter">8</span>
+                  <span className="text-6xl font-black text-[#E86A58] leading-none tracking-tighter">{promoCount}</span>
                   <div className="flex flex-col pb-1">
                     <span className="text-sm font-bold text-gray-800 leading-tight">Active</span>
                     <span className="text-xs font-semibold text-gray-400">Promotions</span>
@@ -325,23 +344,48 @@ const DashboardContent = () => {
                 </span>
               </div>
 
-              {/* Right Animation Column */}
-              <div className="relative w-24 h-24 flex items-center justify-center shrink-0">
-                {/* Core Dot */}
-                <div className="w-4 h-4 bg-[#E86A58] rounded-full z-20 shadow-[0_0_12px_rgba(232,106,88,0.8)]"></div>
-                {/* Sonar Rings */}
-                <div className="absolute w-16 h-16 border-2 border-[#E86A58] rounded-full opacity-60 animate-ping"></div>
-                <div className="absolute w-24 h-24 border border-[#E86A58] rounded-full opacity-30 animate-ping" style={{ animationDelay: '0.5s' }}></div>
+              {/* Right Map Interface Column */}
+              <div className="relative w-24 h-24 flex items-center justify-center shrink-0 rounded-[12px] overflow-hidden shadow-inner bg-[#FAFAFA] border border-gray-100">
+                {bounds ? (
+                  <MapContainer 
+                    bounds={bounds}
+                    boundsOptions={{ padding: [5, 5] }}
+                    zoomControl={false}
+                    dragging={false}
+                    doubleClickZoom={false}
+                    scrollWheelZoom={false}
+                    attributionControl={false}
+                    style={{ width: '100%', height: '100%' }}
+                    key={currentBoroughName + '_tracker'}
+                  >
+                    <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+                    <Polygon 
+                      positions={primarySector.bounds}
+                      pathOptions={{ 
+                        color: '#28a745',
+                        weight: 1.5,
+                        fillOpacity: 0.0,
+                        lineCap: "round",
+                        lineJoin: "round",
+                        className: 'dashboard-mini-map-polygon'
+                      }}
+                    />
+                  </MapContainer>
+                ) : (
+                  <div className="w-4 h-4 bg-[#E86A58] rounded-full z-20 shadow-[0_0_12px_rgba(232,106,88,0.8)] animate-pulse"></div>
+                )}
+                <style>{`
+                  .dashboard-mini-map-polygon {
+                    filter: drop-shadow(0px 1px 2px rgba(40, 167, 69, 0.15));
+                  }
+                `}</style>
               </div>
             </div>
           </div>
 
-          {/* Child 3: Territory Alert Card */}
+          {/* Child 3: Live Market Status */}
           <div className="col-span-12 md:col-span-4">
-            <TerritoryAlertCard 
-              onClick={() => setShowDeliveryShadow(true)} 
-              activeSession={activeUserSession} 
-            />
+            <MarketStatusCard />
           </div>
         </div>
 
@@ -349,56 +393,97 @@ const DashboardContent = () => {
         <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Pricing Overview Consolidated Card */}
         <div className="col-span-12 md:col-span-5">
-          <div className="glass-panel rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)] bg-[#FAF8F4]" style={{ height: '280px', padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-            <h3 className="font-sans text-xl font-bold text-gray-900 tracking-tight" style={{ marginBottom: '1rem', margin: 0 }}>Pricing Overview</h3>
-            <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', flex: 1, overflowY: 'auto', paddingRight: '0.5rem' }}>
-              {[
-                { title: 'Parity Violations (Fix Now)', count: 2, color: '#EF4444', items: [
-                  { name: 'Margherita Pizza', category: 'Mains', price: '£12.99', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=120&q=80', description: 'Platform Price: £12.99. Base Price: £13.50. You are violating pricing parity (UberEats price is lower than in-store).', platform: 'Uber Eats' },
-                  { name: 'Cola Zero', category: 'Drinks', price: '£1.50', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=120&q=80', description: 'Platform Price: £1.50. Base Price: £2.00. Deliveroo price is lower than in-store.', platform: 'Deliveroo' }
-                ]},
-                { title: 'Below Market Average', count: 12, color: '#F59E0B', items: [
-                  // Uber Eats
-                  { name: 'Vegan Wrap', category: 'Wraps', price: '£5.50', image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=120&q=80', description: 'Your price: £5.50. Market Average: £6.80.', platform: 'Uber Eats' },
-                  { name: 'Avocado Toast', category: 'Breakfast', price: '£6.00', image: 'https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?auto=format&fit=crop&w=120&q=80', description: 'Your price: £6.00. Market Average: £7.50.', platform: 'Uber Eats' },
-                  { name: 'Quinoa Bowl', category: 'Salads', price: '£8.50', image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?auto=format&fit=crop&w=120&q=80', description: 'Your price: £8.50. Market Average: £9.50.', platform: 'Uber Eats' },
-                  { name: 'Green Smoothie', category: 'Drinks', price: '£4.00', image: 'https://images.unsplash.com/photo-1610832958506-aa56368176cf?auto=format&fit=crop&w=120&q=80', description: 'Your price: £4.00. Market Average: £5.20.', platform: 'Uber Eats' },
-                  // JustEat
-                  { name: 'Milkshake', category: 'Drinks', price: '£3.20', image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=120&q=80', description: 'Your price: £3.20. Market Average: £4.00.', platform: 'JustEat' },
-                  { name: 'Beef Burger', category: 'Mains', price: '£7.50', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=120&q=80', description: 'Your price: £7.50. Market Average: £9.00.', platform: 'JustEat' },
-                  { name: 'Chicken Wings', category: 'Sides', price: '£5.00', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=120&q=80', description: 'Your price: £5.00. Market Average: £6.50.', platform: 'JustEat' },
-                  { name: 'Loaded Fries', category: 'Sides', price: '£4.50', image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=120&q=80', description: 'Your price: £4.50. Market Average: £5.80.', platform: 'JustEat' },
-                  // Deliveroo
-                  { name: 'Sweet Potato Fries', category: 'Sides', price: '£3.50', image: 'https://images.unsplash.com/photo-1596649285097-70b1cb3b3209?auto=format&fit=crop&w=120&q=80', description: 'Your price: £3.50. Market Average: £4.50.', platform: 'Deliveroo' },
-                  { name: 'Margherita Pizza', category: 'Mains', price: '£9.00', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=120&q=80', description: 'Your price: £9.00. Market Average: £11.00.', platform: 'Deliveroo' },
-                  { name: 'Garlic Bread', category: 'Sides', price: '£3.00', image: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?auto=format&fit=crop&w=120&q=80', description: 'Your price: £3.00. Market Average: £4.20.', platform: 'Deliveroo' },
-                  { name: 'Chocolate Brownie', category: 'Desserts', price: '£4.00', image: 'https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=120&q=80', description: 'Your price: £4.00. Market Average: £5.00.', platform: 'Deliveroo' }
-                ]},
-                { title: 'Above Market Average', count: 4, color: '#10B981', items: [
-                  { name: 'Classic Cheeseburger', category: 'Mains', price: '£11.50', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=120&q=80', description: 'Your price: £11.50. Market Average: £9.50. High margin, but monitor sales volume.', platform: 'Uber Eats' },
-                  { name: 'Onion Rings', category: 'Sides', price: '£4.00', image: 'https://images.unsplash.com/photo-1639024471283-03518883512d?auto=format&fit=crop&w=120&q=80', description: 'Your price: £4.00. Market Average: £3.20. Slightly overpriced.', platform: 'JustEat' }
-                ]}
-              ].map((row, i) => (
-                <div 
-                  key={i}
-                  onClick={() => setSelectedCard({ title: row.title, items: row.items, color: row.color })}
-                  className="flex flex-row justify-between items-center py-2 border-b border-gray-100 last:border-0"
-                  style={{ cursor: 'pointer', transition: 'all 0.2s', borderLeft: '1px solid transparent', borderRight: '1px solid transparent', borderTop: '1px solid transparent' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.6)'; e.currentTarget.querySelector('.chevron').style.opacity = '1'; e.currentTarget.querySelector('.chevron').style.transform = 'translateX(0)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.querySelector('.chevron').style.opacity = '0'; e.currentTarget.querySelector('.chevron').style.transform = 'translateX(-8px)'; }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: row.color }}></div>
-                    <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#374151' }}>{row.title}</span>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111' }}>{row.count}</span>
-                    <span className="chevron" style={{ opacity: 0, transform: 'translateX(-8px)', transition: 'all 0.2s', color: '#9CA3AF', display: 'flex', alignItems: 'center' }}>
-                      <ArrowRight size={16} />
-                    </span>
-                  </div>
+          <div className="pricing-gauge-card" style={{ height: '280px' }}>
+            {/* Header */}
+            <div style={{ borderBottom: '1px solid rgba(228, 226, 228, 0.6)', paddingBottom: '1rem' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.025em', margin: 0 }}>Pricing Distribution</h2>
+              <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'rgba(90, 65, 59, 0.8)', marginTop: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Menu Item Analysis</p>
+            </div>
+            
+            {/* 3D Segmented Gauge Centerpiece */}
+            <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1rem 0.25rem' }}>
+              <div style={{ height: '2.5rem', width: '100%', display: 'flex', borderRadius: '9999px', padding: '0.375rem', backgroundColor: 'rgba(0,0,0,0.05)', boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.8)', position: 'relative', zIndex: 10, gap: '0.5rem' }}>
+                {/* Underpriced Segment (Amber) */}
+                <div className="glass-extrude" style={{ height: '100%', width: '25%', borderRadius: '9999px', backgroundColor: '#F59E0B', zIndex: 20 }}></div>
+                {/* Stable Segment (Teal) */}
+                <div className="glass-extrude" style={{ height: '100%', width: '50%', borderRadius: '9999px', backgroundColor: '#10B981', zIndex: 20 }}></div>
+                {/* Overpriced Segment (Red) - with soft pulse animation */}
+                <div className="glass-extrude animate-soft-pulse" style={{ height: '100%', width: '25%', borderRadius: '9999px', backgroundColor: '#FF5E3A', zIndex: 20 }}></div>
+              </div>
+              
+              {/* Value markers above the gauge for visual context */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', padding: '0 1.25rem', marginTop: '0.75rem' }}>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#F59E0B' }}>25%</span>
+                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#10B981', textAlign: 'center', flexGrow: 1 }}>50%</span>
+                <span className="animate-text-pulse" style={{ fontSize: '0.875rem', fontWeight: 600, color: '#FF5E3A' }}>25%</span>
+              </div>
+            </div>
+            
+            {/* Metrics Footer */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '1.25rem', borderTop: '1px solid rgba(228, 226, 228, 0.6)' }}>
+              {/* Underpriced Metric */}
+              <div 
+                style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', padding: '0.5rem', margin: '-0.5rem', borderRadius: '0.5rem', transition: 'background-color 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(245,158,11,0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                onClick={() => setSelectedCard({
+                  title: 'Underpriced Items',
+                  color: '#E86A58',
+                  items: [
+                    { name: 'Vegan Wrap', category: 'Wraps', price: '£5.50', image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £6.80. (£1.30 below market)', platform: 'Uber Eats' },
+                    { name: 'Avocado Toast', category: 'Breakfast', price: '£6.00', image: 'https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £7.50. (£1.50 below market)', platform: 'Uber Eats' },
+                    { name: 'Milkshake', category: 'Drinks', price: '£3.20', image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £4.00. (£0.80 below market)', platform: 'JustEat' }
+                  ]
+                })}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                  <div style={{ width: '0.625rem', height: '0.625rem', borderRadius: '9999px', backgroundColor: '#F59E0B', boxShadow: '0 0 8px rgba(245,158,11,0.4)' }}></div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#5a413b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Underpriced</span>
                 </div>
-              ))}
+                <span style={{ fontSize: '1.125rem', color: '#1b1b1d', fontWeight: 500, paddingLeft: '1.125rem' }}>142 items</span>
+              </div>
+              
+              {/* Stable Metric */}
+              <div 
+                style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', padding: '0.5rem', margin: '-0.5rem', borderRadius: '0.5rem', transition: 'background-color 0.2s' }}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(16,185,129,0.05)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                onClick={() => setSelectedCard({
+                  title: 'Stable Items',
+                  color: '#10B981',
+                  items: [
+                    { name: 'Classic Cheeseburger', category: 'Mains', price: '£9.50', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £9.50. (Matches market perfectly)', platform: 'Uber Eats' }
+                  ]
+                })}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                  <div style={{ width: '0.625rem', height: '0.625rem', borderRadius: '9999px', backgroundColor: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.4)' }}></div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#5a413b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stable</span>
+                </div>
+                <span style={{ fontSize: '1.125rem', color: '#1b1b1d', fontWeight: 500, paddingLeft: '1.125rem' }}>284 items</span>
+              </div>
+              
+              {/* Overpriced Metric (Pulsing) */}
+              <div 
+                className="animate-text-pulse" 
+                style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', padding: '0.5rem', margin: '-0.5rem', borderRadius: '0.5rem', transition: 'background-color 0.2s' }}
+                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,94,58,0.05)'; e.currentTarget.style.animationPlayState = 'paused'; }}
+                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.animationPlayState = 'running'; }}
+                onClick={() => setSelectedCard({
+                  title: 'Above Market Average',
+                  color: '#FF5E3A',
+                  items: [
+                    { name: 'Margherita Pizza', category: 'Mains', price: '£15.00', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £13.50. (£1.50 above market)', platform: 'Uber Eats' },
+                    { name: 'Cola Zero', category: 'Drinks', price: '£2.50', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £2.00. (£0.50 above market)', platform: 'Deliveroo' }
+                  ]
+                })}
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
+                  <div style={{ width: '0.625rem', height: '0.625rem', borderRadius: '9999px', backgroundColor: '#ff5e3a', boxShadow: '0 0 8px rgba(255,94,58,0.5)' }}></div>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ff5e3a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Overpriced</span>
+                </div>
+                <span style={{ fontSize: '1.125rem', color: '#1b1b1d', fontWeight: 500, paddingLeft: '1.125rem' }}>142 items</span>
+              </div>
             </div>
           </div>
         </div>
@@ -505,12 +590,12 @@ const DashboardContent = () => {
 
       {/* Modal Overlay for "Pricing Overview" Drill-down */}
       {selectedCard && (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 100, background: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, background: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="glass-panel modal-content" style={{ width: '1200px', maxWidth: '95%', height: '80vh', padding: '2.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'rgba(250,248,244,0.95)', border: '1px solid #E5E7EB', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontFamily: '"Playfair Display", serif', fontSize: '1.25rem', fontWeight: 700, color: selectedCard.color || '#000', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: selectedCard.color || '#000', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
                 <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', background: selectedCard.color || '#000' }}></span>
-                {selectedCard.title} Items
+                {selectedCard.title}
               </h3>
               <button onClick={() => setSelectedCard(null)} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #E5E7EB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s, transform 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.transform = 'scale(1.05)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'scale(1)'; }}>
                 <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>×</span>
@@ -546,17 +631,18 @@ const DashboardContent = () => {
                                   <h4 className="font-sans" style={{ fontSize: '1rem', fontWeight: 700, color: '#111', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</h4>
                                   <span className="font-sans" style={{ fontSize: '1rem', fontWeight: 800, color: '#111', flexShrink: 0, marginLeft: '0.5rem' }}>{item.price || '£--'}</span>
                                 </div>
-                                <span className="font-sans" style={{ color: '#6B7280', fontSize: '0.75rem', fontWeight: 600, marginTop: '0.1rem' }}>{item.category || 'Category'}</span>
-                                <p className="font-sans" style={{ fontSize: '0.75rem', margin: '0.25rem 0 0 0', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                  {pricePart.includes('Your price') ? (
-                                    <>
-                                      <span style={{ color: '#E86A58' }}>{pricePart}</span>
-                                      <span style={{ color: '#9CA3AF' }}>{restPart}</span>
-                                    </>
-                                  ) : (
-                                    <span style={{ color: '#9CA3AF' }}>{item.description || 'Detailed item performance and market positioning information goes here.'}</span>
-                                  )}
-                                </p>
+                                {pricePart.includes('Your price') || pricePart.includes('Market Average') || pricePart.includes('Platform Price') ? (
+                                  <>
+                                    <span className="font-sans" style={{ color: '#D97706', fontSize: '0.75rem', fontWeight: 'bold', marginTop: '0.1rem' }}>{pricePart}</span>
+                                    <p className="font-sans" style={{ color: '#DC2626', fontSize: '0.75rem', margin: '0.25rem 0 0 0', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                      {restPart.replace(/^\.\s*/, '')}
+                                    </p>
+                                  </>
+                                ) : (
+                                  <p className="font-sans" style={{ color: '#9CA3AF', fontSize: '0.75rem', margin: '0.25rem 0 0 0', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                    {item.description || 'Detailed item performance and market positioning information goes here.'}
+                                  </p>
+                                )}
                               </div>
                             </div>
                           );

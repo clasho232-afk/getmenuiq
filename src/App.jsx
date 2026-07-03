@@ -13,6 +13,7 @@ import MarketNicheContent from './components/MarketNicheContent';
 import IntelligenceHub from './components/IntelligenceHub';
 import CompetitorFinderContent from './components/CompetitorFinderContent';
 import SearchContent from './components/SearchContent';
+import PromoIntelligenceContent from './components/PromoIntelligenceContent';
 
 
 function App() {
@@ -115,6 +116,7 @@ function App() {
               {activeTab === 'Market Niche' && <MarketNicheContent />}
               {activeTab === 'AI Strategy' && <IntelligenceHub />}
               {activeTab === 'Competitor Finder' && <CompetitorFinderContent />}
+              {activeTab === 'Promo Intelligence' && <PromoIntelligenceContent />}
               {activeTab === 'Search' && <SearchContent />}
             </main>
           </div>

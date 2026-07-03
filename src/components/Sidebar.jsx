@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LayoutDashboard, UtensilsCrossed, Brain, Compass, Eye, Radar, Settings, User, Activity, Search } from 'lucide-react';
+import { LayoutDashboard, UtensilsCrossed, Brain, Compass, Eye, Radar, Settings, User, Activity, Search, Target } from 'lucide-react';
 
 const Sidebar = ({ activeTab, setActiveTab }) => {
   const [isExpanded, setIsExpanded] = useState(false);

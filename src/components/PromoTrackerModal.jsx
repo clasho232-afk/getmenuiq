@@ -1,345 +1,462 @@
-import React, { useState } from 'react';
-import { ArrowRight, Sparkles, X, MapPin, Target, Activity, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Target, MapPin, SlidersHorizontal, ChevronDown, X, Sparkles } from 'lucide-react';
+import { MapContainer, TileLayer, Polygon, CircleMarker, ZoomControl, useMap, Tooltip } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import eastLondonAreas from './east_london_areas.json';
+import RestaurantProfileModal from './RestaurantProfileModal';
 
-const PromoTrackerModal = ({ isOpen, onClose, livePromos = [] }) => {
-  const [platformFilter, setPlatformFilter] = useState('all');
-  const [locationFilter, setLocationFilter] = useState('ilford');
-  const [viewMode, setViewMode] = useState('list'); // 'list', 'promo_detail', 'strategy_setup', 'strategy_result'
-  const [selectedPromoDetail, setSelectedPromoDetail] = useState(null);
+// ================================================================
+// PROMO INTELLIGENCE ENGINE — PURE LOGIC
+// ================================================================
+
+function getTimeVariable() {
+  const now = new Date();
+  const day = now.getDay(); 
+  const hour = now.getHours();
+
+  const isAfterMidnight = hour < 2;
+  const effectiveDay = isAfterMidnight ? (day === 0 ? 6 : day - 1) : day;
+  const isEvening = hour >= 18 || isAfterMidnight;
+
+  if (day >= 1 && day <= 5 && hour >= 12 && hour < 18) return 'QUIET';
+  if (isEvening) {
+    if (effectiveDay >= 1 && effectiveDay <= 4) return 'BUSY'; 
+    if (effectiveDay === 5 || effectiveDay === 6 || effectiveDay === 0) return 'HYPER';
+  }
+  return 'OFF';
+}
+
+const AG_SCORES = {
+  free_delivery: 6, Delivery: 6,
+  free_item: 12, 'Free Item': 12,
+  spend_save: 18, Threshold: 18,
+  discount_low: 24,
+  discount_high: 30, Discount: 24,
+  bogo: 35, BOGO: 35,
+};
+const OL_SCORES = { same_cuisine: 15, direct_match: 30, direct_match_promo: 45 };
+
+function getThreatData(promos, platform) {
+  const pp = promos.filter(p => p.platform === platform);
+  const volumeScore = pp.length === 0 ? 0 : pp.length <= 2 ? 8 : pp.length <= 5 ? 14 : 20;
+
+  let topPromo = null;
+  let aggressivenessScore = 0;
+  pp.forEach(p => {
+    const s = AG_SCORES[p.promoCategory] || AG_SCORES[p.type] || 6;
+    if (s > aggressivenessScore) { aggressivenessScore = s; topPromo = p; }
+  });
+
+  const itemOverlapScore = pp.length > 0
+    ? pp.reduce((max, p) => Math.max(max, OL_SCORES[p.itemOverlapLevel] || 15), 0)
+    : 0;
+
+  const total = Math.min(volumeScore + aggressivenessScore + itemOverlapScore, 100);
+  const level = total <= 25 ? 'LOW' : total <= 60 ? 'MEDIUM' : 'HIGH';
+
+  return { total, level, volumeScore, aggressivenessScore, itemOverlapScore, count: pp.length, topPromo };
+}
+
+const STATE_MATRIX = {
+  QUIET_LOW: { action: 'LIGHT', promoType: 'Free Delivery or 10% off', strategy: 'Low platform traffic. A small promo boosts visibility efficiently.' },
+  QUIET_MEDIUM: { action: 'COUNTER', promoType: 'Free Item add-on', strategy: 'Competitors active during quiet hours. Match their energy.' },
+  QUIET_HIGH: { action: 'COUNTER', promoType: '15-20% off hero items', strategy: 'Aggressive competitor push. Counter immediately before losing lunch.' },
+  BUSY_LOW: { action: 'HOLD', promoType: 'None', strategy: 'Organic demand is high. No threat detected.' },
+  BUSY_MEDIUM: { action: 'LIGHT', promoType: 'Free Delivery only', strategy: 'Some competition. Low-cost visibility play recommended.' },
+  BUSY_HIGH: { action: 'COUNTER', promoType: 'Free Item or Spend & Save', strategy: 'Losing orders during peak. Counter with value, not heavy discount.' },
+  HYPER_LOW: { action: 'HOLD', promoType: 'None', strategy: 'Maximum platform traffic. Best organic window.' },
+  HYPER_MEDIUM: { action: 'LIGHT', promoType: 'Free Delivery', strategy: 'Peak hour competition. Stay visible cheaply on this platform.' },
+  HYPER_HIGH: { action: 'MATCH', promoType: 'Match within 5%', strategy: 'Peak hour promo war. High direct item overlap detected.' },
+};
+
+function getStateOutput(time, threat) {
+  if (time === 'OFF') return { action: 'HOLD', promoType: 'None', strategy: 'Platform activity near zero.' };
+  return STATE_MATRIX[`${time}_${threat}`] || STATE_MATRIX['BUSY_LOW'];
+}
+
+function runIntel(promos) {
+  const time = getTimeVariable();
+  const platforms = [
+    { key: 'ubereats',  label: 'UBEREATS' },
+    { key: 'deliveroo', label: 'DELIVEROO' },
+    { key: 'justeats',  label: 'JUSTEATS' },
+  ];
+  const ACTION_PRIORITY = { MATCH: 4, COUNTER: 3, LIGHT: 2, HOLD: 1 };
   
-  // Strategy setup state
-  const [stratLoc, setStratLoc] = useState('ilford');
-  const [stratPlat, setStratPlat] = useState('all');
+  const results = platforms.map(plt => {
+    const td = getThreatData(promos, plt.key);
+    const output = getStateOutput(time, td.level);
+    return { ...plt, time, threatData: td, output };
+  });
+  
+  const sorted = [...results].sort(
+    (a, b) => (ACTION_PRIORITY[b.output.action] || 0) - (ACTION_PRIORITY[a.output.action] || 0)
+  );
+  
+  return { time, results, topResult: sorted[0] };
+}
+
+function getSinglePromoThreatScore(promo) {
+  let score = 0;
+  score += AG_SCORES[promo.promoCategory] || AG_SCORES[promo.type] || 6;
+  score += OL_SCORES[promo.itemOverlapLevel] || 15;
+  return Math.min(score, 100);
+}
+
+// Map Controller for Zooming/Panning
+const MapController = ({ bounds, selectedPromo }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (selectedPromo) {
+      map.flyTo([selectedPromo.lat, selectedPromo.lng], 16, { duration: 1.2 });
+    } else if (bounds) {
+      map.flyToBounds(bounds, { padding: [20, 20], duration: 1.2 });
+    }
+  }, [bounds, selectedPromo, map]);
+  return null;
+};
+
+// ================================================================
+// COMPONENT
+// ================================================================
+
+const PromoTrackerModal = ({ isOpen, onClose }) => {
+  const [intelPlatform, setIntelPlatform] = useState(null);
+  const [areaFilter, setAreaFilter] = useState('ilford');
+  const [sortBy, setSortBy] = useState('threat_desc');
+  const [selectedPromo, setSelectedPromo] = useState(null);
+  const [profileModalPromo, setProfileModalPromo] = useState(null);
+
+  const staticPromos = [
+    {
+      id: 1, lat: 51.560, lng: 0.081,
+      restaurant: "Domino's Ilford", promo: '25% off selected pizzas',
+      type: 'Discount', active: 'Active',
+      image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=90',
+      platform: 'deliveroo', location: 'ilford', itemOverlapLevel: 'direct_match_promo', overlapContext: 'Margherita, Pepperoni',
+    },
+    {
+      id: 2, lat: 51.520, lng: 0.060,
+      restaurant: 'Pizza Palace Barking', promo: 'Buy 1 Get 1 Free',
+      type: 'BOGO', active: 'Active',
+      image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=600&q=90',
+      platform: 'deliveroo', location: 'neighborhood', itemOverlapLevel: 'direct_match', overlapContext: 'Cheese Pizza',
+    },
+    {
+      id: 3, lat: 51.550, lng: 0.088,
+      restaurant: 'Al-Amin Pizza', promo: 'Free Delivery',
+      type: 'Delivery', active: 'Active',
+      image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=600&q=90',
+      platform: 'justeats', location: 'ilford', itemOverlapLevel: 'same_cuisine', overlapContext: 'Pizza, Italian',
+    },
+    {
+      id: 4, lat: 51.554, lng: 0.076,
+      restaurant: 'Fire Crust', promo: 'Spend £20 Save £5',
+      type: 'Threshold', active: 'Active',
+      image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=600&q=90',
+      platform: 'deliveroo', location: 'ilford', itemOverlapLevel: 'same_cuisine', overlapContext: 'Pizza',
+    },
+    {
+      id: 5, lat: 51.558, lng: 0.072,
+      restaurant: 'Burger Boss Ilford', promo: '20% off entire menu',
+      type: 'Discount', active: 'Active',
+      image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=90',
+      platform: 'ubereats', location: 'ilford', itemOverlapLevel: 'none', overlapContext: 'Burgers',
+    },
+    {
+      id: 6, lat: 51.562, lng: 0.085,
+      restaurant: 'Wok Master', promo: 'Free Spring Rolls',
+      type: 'Free Item', active: 'Active',
+      image: 'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=600&q=90',
+      platform: 'justeats', location: 'ilford', itemOverlapLevel: 'same_broad_category', overlapContext: 'Asian',
+    },
+    {
+      id: 7, lat: 51.530, lng: 0.070,
+      restaurant: 'Gourmet Burger Kitchen', promo: '20% off over £20',
+      type: 'Threshold', active: 'Active',
+      image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=90',
+      platform: 'ubereats', location: 'neighborhood', itemOverlapLevel: 'none', overlapContext: 'Burgers',
+    },
+    {
+      id: 8, lat: 51.535, lng: 0.075,
+      restaurant: 'Chicken Stop Barking', promo: 'Free Fries with Meal',
+      type: 'Free Item', active: 'Active',
+      image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=600&q=90',
+      platform: 'justeats', location: 'neighborhood', itemOverlapLevel: 'same_cuisine', overlapContext: 'Chicken',
+    },
+  ];
+
+  const intelData = runIntel(staticPromos);
+  
+  useEffect(() => {
+    if (!intelPlatform && intelData.topResult) {
+      setIntelPlatform(intelData.topResult.key);
+    }
+  }, []);
+
+  const handlePlatformClick = (key) => {
+    if (intelPlatform === key) {
+      setIntelPlatform('all');
+    } else {
+      setIntelPlatform(key);
+    }
+    setSelectedPromo(null);
+  };
+
+  const handleAreaClick = (area) => {
+    setAreaFilter(area);
+    setSelectedPromo(null);
+  };
+
+  let displayFeed = staticPromos.filter(p => {
+    const matchPlatform = intelPlatform === 'all' || intelPlatform === null ? true : p.platform === intelPlatform;
+    const matchArea = areaFilter === 'all' ? true : p.location === areaFilter;
+    return matchPlatform && matchArea;
+  });
+
+  displayFeed = displayFeed.sort((a, b) => {
+    if (sortBy === 'threat_desc') {
+      return getSinglePromoThreatScore(b) - getSinglePromoThreatScore(a);
+    }
+    return 0;
+  });
+
+  // Calculate Map Bounds based on selected area
+  const primarySector = areaFilter === 'ilford' 
+    ? (eastLondonAreas.find(s => s.name === 'Ilford') || eastLondonAreas[0])
+    : (eastLondonAreas.find(s => s.name === 'Barking and Dagenham') || eastLondonAreas[0]);
+
+  let bounds = null;
+  if (primarySector && primarySector.bounds) {
+    const lats = primarySector.bounds.map(b => b[0]);
+    const lngs = primarySector.bounds.map(b => b[1]);
+    bounds = [
+      [Math.min(...lats), Math.min(...lngs)],
+      [Math.max(...lats), Math.max(...lngs)]
+    ];
+  }
 
   if (!isOpen) return null;
 
-  const staticPromos = [
-    { restaurant: 'Domino\'s Ilford', promo: '25% off selected pizzas', type: 'Discount', active: 'Active', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=64&q=80', watchlisted: true, platform: 'ubereats', location: 'ilford', strategy: 'Your margin on pizzas is 65%. Instead of matching 25% off, offer a free Garlic Bread (Cost: £0.80) to maintain higher overall profitability while matching perceived value.' },
-    { restaurant: 'Pizza Palace Barking', promo: 'Buy 1 Get 1 Free', type: 'BOGO', active: 'Active', image: 'https://images.unsplash.com/photo-1544025162-d76694265947?auto=format&fit=crop&w=64&q=80', watchlisted: true, platform: 'deliveroo', location: 'neighborhood', strategy: 'Pizza Palace runs this BOGO every Friday. Do not engage; focus your ad spend on Saturday when their promo ends and they lose algorithm rank.' },
-    { restaurant: 'Al-Amin Pizza', promo: 'Free Delivery', type: 'Delivery', active: 'Active', image: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?auto=format&fit=crop&w=64&q=80', platform: 'justeats', location: 'ilford', watchlisted: false },
-    { restaurant: 'Fire Crust', promo: 'Spend £20 Save £5', type: 'Threshold', active: 'Active', image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=64&q=80', platform: 'ubereats', location: 'neighborhood', watchlisted: false },
-    { restaurant: 'Burger Boss Ilford', promo: '20% off entire menu', type: 'Discount', active: 'Active', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=64&q=80', platform: 'deliveroo', location: 'ilford', watchlisted: false },
-    { restaurant: 'Wok Master', promo: 'Free Spring Rolls', type: 'Free Item', active: 'Active', image: 'https://images.unsplash.com/photo-1552611052-33e04de081de?auto=format&fit=crop&w=64&q=80', platform: 'ubereats', location: 'ilford', watchlisted: false }
-  ];
-
-  const locFiltered = staticPromos.filter(p => locationFilter === 'neighborhood' || p.location === 'ilford');
-  
-  const counts = {
-    all: locFiltered.length,
-    ubereats: locFiltered.filter(p => p.platform === 'ubereats').length,
-    deliveroo: locFiltered.filter(p => p.platform === 'deliveroo').length,
-    justeats: locFiltered.filter(p => p.platform === 'justeats').length,
-  };
-
-  const displayPromos = locFiltered.filter(p => platformFilter === 'all' || p.platform === platformFilter);
-
-  const handleClose = () => {
-    setViewMode('list');
-    setSelectedPromoDetail(null);
-    onClose();
-  };
-
-  const openPromoDetail = (promo) => {
-    setSelectedPromoDetail(promo);
-    setViewMode('promo_detail');
-  };
-
-  const PlatformIcon = ({ platform }) => {
-    if (platform === 'ubereats') return <div title="UberEats" style={{ width: 16, height: 16, borderRadius: '50%', background: '#06C167', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>U</div>;
-    if (platform === 'deliveroo') return <div title="Deliveroo" style={{ width: 16, height: 16, borderRadius: '50%', background: '#00CCBC', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>D</div>;
-    if (platform === 'justeats') return <div title="JustEats" style={{ width: 16, height: 16, borderRadius: '50%', background: '#FF8000', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>J</div>;
-    if (platform === 'all') return <div title="All Platforms" style={{ width: 16, height: 16, borderRadius: '50%', background: '#111', color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold', flexShrink: 0 }}>A</div>;
-    return null;
-  };
-
-  const renderStrategyResult = () => {
-    const resultPromos = staticPromos.filter(p => (stratLoc === 'neighborhood' || p.location === 'ilford') && (stratPlat === 'all' || p.platform === stratPlat));
-    const resultCount = resultPromos.length;
-
-    let recommendation = '';
-    if (stratLoc === 'ilford' && stratPlat === 'ubereats') {
-      recommendation = `Analyzing the data for Ilford on UberEats, we detected ${resultCount} active promotions. The market is highly saturated with aggressive pizza discounts right now. We recommend a "Free Item with £20 Spend" to maintain basket size while offering perceived value. Do not attempt to match 25% off offers as it will heavily erode your margin.`;
-    } else if (stratLoc === 'neighborhood' && stratPlat === 'deliveroo') {
-      recommendation = `Analyzing the data for the wider neighborhood on Deliveroo, we detected ${resultCount} active promotions. There is a strong trend of BOGO (Buy One Get One) offers from major competitors. Counter this by running targeted sponsored ads during off-peak hours (2PM-5PM) rather than matching BOGO, protecting your margins while capturing steady volume.`;
-    } else {
-      recommendation = `Analyzing the data for ${stratLoc === 'ilford' ? 'Ilford' : 'the Neighborhood'} across ${stratPlat === 'all' ? 'all platforms' : stratPlat}, we detected ${resultCount} active promotion(s). To counter this effectively without eroding margins, we recommend launching a highly targeted "Spend £25, Save £5" threshold campaign to capture high-value basket sizes.`;
-    }
-
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', height: '100%' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0 }}>
-          <button onClick={() => setViewMode('strategy_setup')} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: '#4B5563', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <ArrowRight size={16} style={{ transform: 'rotate(180deg)' }} /> Back
-          </button>
-          <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111', margin: 0 }}>Strategy Recommendation</h3>
-          <button onClick={handleClose} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #E5E7EB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-            <X size={18} color="#111" />
-          </button>
-        </div>
-
-        <div className="custom-modal-scroll" style={{ flex: 1, overflowY: 'auto', background: '#fff', borderRadius: '16px', padding: '2rem', border: '1px solid #E5E7EB', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-          
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem', flexWrap: 'wrap', justifyContent: 'center', width: '100%' }}>
-            <div style={{ background: '#F9FAFB', padding: '12px 24px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, border: '1px solid #E5E7EB' }}>
-              <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Area</span>
-              <span style={{ fontSize: '16px', color: '#111', fontWeight: 'bold', textTransform: 'capitalize' }}>{stratLoc}</span>
-            </div>
-            <div style={{ background: '#F9FAFB', padding: '12px 24px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, border: '1px solid #E5E7EB' }}>
-              <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Platform</span>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <PlatformIcon platform={stratPlat} />
-                <span style={{ fontSize: '16px', color: '#111', fontWeight: 'bold', textTransform: 'capitalize' }}>{stratPlat}</span>
-              </div>
-            </div>
-            <div style={{ background: '#FFF1F2', padding: '12px 24px', borderRadius: '12px', display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, border: '1px solid #FECACA' }}>
-              <span style={{ fontSize: '11px', color: '#991B1B', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Promotions</span>
-              <span style={{ fontSize: '16px', color: '#E85D4E', fontWeight: 'bold' }}>{resultCount} Active</span>
-            </div>
-          </div>
-
-          <div style={{ width: '100%', marginBottom: '2rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', textAlign: 'left' }}>
-            <h3 style={{ fontSize: '14px', fontWeight: 'bold', color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.25rem', textAlign: 'left' }}>Targeted Promotions</h3>
-            {resultPromos.length > 0 ? resultPromos.map((promo, i) => (
-              <div 
-                key={i} 
-                style={{ background: '#fff', borderRadius: '12px', padding: '0.75rem 1rem', border: '1px solid #E5E7EB', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0 }}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                  <img src={promo.image} alt={promo.restaurant} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #F3F4F6', flexShrink: 0 }} />
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                    <div style={{ fontWeight: 'bold', color: '#111', fontSize: '15px', fontFamily: 'sans-serif', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                      {promo.restaurant}
-                      <PlatformIcon platform={promo.platform} />
-                      {promo.watchlisted && <span style={{ background: '#FEF3C7', color: '#D97706', fontSize: '9px', padding: '2px 4px', borderRadius: '4px', fontWeight: 800 }}>WATCHLIST</span>}
-                    </div>
-                    <div style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500, fontFamily: 'sans-serif' }}>{promo.promo}</div>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '12px', fontWeight: 600, background: '#F3F4F6', color: '#4B5563', padding: '4px 10px', borderRadius: '6px', fontFamily: 'sans-serif' }}>
-                    {promo.type}
-                  </span>
-                  <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#E85D4E', fontFamily: 'sans-serif' }}>{promo.active}</span>
-                </div>
-              </div>
-            )) : (
-              <div style={{ textAlign: 'center', padding: '1rem', color: '#6B7280', fontSize: '14px', fontFamily: 'sans-serif', border: '1px dashed #E5E7EB', borderRadius: '12px' }}>
-                No active promotions match this criteria.
-              </div>
-            )}
-          </div>
-          
-          <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111', margin: '0 0 1rem 0' }}>Your Action:</h2>
-          
-          <div style={{ background: '#F9FAFB', padding: '1.5rem', borderRadius: '16px', border: '1px solid #E5E7EB', width: '100%', textAlign: 'left' }}>
-            <p style={{ color: '#374151', lineHeight: 1.7, fontSize: '15px', margin: 0 }}>
-              {recommendation}
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
-  const renderStrategySetup = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', height: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0 }}>
-        <button onClick={() => setViewMode('list')} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: '#4B5563', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-          <ArrowRight size={16} style={{ transform: 'rotate(180deg)' }} /> Back to Promos
-        </button>
-        <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#111', margin: 0 }}>Strategy Builder</h3>
-        <button onClick={handleClose} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #E5E7EB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-          <X size={18} color="#111" />
-        </button>
-      </div>
-
-      <div className="custom-modal-scroll" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '2rem', paddingRight: '8px' }}>
-        <div>
-          <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: '#111', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}><MapPin size={18} /> Select Target Area</h4>
-          <div style={{ display: 'flex', gap: '1rem' }}>
-            <button onClick={() => setStratLoc('ilford')} style={{ flex: 1, padding: '16px', borderRadius: '16px', border: stratLoc === 'ilford' ? '2px solid #111' : '1px solid #E5E7EB', background: '#fff', fontWeight: 600, color: '#111', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '18px' }}>Ilford</span>
-              <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 'normal' }}>Local vicinity only</span>
-            </button>
-            <button onClick={() => setStratLoc('neighborhood')} style={{ flex: 1, padding: '16px', borderRadius: '16px', border: stratLoc === 'neighborhood' ? '2px solid #111' : '1px solid #E5E7EB', background: '#fff', fontWeight: 600, color: '#111', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '18px' }}>Neighborhood</span>
-              <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 'normal' }}>Ilford + surrounding areas</span>
-            </button>
-          </div>
-        </div>
-
-        <div>
-          <h4 style={{ fontSize: '16px', fontWeight: 'bold', color: '#111', marginBottom: '1rem', display: 'flex', alignItems: 'center', gap: '8px' }}><Target size={18} /> Select Platform</h4>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem' }}>
-            {['all', 'ubereats', 'deliveroo', 'justeats'].map(plat => (
-              <button key={plat} onClick={() => setStratPlat(plat)} style={{ padding: '16px', borderRadius: '16px', border: stratPlat === plat ? '2px solid #111' : '1px solid #E5E7EB', background: '#fff', fontWeight: 600, color: '#111', cursor: 'pointer', transition: 'all 0.2s', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
-                <PlatformIcon platform={plat} />
-                <span style={{ fontSize: '14px', textTransform: 'capitalize' }}>{plat}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div style={{ marginTop: '1.5rem', flexShrink: 0 }}>
-        <button onClick={() => setViewMode('strategy_result')} style={{ width: '100%', padding: '16px', borderRadius: '9999px', background: '#E85D4E', color: '#fff', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '16px', boxShadow: '0 4px 12px rgba(232, 93, 78, 0.3)' }}>
-          <Sparkles size={20} /> Analyze
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderPromoDetail = () => (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', height: '100%' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexShrink: 0 }}>
-        <button onClick={() => setViewMode('list')} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '14px', fontWeight: 600, color: '#4B5563', background: 'transparent', border: 'none', cursor: 'pointer', padding: 0 }}>
-          <ArrowRight size={16} style={{ transform: 'rotate(180deg)' }} /> Back
-        </button>
-        <button onClick={handleClose} style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #E5E7EB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', padding: 0 }}>
-          <X size={18} color="#6B7280" />
-        </button>
-      </div>
-
-      <div className="custom-modal-scroll" style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', alignItems: 'center', textAlign: 'center', overflowY: 'auto', paddingBottom: '1rem', minHeight: 0 }}>
-        <img src={selectedPromoDetail.image} alt={selectedPromoDetail.restaurant} style={{ width: '100%', height: '192px', borderRadius: '20px', objectFit: 'cover', border: '1px solid #E5E7EB', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', flexShrink: 0 }} />
-        <div style={{ width: '100%', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px', marginBottom: '8px' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111', margin: 0, fontFamily: 'sans-serif' }}>{selectedPromoDetail.restaurant}</h2>
-            <PlatformIcon platform={selectedPromoDetail.platform} />
-          </div>
-          <div style={{ display: 'inline-block', background: '#F3F4F6', padding: '4px 12px', borderRadius: '9999px', fontSize: '14px', fontWeight: 600, color: '#4B5563', marginBottom: '1rem', fontFamily: 'sans-serif' }}>
-            {selectedPromoDetail.type}
-          </div>
-          <h3 style={{ fontSize: '20px', fontWeight: 'bold', color: '#E85D4E', marginBottom: '1rem', margin: 0, fontFamily: 'sans-serif' }}>{selectedPromoDetail.promo}</h3>
-          <p style={{ color: '#4B5563', lineHeight: 1.6, background: '#fff', padding: '1.5rem', borderRadius: '16px', border: '1px solid #E5E7EB', textAlign: 'left', boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', margin: 0, fontFamily: 'sans-serif' }}>
-            This promotion is currently active in the {selectedPromoDetail.location === 'ilford' ? 'Ilford area' : 'neighborhood'}.
-          </p>
-          {selectedPromoDetail.watchlisted && selectedPromoDetail.strategy && (
-            <div style={{ background: '#FEF2F2', border: '1px solid #FECACA', borderRadius: '16px', padding: '1.5rem', marginTop: '1rem', textAlign: 'left' }}>
-              <div style={{ fontSize: '12px', fontWeight: 800, color: '#DC2626', marginBottom: '8px', letterSpacing: '0.05em' }}>COMPETITOR INTEL</div>
-              <p style={{ color: '#991B1B', margin: 0, fontSize: '14px', lineHeight: 1.5, fontWeight: 500 }}>{selectedPromoDetail.strategy}</p>
+  return (
+    <div 
+      style={{ 
+        position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', 
+        zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', 
+        background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)' 
+      }}
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div style={{ 
+        width: '1100px', maxWidth: '95vw', height: '700px', maxHeight: '90vh', 
+        background: '#FAFAFA', borderRadius: '24px', boxShadow: '0 24px 48px rgba(0,0,0,0.15)', 
+        display: 'flex', flexDirection: 'row', overflow: 'hidden', position: 'relative' 
+      }}>
+        
+        <div style={{ width: '60%', height: '100%', position: 'relative', background: '#E5E7EB' }}>
+          {bounds ? (
+            <MapContainer 
+              bounds={bounds}
+              boundsOptions={{ padding: [20, 20] }}
+              zoomControl={false}
+              scrollWheelZoom={true}
+              style={{ width: '100%', height: '100%' }}
+            >
+              <MapController bounds={bounds} selectedPromo={selectedPromo} />
+              <ZoomControl position="bottomright" />
+              <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+              <Polygon 
+                positions={primarySector.bounds}
+                pathOptions={{ 
+                  color: '#28a745',
+                  weight: 1.5,
+                  fillOpacity: 0.0,
+                  lineCap: "round",
+                  lineJoin: "round",
+                  className: 'dashboard-mini-map-polygon'
+                }}
+              />
+              {displayFeed.map((promo) => {
+                const threatScore = getSinglePromoThreatScore(promo);
+                const color = threatScore > 25 ? '#E63946' : '#F59E0B';
+                const isSelected = selectedPromo?.id === promo.id;
+                
+                return (
+                  <CircleMarker 
+                    key={promo.id}
+                    center={[promo.lat, promo.lng]}
+                    radius={isSelected ? 10 : 8}
+                    pathOptions={{ color: color, fillColor: color, fillOpacity: 1, weight: isSelected ? 3 : 2, className: isSelected ? 'modal-pulse-marker-active' : 'modal-pulse-marker' }}
+                    eventHandlers={{
+                      click: () => {
+                        setSelectedPromo(promo);
+                      }
+                    }}
+                  >
+                    {isSelected && (
+                      <Tooltip permanent interactive={true} direction="top" offset={[0, -12]} className="custom-map-tooltip">
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProfileModalPromo(promo);
+                          }}
+                          style={{ display: 'flex', flexDirection: 'column', width: '140px', overflow: 'hidden', borderRadius: '6px', cursor: 'pointer' }}
+                        >
+                          <img src={promo.image} style={{ width: '100%', height: '70px', objectFit: 'cover' }} alt={promo.restaurant} />
+                          <div style={{ padding: '8px 6px', textAlign: 'center', background: '#FFF' }}>
+                            <div style={{ fontWeight: 800, fontSize: '13px', color: '#111', fontFamily: "'Lufga', sans-serif", lineHeight: '1.3' }}>{promo.restaurant}</div>
+                          </div>
+                        </div>
+                      </Tooltip>
+                    )}
+                  </CircleMarker>
+                );
+              })}
+            </MapContainer>
+          ) : (
+            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
+              Map Unavailable
             </div>
           )}
+
+          <div style={{ position: 'absolute', top: '24px', left: '24px', zIndex: 1000, pointerEvents: 'none' }}>
+            <h2 style={{ 
+              fontSize: '28px', 
+              fontWeight: 900, 
+              color: '#111', 
+              margin: 0, 
+              textShadow: '0 2px 10px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,1), 0 4px 20px rgba(255,255,255,0.8)'
+            }}>
+              Active Promos Map
+            </h2>
+          </div>
         </div>
-      </div>
-    </div>
-  );
 
-  return (
-    <div style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem', background: 'rgba(0,0,0,0.4)', backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)', boxSizing: 'border-box' }}>
-      
-      {/* Increased max-width to 800px to match requested proportions */}
-      <div style={{ position: 'relative', width: '100%', maxWidth: '800px', height: '85vh', background: '#F8F7F4', borderRadius: '24px', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)', padding: '2rem', display: 'flex', flexDirection: 'column', border: '1px solid rgba(255,255,255,0.5)', boxSizing: 'border-box' }}>
-        
-        <style>{`
-          .custom-modal-scroll::-webkit-scrollbar { width: 4px; }
-          .custom-modal-scroll::-webkit-scrollbar-track { background: transparent; }
-          .custom-modal-scroll::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
-        `}</style>
+        <div style={{ width: '40%', height: '100%', background: '#FFFFFF', display: 'flex', flexDirection: 'column', position: 'relative', boxShadow: '-10px 0 30px rgba(0,0,0,0.03)', zIndex: 20 }}>
+          
+          <div style={{ position: 'absolute', top: '16px', right: '16px', zIndex: 30 }}>
+            <button onClick={onClose} style={{ width: '36px', height: '36px', borderRadius: '50%', background: '#F3F4F6', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s' }}>
+              <X size={18} color="#4B5563" />
+            </button>
+          </div>
 
-        {viewMode === 'strategy_setup' && renderStrategySetup()}
-        {viewMode === 'strategy_result' && renderStrategyResult()}
-        {viewMode === 'promo_detail' && renderPromoDetail()}
-
-        {viewMode === 'list' && (
-          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden', height: '100%' }}>
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '1.5rem', flexShrink: 0 }}>
-              <h3 style={{ fontSize: '24px', fontWeight: 'bold', color: '#111', fontFamily: 'sans-serif', letterSpacing: '-0.025em', margin: 0 }}>Active Competitor Promotions</h3>
-              <button 
-                onClick={handleClose} 
-                style={{ width: '40px', height: '40px', borderRadius: '50%', border: '1px solid #E5E7EB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)', padding: 0 }}
-              >
-                <X size={18} color="#111" />
-              </button>
-            </div>
+          <div style={{ padding: '24px', paddingBottom: '16px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111', margin: '0 0 16px 0' }}>Competitor Activity Feed</h3>
             
-            {/* Row 1: Platform Metrics */}
-            <div style={{ display: 'flex', gap: '12px', marginBottom: '1rem', flexWrap: 'wrap', flexShrink: 0 }}>
-              <button onClick={() => setPlatformFilter('all')} style={{ padding: '8px 16px', borderRadius: '9999px', border: platformFilter === 'all' ? '1px solid #111' : '1px solid #E5E7EB', background: platformFilter === 'all' ? '#111' : '#fff', color: platformFilter === 'all' ? '#fff' : '#4B5563', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-                All <span style={{ background: platformFilter === 'all' ? 'rgba(255,255,255,0.2)' : '#F3F4F6', color: platformFilter === 'all' ? '#fff' : '#111', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px' }}>{counts.all}</span>
+            <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '6px' }}>
+              <button onClick={() => handlePlatformClick('all')} style={{ padding: '4px 8px', borderRadius: '999px', background: intelPlatform === 'all' || !intelPlatform ? '#111' : '#FFFFFF', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: intelPlatform === 'all' || !intelPlatform ? '#FFF' : '#111' }}>All</span>
+                <span style={{ background: intelPlatform === 'all' || !intelPlatform ? '#374151' : '#F3F4F6', color: intelPlatform === 'all' || !intelPlatform ? '#FFF' : '#4B5563', padding: '2px 6px', borderRadius: '999px', fontSize: '10px', fontWeight: 700 }}>{staticPromos.length}</span>
               </button>
-              <button onClick={() => setPlatformFilter('ubereats')} style={{ padding: '8px 16px', borderRadius: '9999px', border: platformFilter === 'ubereats' ? '1px solid #111' : '1px solid #E5E7EB', background: platformFilter === 'ubereats' ? '#111' : '#fff', color: platformFilter === 'ubereats' ? '#fff' : '#4B5563', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-                <PlatformIcon platform="ubereats" /> UberEats <span style={{ background: platformFilter === 'ubereats' ? 'rgba(255,255,255,0.2)' : '#F3F4F6', color: platformFilter === 'ubereats' ? '#fff' : '#111', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px' }}>{counts.ubereats}</span>
+              
+              <button onClick={() => handlePlatformClick('ubereats')} style={{ padding: '4px 8px', borderRadius: '999px', background: intelPlatform === 'ubereats' ? '#111' : '#FFFFFF', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#06C167', color: '#fff', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>U</div>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: intelPlatform === 'ubereats' ? '#FFF' : '#111' }}>UberEats</span>
               </button>
-              <button onClick={() => setPlatformFilter('deliveroo')} style={{ padding: '8px 16px', borderRadius: '9999px', border: platformFilter === 'deliveroo' ? '1px solid #111' : '1px solid #E5E7EB', background: platformFilter === 'deliveroo' ? '#111' : '#fff', color: platformFilter === 'deliveroo' ? '#fff' : '#4B5563', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-                <PlatformIcon platform="deliveroo" /> Deliveroo <span style={{ background: platformFilter === 'deliveroo' ? 'rgba(255,255,255,0.2)' : '#F3F4F6', color: platformFilter === 'deliveroo' ? '#fff' : '#111', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px' }}>{counts.deliveroo}</span>
+
+              <button onClick={() => handlePlatformClick('deliveroo')} style={{ padding: '4px 8px', borderRadius: '999px', background: intelPlatform === 'deliveroo' ? '#111' : '#FFFFFF', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#00CCBC', color: '#fff', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>D</div>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: intelPlatform === 'deliveroo' ? '#FFF' : '#111' }}>Deliveroo</span>
               </button>
-              <button onClick={() => setPlatformFilter('justeats')} style={{ padding: '8px 16px', borderRadius: '9999px', border: platformFilter === 'justeats' ? '1px solid #111' : '1px solid #E5E7EB', background: platformFilter === 'justeats' ? '#111' : '#fff', color: platformFilter === 'justeats' ? '#fff' : '#4B5563', fontSize: '14px', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px', transition: 'all 0.2s', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' }}>
-                <PlatformIcon platform="justeats" /> JustEats <span style={{ background: platformFilter === 'justeats' ? 'rgba(255,255,255,0.2)' : '#F3F4F6', color: platformFilter === 'justeats' ? '#fff' : '#111', padding: '2px 8px', borderRadius: '9999px', fontSize: '12px' }}>{counts.justeats}</span>
+
+              <button onClick={() => handlePlatformClick('justeats')} style={{ padding: '4px 8px', borderRadius: '999px', background: intelPlatform === 'justeats' ? '#111' : '#FFFFFF', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
+                <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#FF8000', color: '#fff', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>J</div>
+                <span style={{ fontSize: '12px', fontWeight: 600, color: intelPlatform === 'justeats' ? '#FFF' : '#111' }}>JustEats</span>
               </button>
             </div>
 
-            {/* Row 2: Location Toggle */}
-            <div style={{ marginBottom: '1.5rem', flexShrink: 0 }}>
-              <div style={{ display: 'inline-flex', background: '#EBEAE6', padding: '4px', borderRadius: '9999px' }}>
-                <button 
-                  onClick={() => setLocationFilter('ilford')}
-                  style={{ padding: '8px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: locationFilter === 'ilford' ? '#fff' : 'transparent', color: locationFilter === 'ilford' ? '#111' : '#6B7280', boxShadow: locationFilter === 'ilford' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
-                >
-                  Ilford
-                </button>
-                <button 
-                  onClick={() => setLocationFilter('neighborhood')}
-                  style={{ padding: '8px 32px', borderRadius: '9999px', fontSize: '14px', fontWeight: 600, border: 'none', cursor: 'pointer', transition: 'all 0.2s', background: locationFilter === 'neighborhood' ? '#fff' : 'transparent', color: locationFilter === 'neighborhood' ? '#111' : '#6B7280', boxShadow: locationFilter === 'neighborhood' ? '0 2px 4px rgba(0,0,0,0.05)' : 'none' }}
-                >
-                  Neighborhood
-                </button>
-              </div>
-            </div>
-            
-            <div style={{ fontSize: '16px', fontWeight: 'bold', color: '#111', marginBottom: '1rem', flexShrink: 0 }}>
-              Promotions
-            </div>
-
-            {/* List View - Tighter Layout for More Visibility */}
-            <div className="custom-modal-scroll" style={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', paddingRight: '12px', minHeight: 0, paddingBottom: '1rem' }}>
-              {displayPromos.length > 0 ? displayPromos.map((promo, i) => (
-                <div 
-                  key={i} 
-                  onClick={() => openPromoDetail(promo)}
-                  style={{ background: '#fff', borderRadius: '12px', padding: '0.75rem 1rem', border: '1px solid #E5E7EB', boxShadow: '0 1px 4px rgba(0,0,0,0.02)', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexShrink: 0, transition: 'all 0.2s' }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(0,0,0,0.05)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 1px 4px rgba(0,0,0,0.02)'; }}
-                >
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <img src={promo.image} alt={promo.restaurant} style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #F3F4F6', flexShrink: 0 }} />
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                      <div style={{ fontWeight: 'bold', color: '#111', fontSize: '15px', fontFamily: 'sans-serif', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        {promo.restaurant}
-                        <PlatformIcon platform={promo.platform} />
-                        {promo.watchlisted && <span style={{ background: '#FEF3C7', color: '#D97706', fontSize: '9px', padding: '2px 4px', borderRadius: '4px', fontWeight: 800 }}>WATCHLIST</span>}
-                      </div>
-                      <div style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500, fontFamily: 'sans-serif' }}>{promo.promo}</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px', flexShrink: 0 }}>
-                    <span style={{ fontSize: '12px', fontWeight: 600, background: '#F3F4F6', color: '#4B5563', padding: '4px 10px', borderRadius: '6px', fontFamily: 'sans-serif' }}>
-                      {promo.type}
-                    </span>
-                    <span style={{ fontSize: '13px', fontWeight: 'bold', color: '#E85D4E', fontFamily: 'sans-serif' }}>{promo.active}</span>
-                  </div>
-                </div>
-              )) : (
-                <div style={{ textAlign: 'center', padding: '2rem', color: '#6B7280', fontSize: '14px', fontFamily: 'sans-serif', background: '#fff', borderRadius: '12px', border: '1px dashed #E5E7EB' }}>
-                  No active promotions found for {platformFilter} in {locationFilter}.
-                </div>
-              )}
-            </div>
-
-            <div style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid #E5E7EB', flexShrink: 0 }}>
-              <button 
-                onClick={() => setViewMode('strategy_setup')}
-                style={{ width: '100%', padding: '14px', borderRadius: '9999px', background: '#111', color: '#fff', fontWeight: 'bold', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', fontSize: '15px', transition: 'background 0.2s' }}
-                onMouseEnter={(e) => e.currentTarget.style.background = '#333'}
-                onMouseLeave={(e) => e.currentTarget.style.background = '#111'}
-              >
-                <Sparkles size={18} /> Suggest Strategy
+            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
+              <button onClick={() => handleAreaClick('ilford')} style={{ padding: '6px 16px', borderRadius: '8px', background: areaFilter === 'ilford' ? '#111' : '#F3F4F6', border: 'none', fontSize: '13px', fontWeight: 600, color: areaFilter === 'ilford' ? '#FFF' : '#4B5563', cursor: 'pointer' }}>
+                Ilford
+              </button>
+              <button onClick={() => handleAreaClick('neighborhood')} style={{ padding: '6px 16px', borderRadius: '8px', background: areaFilter === 'neighborhood' ? '#111' : '#F3F4F6', border: 'none', fontSize: '13px', fontWeight: 600, color: areaFilter === 'neighborhood' ? '#FFF' : '#4B5563', cursor: 'pointer' }}>
+                Neighborhood
               </button>
             </div>
           </div>
-        )}
+
+          <div className="invisible-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '16px 24px', background: '#FAFAFA' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {displayFeed.map((promo) => {
+                const platformInitial = promo.platform === 'ubereats' ? 'U' : promo.platform === 'deliveroo' ? 'D' : 'J';
+                const platformColor = promo.platform === 'ubereats' ? '#06C167' : promo.platform === 'deliveroo' ? '#00CCBC' : '#FF8000';
+                const isSelected = selectedPromo?.id === promo.id;
+                
+                return (
+                  <div 
+                    key={promo.id} 
+                    onClick={() => {
+                      setSelectedPromo(promo);
+                    }}
+                    style={{ 
+                      background: isSelected ? '#F9FAFB' : '#FFFFFF', 
+                      border: isSelected ? '2px solid #111' : '1px solid #E5E7EB', 
+                      borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', 
+                      justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                      cursor: 'pointer', transition: 'all 0.2s',
+                      transform: isSelected ? 'translateY(-2px)' : 'none'
+                    }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                      <img src={promo.image} alt={promo.restaurant} style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <span style={{ fontSize: '14px', fontWeight: 800, color: '#111' }}>{promo.restaurant}</span>
+                          <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: platformColor, color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{platformInitial}</div>
+                        </div>
+                        <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>{promo.promo}</span>
+                      </div>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
+                      <span style={{ background: '#F3F4F6', color: '#4B5563', fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '6px' }}>{promo.type}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div style={{ padding: '24px', background: '#FFFFFF', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
+            <button style={{ width: '100%', background: '#111', color: '#FFF', border: 'none', padding: '16px', borderRadius: '999px', fontSize: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+              <Sparkles size={18} />
+              Suggest Strategy
+            </button>
+          </div>
+        </div>
+        
+        <style>{`
+          .dashboard-mini-map-polygon {
+            filter: drop-shadow(0px 1px 2px rgba(40, 167, 69, 0.15));
+          }
+          .modal-pulse-marker { animation: modal-pulse 2s infinite; }
+          .modal-pulse-marker-active { animation: modal-pulse-active 1s infinite; }
+          @keyframes modal-pulse {
+            0% { filter: drop-shadow(0 0 0 rgba(230, 57, 70, 0.7)); }
+            50% { filter: drop-shadow(0 0 10px rgba(230, 57, 70, 0.6)); }
+            100% { filter: drop-shadow(0 0 0 rgba(230, 57, 70, 0)); }
+          }
+          @keyframes modal-pulse-active {
+            0% { filter: drop-shadow(0 0 0 rgba(17, 17, 17, 0.9)); }
+            50% { filter: drop-shadow(0 0 16px rgba(17, 17, 17, 0.8)); }
+            100% { filter: drop-shadow(0 0 0 rgba(17, 17, 17, 0)); }
+          }
+          .custom-map-tooltip {
+            background: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 6px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            backdrop-filter: blur(4px);
+            padding: 0 !important;
+            overflow: hidden;
+          }
+        `}</style>
       </div>
+
+      <RestaurantProfileModal 
+        isOpen={!!profileModalPromo} 
+        onClose={() => setProfileModalPromo(null)} 
+        restaurant={profileModalPromo} 
+      />
     </div>
   );
 };

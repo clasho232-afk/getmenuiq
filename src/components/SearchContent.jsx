@@ -5,7 +5,7 @@ import RestaurantProfilePage from './RestaurantProfilePage';
 const SearchContent = () => {
   const [searchWhat, setSearchWhat] = useState('');
   const [searchWhere, setSearchWhere] = useState('');
-  const [activeCategory, setActiveCategory] = useState('All');
+  const [activeCategory, setActiveCategory] = useState('Restaurants');
   const [selectedRestaurantId, setSelectedRestaurantId] = useState(null);
 
   if (selectedRestaurantId) {

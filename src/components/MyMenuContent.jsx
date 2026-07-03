@@ -45,6 +45,13 @@ const getMarketData = (item, platform = 'all') => {
   
   intervals.sort((a, b) => parseFloat(a.price) - parseFloat(b.price));
   
+  const platforms = ['Deliveroo', 'UberEats', 'Just Eat'];
+  intervals.forEach(interval => {
+    interval.rivals.forEach((rival, i) => {
+      rival.platform = platforms[(rival.name.length + i) % platforms.length];
+    });
+  });
+  
   return { myPrice: myPrice.toFixed(2), avgPrice, lowPrice, highPrice, intervals };
 };
 
@@ -116,7 +123,7 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
   const [pricedRightOpen, setPricedRightOpen] = useState(false);
   const [showMarketReport, setShowMarketReport] = useState(false);
   const [showAnalysisSelector, setShowAnalysisSelector] = useState(false);
-  const [platform, setPlatform] = useState('all');
+  const [platform, setPlatform] = useState('deliveroo');
 
   // Live data from Supabase
   const [menuItems, setMenuItems] = useState([]);
@@ -249,9 +256,36 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem', height: '100%', position: 'relative' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div style={{ fontSize: '1.875rem', fontWeight: 700 }}>My Menu {loadingMenu && <span style={{ fontSize: '0.875rem', color: '#9CA3AF', fontWeight: 400 }}>Loading...</span>}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', height: '100%', position: 'relative' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: '1.875rem', fontWeight: 700 }}>My Menu {loadingMenu && <span style={{ fontSize: '0.875rem', color: '#9CA3AF', fontWeight: 400 }}>Loading...</span>}</div>
+        </div>
+        
+        {/* Global Platform Lens */}
+        <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center' }}>
+          {['deliveroo', 'ubereats', 'justeat'].map(p => (
+            <button
+              key={p}
+              onClick={() => setPlatform(p)}
+              className={`platform-btn ${platform === p ? `btn-${p} active` : ''}`}
+              style={{ 
+                padding: '0.5rem 1.25rem', 
+                fontSize: '0.875rem', 
+                ...(platform !== p ? { backgroundColor: '#fff', border: '1px solid rgba(0,0,0,0.05)', boxShadow: '0 1px 2px rgba(0,0,0,0.02)' } : {}) 
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <img 
+                  src={`https://cdn.simpleicons.org/${p === 'deliveroo' ? 'deliveroo/00CCBC' : p === 'ubereats' ? 'ubereats/06C167' : 'justeat/FF5B00'}`} 
+                  alt={p} 
+                  style={{ height: '14px', width: '14px', objectFit: 'contain', filter: platform !== p ? 'grayscale(100%) opacity(0.5)' : 'brightness(0) invert(1)' }} 
+                />
+                {p === 'deliveroo' ? 'Deliveroo' : p === 'ubereats' ? 'UberEats' : 'Just Eat'}
+              </div>
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="header-container" style={{ position: 'absolute', right: 0, top: '40px', zIndex: 10 }}>
@@ -322,6 +356,7 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
               <div
                 key={item.id}
                 className={`menu-item-card${isAnalyzing ? ' analyzing' : ''}`}
+                onClick={() => handleAnalyze(item.id)}
               >
                 {/* Image */}
                 <div className="menu-card-image-wrap">
@@ -330,12 +365,8 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
                     {isLoading ? (
                       <div className="menu-card-spinner" />
                     ) : (
-                      <button
-                        className="menu-card-analyze-btn"
-                        onClick={() => handleAnalyze(item.id)}
-                      >
-                        <Activity size={14} />
-                        Analyze &amp; Render
+                      <button className="menu-card-analyze-btn">
+                        Analyze
                       </button>
                     )}
                   </div>
@@ -346,10 +377,18 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
                   <p className="menu-card-name">{item.name}</p>
                   <span className="menu-card-category">{item.category}</span>
                   <div className="menu-card-footer">
-                    <span className="menu-card-price">{item.price}</span>
+                    <span className="menu-card-price">
+                      <span style={{ color: '#36454F', fontSize: '0.85em', fontWeight: 600, marginRight: '4px' }}>Price:</span>
+                      {(() => {
+                        let p = parseFloat(item.price.replace('£', ''));
+                        if (platform === 'deliveroo') p *= 1.05;
+                        if (platform === 'ubereats') p *= 1.08;
+                        if (platform === 'justeat') p *= 1.02;
+                        return `£${p.toFixed(2)}`;
+                      })()}
+                    </span>
                     <span className="menu-card-status">
                       <span className={`menu-card-status-dot ${item.status === 'Active' ? 'active' : 'inactive'}`} />
-                      {item.status}
                     </span>
                   </div>
                 </div>
@@ -399,10 +438,12 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
                 <img src={activeItem.image} alt={activeItem.name} style={{ width: '100%', height: '260px', objectFit: 'cover', borderRadius: '20px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)' }} />
                 
                 <div style={{ display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-                  <h2 className="item-title" title={activeItem.name}>{activeItem.name}</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <h2 className="item-title" title={activeItem.name}>{activeItem.name}</h2>
+                  </div>
                   
                   <div className="platform-selector-row">
-                    {['all', 'deliveroo', 'ubereats', 'justeat'].map(p => (
+                    {['deliveroo', 'ubereats', 'justeat'].map(p => (
                       <button
                         key={p}
                         onClick={() => setPlatform(p)}
@@ -413,35 +454,35 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
                     ))}
                   </div>
                   
-                  <div className="pricing-footer">
-                    <div>
-                      <div style={{ fontSize: '0.8rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.75rem' }}>Your Price</div>
-                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#FF5E3A' }}>£{marketData.myPrice}</div>
+                  <div className="metrics-container" style={{ marginTop: 'auto' }}>
+                    <div className="metric-card">
+                      <div className="metric-label">Your Price</div>
+                      <div className="metric-value" style={{ color: '#FF5E3A' }}>£{marketData.myPrice}</div>
                     </div>
-                    <div>
-                      <div className="tooltip-container" style={{ fontSize: '0.8rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.75rem' }}>
-                        Avg Market Price <Info className="info-icon" size={14} />
-                        <div className="tooltip-card">
+                    <div className="metric-card">
+                      <div className="metric-label tooltip-container" style={{ marginBottom: '6px' }}>
+                        Avg Market Price <Info className="info-icon" size={14} style={{ marginLeft: '4px' }} />
+                        <div className="tooltip-card" style={{ textTransform: 'none' }}>
                           <div>Ilford Avg: £1.70</div>
                           <div>Neighborhood Avg: £1.50</div>
                           <div style={{ marginTop: '4px', paddingTop: '4px', borderTop: '1px solid rgba(0,0,0,0.05)', fontWeight: 700 }}>Aggregate: £1.60</div>
                         </div>
                       </div>
-                      <div style={{ fontSize: '2rem', fontWeight: 700, color: '#22C55E' }}>£{marketData.avgPrice}</div>
+                      <div className="metric-value" style={{ color: '#22C55E' }}>£{marketData.avgPrice}</div>
                     </div>
-                    <div>
-                      <div className="tooltip-container" style={{ fontSize: '0.8rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.75rem' }}>
-                        Lowest Price <Info className="info-icon" size={14} />
-                        <div className="tooltip-card">Lowest Price provided by: {lowestPriceRival}</div>
+                    <div className="metric-card">
+                      <div className="metric-label tooltip-container" style={{ marginBottom: '6px' }}>
+                        Lowest Price <Info className="info-icon" size={14} style={{ marginLeft: '4px' }} />
+                        <div className="tooltip-card" style={{ textTransform: 'none' }}>Lowest Price provided by: {lowestPriceRival}</div>
                       </div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#EAB308' }}>£{marketData.lowPrice}</div>
+                      <div className="metric-value" style={{ color: '#EAB308' }}>£{marketData.lowPrice}</div>
                     </div>
-                    <div>
-                      <div className="tooltip-container" style={{ fontSize: '0.8rem', color: '#6B7280', textTransform: 'uppercase', fontWeight: 600, letterSpacing: '0.5px', marginBottom: '0.75rem' }}>
-                        Highest Price <Info className="info-icon" size={14} />
-                        <div className="tooltip-card">Highest Price provided by: {highestPriceRival}</div>
+                    <div className="metric-card">
+                      <div className="metric-label tooltip-container" style={{ marginBottom: '6px' }}>
+                        Highest Price <Info className="info-icon" size={14} style={{ marginLeft: '4px' }} />
+                        <div className="tooltip-card" style={{ textTransform: 'none' }}>Highest Price provided by: {highestPriceRival}</div>
                       </div>
-                      <div style={{ fontSize: '1.5rem', fontWeight: 700, color: '#EF4444' }}>£{marketData.highPrice}</div>
+                      <div className="metric-value" style={{ color: '#EF4444' }}>£{marketData.highPrice}</div>
                     </div>
                   </div>
                 </div>
@@ -451,7 +492,12 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
               <div style={{ flex: '1.4', padding: '3rem 1rem', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '3rem' }}>
                   <div>
-                    <div className="audit-title" style={{ fontSize: '1.5rem' }}>Audit Command Center</div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                      <div className="audit-title" style={{ fontSize: '1.5rem' }}>Audit Command Center</div>
+                      <div className="platform-logo-badge rectangular" style={{ display: 'flex', alignItems: 'center', background: '#F3F4F6', padding: '6px 12px', borderRadius: '8px' }}>
+                        <img src={`https://cdn.simpleicons.org/${platform === 'deliveroo' ? 'deliveroo/00CCBC' : platform === 'ubereats' ? 'ubereats/06C167' : 'justeat/FF5B00'}`} alt={platform} style={{ height: '20px', objectFit: 'contain' }} />
+                      </div>
+                    </div>
                     <div style={{ fontSize: '0.875rem', color: '#6B7280', marginTop: '0.25rem' }}>Local Market Position Analysis</div>
                   </div>
                 </div>
@@ -513,20 +559,40 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
               </div>
 
               {/* Right Column - Strategic Action Center */}
-              <div style={{ flex: '1', padding: '3rem', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
+              <div style={{ flex: '1.4', padding: '3rem', display: 'flex', flexDirection: 'column', background: 'transparent' }}>
                 <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '1rem' }}>
                   <button onClick={() => setAnalyzingItem(null)} style={{ background: '#F3F4F6', border: 'none', cursor: 'pointer', color: '#4B5563', width: '40px', height: '40px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'background 0.2s' }} onMouseEnter={e => e.currentTarget.style.background = '#E5E7EB'} onMouseLeave={e => e.currentTarget.style.background = '#F3F4F6'}><X size={20} /></button>
                 </div>
 
-                <div style={{ marginTop: 'auto', marginBottom: 'auto', background: 'rgba(224, 80, 70, 0.05)', border: '1px solid rgba(224, 80, 70, 0.1)', borderRadius: '20px', padding: '2.5rem 2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', boxShadow: '0 10px 25px rgba(0,0,0,0.05)' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', color: '#111', fontWeight: 700, fontSize: '1.125rem' }}>
-                    Strategy Recommendation
+                <div style={{ marginTop: 'auto', marginBottom: 'auto', background: '#FFFFFF', borderRadius: '16px', display: 'flex', flexDirection: 'column', boxShadow: '0 10px 25px rgba(0,0,0,0.05)', maxHeight: '420px', overflow: 'hidden' }}>
+                  <div style={{ padding: '1.5rem 1.5rem 1rem 1.5rem', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+                    <div style={{ color: '#E63946', fontWeight: 700, fontSize: '1.125rem' }}>
+                      Rival Offerings
+                    </div>
                   </div>
-                  <p style={{ fontSize: '1.05rem', color: '#4B5563', margin: 0, lineHeight: 1.6 }}>
-                    {platform === 'all' 
-                      ? `Your ${activeItem.name} are currently in the 90th percentile for price. Moving to the £${marketData.avgPrice} bracket will align you with the highest-volume competitors like ${topRival} and is projected to boost sales by 15%.`
-                      : `Your ${platform.charAt(0).toUpperCase() + platform.slice(1)} commission is ${platform === 'deliveroo' ? '30%' : platform === 'ubereats' ? '28%' : '25%'}; increasing this item to £${marketData.avgPrice} will maintain your margin while keeping you competitive in the local ${platform.charAt(0).toUpperCase() + platform.slice(1)} market.`}
-                  </p>
+                  <div style={{ overflowY: 'auto', flex: 1 }}>
+                    {marketData.intervals.flatMap(interval => interval.rivals.filter(r => r.name !== 'You')).sort((a, b) => parseFloat(a.price) - parseFloat(b.price)).map((rival, index, arr) => (
+                      <div key={index} className="rival-offering-row" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.5rem', borderBottom: index < arr.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none' }}>
+                        <div className="rival-meta" style={{ display: 'flex', alignItems: 'center', gap: '12px', flex: '1' }}>
+                          <img src={rival.image} alt={rival.name} style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: '0.95rem', fontWeight: 500, color: '#111' }}>{activeItem.name}</span>
+                            <span style={{ fontSize: '0.75rem', color: '#9CA3AF' }}>{rival.name}</span>
+                          </div>
+                        </div>
+                        
+                        <div className="platform-tag" style={{ flex: '0.6', display: 'flex', justifyContent: 'flex-end', paddingRight: '1rem' }}>
+                          <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: '#fff', boxShadow: '0 2px 8px rgba(0,0,0,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <img src={`https://cdn.simpleicons.org/${rival.platform === 'Deliveroo' ? 'deliveroo/00CCBC' : rival.platform === 'UberEats' ? 'ubereats/06C167' : 'justeat/FF5B00'}`} alt={rival.platform} style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+                          </div>
+                        </div>
+                        
+                        <div className="rival-price" style={{ flex: '0.4', textAlign: 'right' }}>
+                          <span style={{ fontSize: '1rem', fontWeight: 700, color: '#E63946' }}>£{rival.price}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
 

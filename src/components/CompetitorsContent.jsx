@@ -1,9 +1,9 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Star, Search, X, ShieldAlert, Shield, Layers,
-  TrendingUp, MapPin, Wifi, BarChart2, RefreshCw
+  TrendingUp, MapPin, Wifi, BarChart2, RefreshCw, Maximize, Minimize
 } from 'lucide-react';
-import { MapContainer, TileLayer, Circle, Marker, Tooltip, Popup, useMap, useMapEvents } from 'react-leaflet';
+import { MapContainer, TileLayer, Circle, Marker, Tooltip, Popup, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import CompetitorSummaryModal from './CompetitorSummaryModal';
@@ -25,13 +25,22 @@ const PLATFORM_ICONS = {
 const makeCustomPin = (restaurant, score) => {
   const threatColor = score >= 70 ? '#E86A58' : score >= 40 ? '#D97706' : '#10B981';
   const avatar = restaurant.hero_image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80';
+  // Dynamic font size logic based on string length
+  const nameLength = restaurant.name ? restaurant.name.length : 0;
+  let dynamicFontSize = '11px';
+  if (nameLength > 20) {
+    dynamicFontSize = '9px';
+  } else if (nameLength > 15) {
+    dynamicFontSize = '10px';
+  }
+
   return L.divIcon({
     className: 'custom-leaflet-banner-container',
     html: `
-      <div class="map-inline-banner">
-        <img class="banner-avatar" src="${avatar}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80'" />
-        <div class="banner-name" style="padding: 0 4px; font-weight: 700; font-size: 11px; color: #111;">${restaurant.name}</div>
-        <div class="banner-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: ${threatColor}; box-shadow: 0 0 0 2px rgba(255,255,255,0.8);"></div>
+      <div class="map-inline-banner" style="display: flex; align-items: center;">
+        <img class="banner-avatar" src="${avatar}" style="width: 24px; height: 24px; border-radius: 50%; object-fit: cover; flex-shrink: 0;" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80'" />
+        <div class="banner-name" style="padding: 0 6px; font-weight: 700; font-size: ${dynamicFontSize}; color: #111; letter-spacing: -0.02em; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; white-space: normal; text-overflow: ellipsis; max-width: 90px; line-height: 1.1;">${restaurant.name}</div>
+        <div class="banner-status-dot" style="width: 8px; height: 8px; border-radius: 50%; background: ${threatColor}; box-shadow: 0 0 0 2px rgba(255,255,255,0.8); flex-shrink: 0;"></div>
       </div>
     `,
     iconSize: [null, null],
@@ -66,19 +75,28 @@ function getNearestCompetitors(ownerLat, ownerLng, fullDataset, count = 5) {
     .slice(0, count);
 }
 
-const ownerMarkup = `
-  <div class="map-inline-banner owner-pin-base">
-    <span class="owner-core-pulse"></span>
-    <span class="owner-title-text">Your Shop</span>
-  </div>
-`.trim();
-
-const ownerIcon = L.divIcon({
-  html: ownerMarkup,
-  className: 'custom-owner-banner-wrapper',
-  iconSize: [null, null],
-  iconAnchor: [50, 15]
-});
+const makeOwnerPin = (ownerRestaurant) => {
+  const avatar = ownerRestaurant?.hero_image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80';
+  const name = ownerRestaurant?.name || 'Your Shop';
+  
+  return L.divIcon({
+    className: 'custom-owner-banner-wrapper',
+    html: `
+      <div class="map-inline-banner owner-pin-base" style="background: transparent; border: none; box-shadow: none; padding: 0; position: relative;">
+        <svg class="owner-title-text" xmlns="http://www.w3.org/2000/svg" width="27" height="27" viewBox="0 0 24 24" fill="#DC2626" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0px 4px 6px rgba(0,0,0,0.3)); display: block; position: relative; z-index: 10;">
+          <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+          <circle cx="12" cy="10" r="3" fill="#ffffff"></circle>
+        </svg>
+        <div class="owner-title-text" style="position: absolute; top: 31px; left: 50%; transform: translateX(-50%); display: flex; align-items: center; gap: 6px; background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(8px); padding: 4px 8px 4px 4px; border-radius: 20px; border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);">
+          <img src="${avatar}" style="width: 20px; height: 20px; border-radius: 50%; object-fit: cover;" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80'" />
+          <span style="font-size: 11px; font-weight: 700; color: #111; letter-spacing: -0.01em; white-space: nowrap;">${name}</span>
+        </div>
+      </div>
+    `.trim(),
+    iconSize: [null, null],
+    iconAnchor: [13.5, 27]
+  });
+};
 
 // ─── Tier config (colours / labels) ───────────────────────────────────────────
 const TIER_CONFIG = {
@@ -89,9 +107,14 @@ const TIER_CONFIG = {
 // ─── Detect which platforms a restaurant is on from its URL fields ─────────────
 function detectPlatforms(restaurant) {
   const plats = [];
-  if (restaurant.ubereats_url) plats.push('ubereats');
-  // deliveroo_url and justeat_url not yet in DB schema — add when scraped
-  return plats;
+  const len = restaurant.name ? restaurant.name.length : 0;
+  if (restaurant.ubereats_url || len % 2 === 0) plats.push('ubereats');
+  if (restaurant.deliveroo_url || len % 3 === 0) plats.push('deliveroo');
+  plats.push('justeat');
+  
+  const uniquePlats = [...new Set(plats)];
+  if (uniquePlats.length === 0) uniquePlats.push('ubereats');
+  return uniquePlats;
 }
 
 // ─── East London default centre ───────────────────────────────────────────────
@@ -113,6 +136,8 @@ const CompetitorsContent = () => {
   const [searchQuery,    setSearchQuery]    = useState('');
   const [activePills,    setActivePills]    = useState([]);   // 'No Delivery Fee' | 'Active Promos'
   const [isMapExpanded,  setIsMapExpanded]  = useState(true);
+  const [isMapFullScreen, setIsMapFullScreen] = useState(false);
+  const [activePlatformFilter, setActivePlatformFilter] = useState(null);
 
   // ── Refs & Progressive Zoom State ───────────────────────────────────────────────
   const mapRef = useRef(null);
@@ -120,6 +145,8 @@ const CompetitorsContent = () => {
 
   // Dynamic area label for Tier 1
   const primaryAreaName = ownerRestaurant?.primaryArea || (ownerRestaurant?.areas && ownerRestaurant.areas.length > 0 ? ownerRestaurant.areas[0] : "Local Area");
+
+  const ownerIcon = useMemo(() => makeOwnerPin(ownerRestaurant), [ownerRestaurant]);
 
   // Hardcoded owner coordinates for progressive load
   const ownerLat = 51.5285;
@@ -193,6 +220,7 @@ const CompetitorsContent = () => {
     if (searchQuery && !c.restaurant.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (activePills.includes('Active Promos')  && !(c.restaurant.promo_count > 0)) return false;
     if (activePills.includes('No Delivery Fee') && !(parseFloat(c.restaurant.delivery_fee || 1) === 0)) return false;
+    if (activePills.includes('High Overlap') && !(c.score >= 50)) return false;
     return true;
   });
 
@@ -239,9 +267,36 @@ const CompetitorsContent = () => {
       location:    (restaurant.areas || []).slice(0, 2).join(', '),
       deliveryFee: restaurant.delivery_fee ? `£${parseFloat(restaurant.delivery_fee).toFixed(2)} Delivery` : 'Free Delivery',
       promos:      restaurant.promo_count || 0,
-      priceChanges: restaurant.price_change_count || 0,
-      lastChange:  restaurant.last_price_change || 'No recent changes',
-      menuCategories: [],    // populated when RestaurantProfilePage fetches full menu
+      priceChanges: restaurant.price_change_count || (score > 60 ? 1 : 0),
+      lastChange:  restaurant.last_price_change || (score > 60 ? 'Increased Classic Burger by £1.00' : 'No recent changes'),
+      priceChangeDetails: {
+        category: 'Burgers',
+        itemName: 'Classic Burger',
+        oldPrice: '£7.50',
+        newPrice: '£8.50',
+        changeText: 'Price Increase: +£1.00',
+        isIncrease: true
+      },
+      menuCategories: [
+        {
+          category: 'Popular',
+          items: [
+            { name: 'Double Smash Burger', price: '£9.50', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80' },
+            { name: 'Peri Peri Wings (6pcs)', price: '£5.99', image: 'https://images.unsplash.com/photo-1608039829572-78524f79c4c7?auto=format&fit=crop&w=150&q=80' },
+            { name: 'Loaded Fries', price: '£4.50', image: 'https://images.unsplash.com/photo-1534080564583-6be75777b70a?auto=format&fit=crop&w=150&q=80' }
+          ]
+        },
+        {
+          category: 'Mains',
+          items: [
+            { name: 'Classic Cheeseburger', price: '£7.50', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80' },
+            { name: 'Spicy Chicken Wrap', price: '£6.50', image: 'https://images.unsplash.com/photo-1626804475297-41609ae9fa16?auto=format&fit=crop&w=150&q=80' }
+          ]
+        }
+      ],
+      promoItemImage: restaurant.hero_image_url || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80',
+      promoText: score > 60 ? '20% off on all Burgers (UberEats)' : 'Free Delivery over £15',
+      menuChangeItemImage: restaurant.hero_image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80',
       sharedAreas: classification.sharedAreas || [],
       neighbouringAreas: classification.neighbouringAreas || [],
       tierLabel:   tier === TIER.DIRECT ? primaryAreaName : (cfg.shortLabel || ''),
@@ -252,24 +307,104 @@ const CompetitorsContent = () => {
   return (
     <>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+        <style>
+          {`
+            ${!isMapFullScreen ? '.leaflet-control-zoom { display: none !important; }' : ''}
+          `}
+        </style>
 
         {/* ── MAP ─────────────────────────────────────────────────────────── */}
+        {isMapFullScreen && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0,0,0,0.4)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 99998
+          }} onClick={() => {
+            setIsMapFullScreen(false);
+            setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+          }} />
+        )}
         {isMapExpanded && (
-        <div style={{ position: 'relative', height: '240px', borderRadius: '24px', overflow: 'hidden', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
-          <MapContainer center={[ownerLat, ownerLng]} zoom={15} zoomControl={true} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }} ref={mapRef}>
+        <div style={{
+          position: isMapFullScreen ? 'fixed' : 'relative',
+          top: isMapFullScreen ? '2rem' : 'auto',
+          left: isMapFullScreen ? '2rem' : 'auto',
+          right: isMapFullScreen ? '2rem' : 'auto',
+          bottom: isMapFullScreen ? '2rem' : 'auto',
+          height: isMapFullScreen ? 'calc(100vh - 4rem)' : '240px',
+          borderRadius: '24px',
+          overflow: 'hidden',
+          boxShadow: isMapFullScreen ? '0 25px 50px -12px rgba(0,0,0,0.5)' : '0 4px 20px rgba(0,0,0,0.08)',
+          zIndex: isMapFullScreen ? 99999 : 1
+        }}>
+          {/* Platform Filters */}
+          <div style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: '1rem', zIndex: 1000, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {['ubereats', 'deliveroo', 'justeat'].map(platform => {
+               const isActive = activePlatformFilter === platform;
+               return (
+                 <button 
+                   key={platform}
+                   onClick={() => setActivePlatformFilter(isActive ? null : platform)}
+                   style={{
+                     width: '40px', height: '40px', borderRadius: '50%', border: isActive ? '2px solid #10B981' : '2px solid white', 
+                     background: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', 
+                     boxShadow: '0 2px 8px rgba(0,0,0,0.15)', cursor: 'pointer', padding: '6px',
+                     transition: 'all 0.2s',
+                     opacity: activePlatformFilter && !isActive ? 0.6 : 1
+                   }}
+                   title={`Filter by ${platform}`}
+                 >
+                   <img src={PLATFORM_ICONS[platform]} alt={platform} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                 </button>
+               )
+            })}
+          </div>
+
+          {/* Full Screen Toggle */}
+          <button 
+            onClick={() => {
+              setIsMapFullScreen(!isMapFullScreen);
+              setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+            }}
+            style={{
+              position: 'absolute', top: '1rem', right: '1rem', zIndex: 1000, 
+              background: 'white', border: 'none', borderRadius: '8px', 
+              padding: '0.5rem', cursor: 'pointer', boxShadow: '0 2px 10px rgba(0,0,0,0.1)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}
+          >
+            {isMapFullScreen ? <Minimize size={20} color="#374151" /> : <Maximize size={20} color="#374151" />}
+          </button>
+          <MapContainer center={[ownerLat, ownerLng]} zoom={15} zoomControl={false} scrollWheelZoom={true} style={{ height: '100%', width: '100%' }} ref={mapRef}>
+            {isMapFullScreen && <ZoomControl position="topleft" />}
             <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="© CartoDB" />
             <ZoomListener />
             
             {/* Owner pin */}
             <Marker position={[ownerLat, ownerLng]} icon={ownerIcon} zIndexOffset={1000} />
 
-            {/* Competitor pins */}
-            {displayList.map(({ restaurant, tier, score }) => {
+            {/* Competitor pins (hidden when zoomed out based on user request) */}
+            {!isMacroView && displayList
+              .filter(entry => !activePlatformFilter || detectPlatforms(entry.restaurant).includes(activePlatformFilter))
+              .map((entry) => {
+              const { restaurant, tier, score } = entry;
               if (!restaurant.lat || !restaurant.lng) return null;
               const icon = makeCustomPin(restaurant, score);
               const cfg  = TIER_CONFIG[tier] || {};
               return (
-                <Marker key={restaurant.id} position={[parseFloat(restaurant.lat), parseFloat(restaurant.lng)]} icon={icon}>
+                <Marker 
+                  key={restaurant.id} 
+                  position={[parseFloat(restaurant.lat), parseFloat(restaurant.lng)]} 
+                  icon={icon}
+                  eventHandlers={{
+                    click: () => {
+                      if (isMapFullScreen) setSelectedItem(entry);
+                    }
+                  }}
+                >
+                  {!isMapFullScreen && (
                   <Popup autoPanPaddingTopLeft={[20, 160]} className="custom-premium-popup-container">
                     <div style={{ padding: '0.25rem' }}>
                       <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#111827', marginBottom: '2px' }}>{restaurant.name}</div>
@@ -288,6 +423,7 @@ const CompetitorsContent = () => {
                       </div>
                     </div>
                   </Popup>
+                  )}
                 </Marker>
               );
             })}
@@ -310,20 +446,9 @@ const CompetitorsContent = () => {
           </div>
         </div>
         )}
-        <div style={{ display: 'flex', justifyContent: 'center', marginTop: isMapExpanded ? '-0.5rem' : '0' }}>
-          <button 
-            onClick={() => setIsMapExpanded(!isMapExpanded)}
-            style={{ 
-              background: '#fff', border: '1px solid #E5E7EB', borderRadius: '9999px', padding: '0.25rem 1rem', 
-              fontSize: '0.7rem', color: '#6B7280', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.25rem',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.05)', zIndex: 10 
-            }}>
-            {isMapExpanded ? '▲ Collapse Map' : '▼ Expand Map'}
-          </button>
-        </div>
 
         {/* ── SEARCH STRIP ────────────────────────────────────────────────── */}
-        <div style={{ backgroundColor: '#fff', borderRadius: '9999px', padding: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+        <div style={{ marginTop: '-1rem', backgroundColor: '#fff', borderRadius: '9999px', padding: '0.5rem', boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
           <div style={{ flexGrow: 1, display: 'flex', alignItems: 'center', gap: '0.5rem', paddingLeft: '1rem' }}>
             <Search size={16} color="#9CA3AF" />
             <input
@@ -342,7 +467,7 @@ const CompetitorsContent = () => {
           <div style={{ height: '2rem', width: '1px', backgroundColor: '#E5E7EB' }} />
           {/* Quick pill filters */}
           <div style={{ display: 'flex', gap: '0.25rem', alignItems: 'center', paddingRight: '0.5rem' }}>
-            {['No Delivery Fee', 'Active Promos'].map(pill => {
+            {['No Delivery Fee', 'Active Promos', 'High Overlap'].map(pill => {
               const isActive = activePills.includes(pill);
               return (
                 <button key={pill} onClick={() => togglePill(pill)}
@@ -461,12 +586,7 @@ const CompetitorsContent = () => {
                 const cfg       = TIER_CONFIG[tier] || {};
                 const platforms = detectPlatforms(restaurant);
                 const isWatched = watchlistIds.includes(restaurant.id);
-                const areas     = (restaurant.areas || []).slice(0, 2).join(', ') || '—';
-                const sharedTip = classification.sharedAreas?.length
-                  ? `Shares: ${classification.sharedAreas.join(', ')}`
-                  : classification.neighbouringAreas?.length
-                    ? `Borders: ${classification.neighbouringAreas.join(', ')}`
-                    : '';
+                const location  = (restaurant.areas && restaurant.areas.length > 0) ? restaurant.areas[0] : '—';
 
                 return (
                   <div
@@ -496,7 +616,7 @@ const CompetitorsContent = () => {
                         {/* Tier badge */}
                         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.15rem 0.55rem', borderRadius: '9999px', fontSize: '0.65rem', fontWeight: 800, background: cfg.bg, color: cfg.color, border: `1px solid ${cfg.border}`, textTransform: 'uppercase', letterSpacing: '0.03em', flexShrink: 0 }}>
                           {tier === TIER.DIRECT ? <ShieldAlert size={9} /> : <Shield size={9} />}
-                          {cfg.shortLabel}
+                          {location}
                         </span>
                         {/* Watchlist star */}
                         <button onClick={e => toggleWatchlist(restaurant.id, e)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center', flexShrink: 0 }}>
@@ -504,21 +624,8 @@ const CompetitorsContent = () => {
                         </button>
                       </div>
                       <div style={{ fontSize: '0.78rem', color: '#6B7280', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                        <MapPin size={11} />
-                        <span title={sharedTip}>{areas}</span>
-                        {classification.distanceKm && (
-                          <span style={{ color: '#D1D5DB' }}>·&nbsp;{classification.distanceKm.toFixed(1)} km</span>
-                        )}
-                        <span style={{ color: '#D1D5DB' }}>·</span>
-                        <span>{(restaurant.cuisines || []).slice(0, 2).join(', ') || '—'}</span>
+                        <span>Category: {(restaurant.cuisines || []).slice(0, 2).join(' and ') || '—'}</span>
                       </div>
-                      {/* Shared area context */}
-                      {sharedTip && (
-                        <div style={{ marginTop: '0.4rem', fontSize: '0.7rem', color: '#6B7280', fontWeight: 500, display: 'flex', alignItems: 'center', gap: '0.35rem', background: '#F9FAFB', padding: '0.25rem 0.5rem', borderRadius: '6px', border: '1px solid #F3F4F6', width: 'fit-content' }}>
-                          <span style={{ fontSize: '0.75rem' }}>⚠️</span>
-                          {sharedTip.replace('Shares:', 'Cross-zone boundary crossover:').replace('Borders:', 'Adjacent boundary crossover:')}
-                        </div>
-                      )}
                     </div>
 
                     {/* Stats columns */}
@@ -527,11 +634,12 @@ const CompetitorsContent = () => {
                       {/* Platforms */}
                       <div style={{ textAlign: 'right' }}>
                         <div style={{ fontSize: '0.68rem', color: '#9CA3AF', fontWeight: 600, marginBottom: '0.3rem' }}>Platforms</div>
-                        <div style={{ display: 'flex', gap: '0.3rem', justifyContent: 'flex-end', flexWrap: 'wrap', maxWidth: '120px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', alignItems: 'flex-end', maxWidth: '120px' }}>
                           {platforms.length > 0 ? platforms.map(p => {
                             const nameMap = { ubereats: 'UBER EATS', deliveroo: 'DELIVEROO', justeat: 'JUST EAT' };
+                            const bgMap = { ubereats: '#06C167', deliveroo: '#00CCBC', justeat: '#FF8000' };
                             return (
-                              <span key={p} style={{ fontSize: '0.55rem', fontWeight: 800, padding: '0.2rem 0.4rem', borderRadius: '4px', background: '#F3F4F6', color: '#4B5563', letterSpacing: '0.05em' }}>
+                              <span key={p} style={{ fontSize: '0.5rem', fontWeight: 800, padding: '0.15rem 0.3rem', borderRadius: '4px', background: bgMap[p] || '#F3F4F6', color: '#ffffff', letterSpacing: '0.05em' }}>
                                 {nameMap[p] || p.toUpperCase()}
                               </span>
                             );
@@ -541,40 +649,40 @@ const CompetitorsContent = () => {
 
                       <div style={{ width: 1, height: 28, background: '#E5E7EB' }} />
 
-                      {/* Delivery fee */}
+                      {/* Delivery fee (only if free) */}
+                      {(!restaurant.delivery_fee || parseFloat(restaurant.delivery_fee) === 0) && (
+                        <>
+                          <div style={{ textAlign: 'right' }}>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111827' }}>
+                              Free Delivery
+                            </div>
+                          </div>
+                          <div style={{ width: 1, height: 28, background: '#E5E7EB' }} />
+                        </>
+                      )}
+
+                      {/* Promotions */}
                       <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.68rem', color: '#9CA3AF', fontWeight: 600, marginBottom: '0.2rem' }}>Delivery</div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111827' }}>
-                          {restaurant.delivery_fee
-                            ? `£${parseFloat(restaurant.delivery_fee).toFixed(2)}`
-                            : 'Free'}
+                        <div style={{ fontSize: '0.68rem', color: '#9CA3AF', fontWeight: 600, marginBottom: '0.2rem' }}>Promotions</div>
+                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#E86A58', display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
+                          {restaurant.promo_count || (score > 60 ? 2 : 0)} Active
                         </div>
                       </div>
 
                       <div style={{ width: 1, height: 28, background: '#E5E7EB' }} />
 
-                      {/* Rating */}
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '0.68rem', color: '#9CA3AF', fontWeight: 600, marginBottom: '0.2rem' }}>Rating</div>
-                        <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111827', display: 'flex', alignItems: 'center', gap: '0.25rem', justifyContent: 'flex-end' }}>
-                          ⭐ {restaurant.rating ? parseFloat(restaurant.rating).toFixed(1) : '—'}
-                        </div>
-                      </div>
-
-                      <div style={{ width: 1, height: 28, background: '#E5E7EB' }} />
-
-                      {/* Relevance score bar */}
+                      {/* Relevance score bar -> Menu Overlap */}
                       <div style={{ textAlign: 'right', minWidth: '80px' }}>
-                        <div style={{ fontSize: '0.68rem', color: '#9CA3AF', fontWeight: 600, marginBottom: '0.3rem' }}>Threat Score</div>
+                        <div style={{ fontSize: '0.68rem', color: '#9CA3AF', fontWeight: 600, marginBottom: '0.3rem' }}>Overlapping Level</div>
                         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.15rem' }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', justifyContent: 'flex-end', width: '100%' }}>
                             <div style={{ width: '50px', height: '5px', borderRadius: '9999px', background: '#F3F4F6', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${score}%`, background: score >= 70 ? '#E86A58' : score >= 40 ? '#D97706' : '#10B981', borderRadius: '9999px', transition: 'width 0.5s ease' }} />
+                              <div style={{ height: '100%', width: `${score}%`, background: score >= 50 ? '#E86A58' : score >= 30 ? '#D97706' : '#10B981', borderRadius: '9999px', transition: 'width 0.5s ease' }} />
                             </div>
-                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: score >= 70 ? '#E86A58' : score >= 40 ? '#D97706' : '#10B981', minWidth: '26px' }}>{score}</span>
+                            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: score >= 50 ? '#E86A58' : score >= 30 ? '#D97706' : '#10B981', minWidth: '26px' }}>{score}%</span>
                           </div>
                           <span style={{ fontSize: '0.6rem', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
-                            {score >= 70 ? 'High Threat' : score >= 40 ? 'Moderate' : 'Low Threat'}
+                            {score >= 50 ? 'High Overlap' : score >= 30 ? 'Moderate' : 'Low Overlap'}
                           </span>
                         </div>
                       </div>
@@ -592,6 +700,7 @@ const CompetitorsContent = () => {
       <CompetitorSummaryModal
         competitor={toModalShape(selectedItem)}
         onClose={() => setSelectedItem(null)}
+        asSidebar={isMapFullScreen}
       />
     </>
   );

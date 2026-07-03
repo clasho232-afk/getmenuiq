@@ -103,7 +103,7 @@ const MarketSearchPage = ({
       display: 'flex',
       flexDirection: 'column',
       padding: '1.5rem 2rem',
-      backgroundColor: '#FDFBF7',
+      backgroundColor: 'transparent',
       position: 'relative'
     }}>
       
@@ -121,7 +121,6 @@ const MarketSearchPage = ({
           }}>
             Market Search
           </h1>
-          <AIGreeting onClick={() => setIsAIOverlayOpen(true)} />
         </div>
 
         {/* High-Density Command Bar */}
@@ -164,33 +163,6 @@ const MarketSearchPage = ({
               />
             </div>
 
-            <div style={{ width: '1px', height: '24px', backgroundColor: '#E5E7EB', margin: '0 0.5rem' }} />
-
-            {/* Radius Interactive Button */}
-            <button 
-              onClick={() => setIsMapModalOpen(true)}
-              style={{ 
-                margin: '0 0.5rem 0 0',
-                padding: '0.5rem 1rem', 
-                backgroundColor: '#FFF',
-                color: '#374151',
-                fontWeight: 500,
-                fontSize: '0.9rem',
-                border: '1px solid #E5E7EB',
-                borderRadius: '0.5rem',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.4rem',
-                transition: 'background-color 0.2s ease',
-                whiteSpace: 'nowrap',
-                fontFamily: 'inherit'
-              }}
-              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
-              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#FFF'}
-            >
-              📍 Set Radius
-            </button>
           </div>
 
           {/* Category Pills */}
@@ -351,10 +323,10 @@ const MarketSearchPage = ({
               <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                 <thead>
                   <tr style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                    {['Restaurant', activeCategory === 'Promos' ? 'Promo Target' : 'Dish Name', 'Platform', 'Proximity', activeCategory === 'Promos' ? 'Offer' : 'Price'].map((header, i) => (
+                    {['Restaurant', activeCategory === 'Promos' ? 'Promo Target' : 'Dish Name', 'Platform', activeCategory === 'Promos' ? 'Offer' : 'Price'].map((header, i) => (
                       <th key={header} style={{ 
                         padding: '0.8rem 1.25rem', 
-                        textAlign: i === 4 ? 'right' : 'left', 
+                        textAlign: i === 3 ? 'right' : 'left', 
                         fontSize: '0.7rem', 
                         fontWeight: 800, 
                         color: '#6B7280', 
@@ -415,11 +387,6 @@ const MarketSearchPage = ({
                               Platform
                             </span>
                           )}
-                        </td>
-
-                        {/* Proximity */}
-                        <td style={{ padding: '0.8rem 1.25rem', color: '#6B7280', fontSize: '0.8rem', fontWeight: 500 }}>
-                          {distance} mi • {locationArea}
                         </td>
 
                         {/* Price / Offer */}

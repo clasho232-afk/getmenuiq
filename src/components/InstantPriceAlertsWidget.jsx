@@ -66,24 +66,35 @@ const InstantPriceAlertsWidget = () => {
           </div>
         ) : (
           <>
-            <div className="header">
-              <span className="card-meta-label">PRICE CHANGES</span>
-              <div style={{ fontSize: '10px', color: '#8e8e93', marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{RESTAURANT_AREA_NAME}, Neighborhood</div>
+            <div className="header" style={{ borderBottom: '1px solid rgba(0,0,0,0.05)', paddingBottom: '16px', marginBottom: '16px' }}>
+              <span className="card-meta-label" style={{ fontSize: '14px', color: '#ff5e3a', fontWeight: '800', letterSpacing: '0.05em' }}>PRICE CHANGES</span>
+              <div style={{ fontSize: '12px', color: '#5c4d44', marginTop: '4px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{RESTAURANT_AREA_NAME}, Neighborhood</div>
             </div>
-            <div className="split-pane">
-              <div className="left-pane">
-                <h2 style={{ fontSize: '32px', margin: '0', color: '#ff5e3a' }}>{MODAL_CROSS_FILTER_DATA.length}</h2>
-                <p style={{ fontSize: '11px', color: '#1c1c1e', margin: '4px 0 0 0', fontWeight: '700', textTransform: 'uppercase' }}>Total Alerts</p>
+            <div className="split-pane" style={{ borderTop: 'none', paddingTop: '0', marginTop: '0', alignItems: 'center' }}>
+              <div className="left-pane" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                <h2 style={{ fontSize: '56px', margin: '0 0 4px 0', color: '#ff5e3a', lineHeight: '1', fontWeight: '800' }}>{MODAL_CROSS_FILTER_DATA.length}</h2>
+                <p style={{ fontSize: '11px', color: '#1c1c1e', margin: '0', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Alerts</p>
               </div>
-              <div className="right-pane">
+              <div className="right-pane" style={{ transform: 'translateX(-30%)', width: '120%' }}>
                 {[
                   { name: 'Mains', count: MODAL_CROSS_FILTER_DATA.filter(i => i.menu_category === 'mains').length },
                   { name: 'Sides', count: MODAL_CROSS_FILTER_DATA.filter(i => i.menu_category === 'sides').length },
                   { name: 'Drinks', count: MODAL_CROSS_FILTER_DATA.filter(i => i.menu_category === 'drinks').length }
                 ].filter(cat => cat.count > 0).map(c => (
-                  <div className="metric-row" key={c.name} style={{ fontSize: '15px', fontWeight: 'bold' }}>
-                    <span>{c.name}</span>
-                    <span style={{ fontWeight: '800' }}>{c.count}</span>
+                  <div className="metric-row" key={c.name} style={{ fontSize: '17px', color: '#5c4d44', padding: '10px 0' }}>
+                    <span style={{ fontWeight: '500', display: 'flex', alignItems: 'center' }}>
+                      {c.name === 'Mains' && (
+                        <img src="/pizza_color_icon.jpg" alt="Mains Icon" style={{ width: '28px', height: '28px', marginRight: '8px', transform: 'rotate(20deg)', mixBlendMode: 'multiply', filter: 'brightness(1.2) contrast(1.5)' }} />
+                      )}
+                      {c.name === 'Sides' && (
+                        <img src="/sides_icon.png" alt="Sides Icon" style={{ width: '24px', height: '24px', marginRight: '8px', mixBlendMode: 'multiply' }} />
+                      )}
+                      {c.name === 'Drinks' && (
+                        <img src="/drinks_icon.avif" alt="Drinks Icon" style={{ width: '24px', height: '24px', marginRight: '8px', mixBlendMode: 'multiply', filter: 'brightness(1.2) contrast(1.5)' }} />
+                      )}
+                      {c.name}
+                    </span>
+                    <span style={{ fontWeight: '800', color: '#1c1c1e' }}>{c.count}</span>
                   </div>
                 ))}
               </div>
