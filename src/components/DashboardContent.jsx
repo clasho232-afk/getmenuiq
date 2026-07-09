@@ -1,13 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { ArrowRight, AlertTriangle, Sparkles, Send, Wallet, Satellite, Megaphone, ChefHat, TrendingUp, TrendingDown, X, Eye, Clock, BarChart3, ChevronRight, AlertCircle, MapPin, Tag, Shield, Truck } from 'lucide-react';
+import { Activity, ArrowRight, AlertTriangle, Sparkles, Send, Wallet, Satellite, Megaphone, ChefHat, TrendingUp, TrendingDown, X, Eye, Clock, BarChart3, ChevronRight, AlertCircle, MapPin, Tag, Shield, Truck } from 'lucide-react';
 import './DashboardContent.css';
 import MarketPositionReport from './MarketPositionReport';
+import AuditCommandCenterModal from './AuditCommandCenterModal';
+import RestaurantHealthModal from './RestaurantHealthModal';
 import DeliveryShadowModal from './DeliveryShadowModal';
 import PromoTrackerModal from './PromoTrackerModal';
 import CompetitorPriceModal from './CompetitorPriceModal';
 
 import RecommendationsModal from './RecommendationsModal';
-import RecommendationsSimulationWidget from './RecommendationsSimulationWidget';
+import VisibilityEngineWidget from './VisibilityEngineWidget';
+import VisibilityEngineModal from './VisibilityEngineModal';
 import AIGreeting from './AIGreeting';
 import AICommandOverlay from './AICommandOverlay';
 import { supabase } from '../supabase';
@@ -65,11 +68,47 @@ const PricingCard = ({ title, count, items, colorClass, onShowMore }) => {
   );
 };
 
+const categoryData = {
+  All: { mains: { u: 12, o: 8 }, sides: { u: 4, o: 3 }, drinks: { u: 2, o: 15 } },
+  Deliveroo: { mains: { u: 4, o: 2 }, sides: { u: 1, o: 0 }, drinks: { u: 1, o: 4 } },
+  UberEats: { mains: { u: 5, o: 4 }, sides: { u: 2, o: 1 }, drinks: { u: 1, o: 6 } },
+  JustEat: { mains: { u: 3, o: 2 }, sides: { u: 1, o: 2 }, drinks: { u: 0, o: 5 } }
+};
+
+const AnimatedNumber = ({ value }) => {
+  const [displayValue, setDisplayValue] = React.useState(value);
+  
+  React.useEffect(() => {
+    let start = displayValue;
+    const end = value;
+    if (start === end) return;
+    
+    const duration = 400;
+    const startTime = performance.now();
+    
+    const animate = (time) => {
+      const elapsed = time - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const easeOut = 1 - Math.pow(1 - progress, 3);
+      
+      setDisplayValue(Math.round(start + (end - start) * easeOut));
+      
+      if (progress < 1) {
+        requestAnimationFrame(animate);
+      }
+    };
+    requestAnimationFrame(animate);
+  }, [value, displayValue]);
+  
+  return displayValue;
+};
+
 const DashboardContent = () => {
   const [selectedCard, setSelectedCard] = React.useState(null);
   const [showPromos, setShowPromos] = React.useState(false);
   const [selectedPromoDetail, setSelectedPromoDetail] = React.useState(null);
   const [selectedMetric, setSelectedMetric] = React.useState(null);
+  const [showHealthModal, setShowHealthModal] = React.useState(false);
   const [dismissedAlerts, setDismissedAlerts] = React.useState([]);
   const [priceAlertFilter, setPriceAlertFilter] = React.useState('all');
   const [showMarketReport, setShowMarketReport] = React.useState(false);
@@ -79,6 +118,9 @@ const DashboardContent = () => {
   const [isAIOverlayOpen, setIsAIOverlayOpen] = React.useState(false);
   const [isRecommendationsModalOpen, setIsRecommendationsModalOpen] = React.useState(false);
   const [selectedItemDetails, setSelectedItemDetails] = React.useState(null);
+  const [selectedPlatformFilter, setSelectedPlatformFilter] = React.useState('Deliveroo');
+  const [showVisibilityModal, setShowVisibilityModal] = React.useState(false);
+  const [selectedVisibilityPlatform, setSelectedVisibilityPlatform] = React.useState('All');
   // 1. Pull the active, user-selected ID string token directly out of local storage
   const savedSessionId = localStorage.getItem('menu_iq_active_store_id');
   if (!savedSessionId) {
@@ -255,66 +297,75 @@ const DashboardContent = () => {
                 flex: 1, 
                 width: '50%',
                 position: 'relative', 
-                backgroundImage: `linear-gradient(to bottom, rgba(0, 0, 0, 0.4) 0%, rgba(0, 0, 0, 0.1) 40%, rgba(0, 0, 0, 0.6) 100%), url('${restaurant?.hero_image_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80'}')`, 
+                backgroundImage: `url('${restaurant?.hero_image_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80'}')`, 
                 backgroundSize: 'cover', 
                 backgroundPosition: 'center',
                 minHeight: '260px',
                 borderTopLeftRadius: '1rem',
-                borderBottomLeftRadius: '1rem',
-                display: 'flex',
-                flexDirection: 'column',
-                justifyContent: 'space-between',
-                padding: '2rem'
+                borderBottomLeftRadius: '1rem'
               }}>
-                <div className="hero-card-dark-overlay" style={{ display: 'contents' }}>
-                  <div className="hero-card-content" style={{ position: 'relative', zIndex: 2 }}>
-                    <h2 id="dashboard-restaurant-name" className="restaurant-name-heading" style={{ fontSize: '1.4rem', fontWeight: 400, color: '#fff', fontFamily: '"Playfair Display", serif', lineHeight: 1.2, margin: 0 }}>
-                      <span className="greeting-text">Good evening,</span><br/>
-                      {restaurant?.name || 'Loading...'}
-                    </h2>
+              </div>
+
+              {/* RIGHT — MenuIQ Intelligence Snapshot */}
+              <div 
+                style={{ 
+                  flex: 1, 
+                  width: '50%', 
+                  padding: '1.75rem', 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  background: 'linear-gradient(180deg, rgba(248, 250, 252, 0.8) 0%, rgba(255, 255, 255, 0) 100%)', 
+                  justifyContent: 'space-between', 
+                  cursor: 'pointer', 
+                  transition: 'background-color 0.2s ease-in-out' 
+                }} 
+                onClick={() => setShowHealthModal(true)}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+              >
+                {/* Branding and Title */}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
+                    <span style={{ fontFamily: "'Lufga', sans-serif", fontSize: '15px', fontWeight: 800, color: '#e05046' }}>MenuIQ</span>
+                    <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '0.15rem' }}>Intelligence</span>
                   </div>
-                  <div style={{ position: 'relative', zIndex: 2 }}>
-                    <div className="delivery-time-badge" style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                      <span className="delivery-icon" style={{ display: 'flex' }}><Truck size={14} color="#fff" strokeWidth={2} /></span>
-                      <span id="dashboard-est-time" style={{ fontSize: '0.8rem', color: '#fff', fontWeight: 500 }}>
-                        {restaurant?.estimated_delivery_time || 'Calculating...'}
-                      </span>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#4ADE80', marginLeft: '0.25rem', boxShadow: '0 0 8px rgba(74, 222, 128, 0.6)' }} />
+                  <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: '-0.02em', lineHeight: 1.1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {restaurant?.name || 'Loading...'}
+                  </h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#64748B', marginTop: '0.35rem', fontSize: '0.7rem', fontWeight: 500 }}>
+                    <MapPin size={12} />
+                    {currentBoroughName || 'Ilford'}, London
+                  </div>
+                </div>
+
+                {/* Score Area */}
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.1rem' }}>
+                      <span style={{ fontSize: '2.75rem', fontWeight: 900, color: '#0F172A', letterSpacing: '-0.04em', lineHeight: 1 }}>68</span>
+                      <span style={{ fontSize: '0.99rem', fontWeight: 700, color: '#94A3B8', lineHeight: 1 }}>/100</span>
+                    </div>
+                    <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
+                      <Activity size={10} strokeWidth={3} />
+                      Fair Health
                     </div>
                   </div>
                 </div>
-              </div>
 
-              {/* RIGHT — Health Overview Data */}
-              <div style={{ flex: 1, width: '50%', padding: '2rem', display: 'flex', flexDirection: 'column', background: '#fff', justifyContent: 'center' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.25rem' }}>
-                  <h2 className="font-sans" style={{ margin: 0, fontSize: '0.85rem', fontWeight: 800, letterSpacing: '0.05em', color: '#111', textTransform: 'uppercase' }}>Health Overview</h2>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', background: '#FCE7E7', color: '#D63B1F', padding: '0.25rem 0.75rem', borderRadius: '9999px', fontSize: '0.75rem', fontWeight: 800 }}>
-                    <AlertCircle size={12} strokeWidth={2.5} /> 64/100
+                {/* Platform Pills */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'nowrap' }}>
+                  <div style={{ background: '#00CCBC', padding: '0.25rem 0.6rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(0, 204, 188, 0.2)', flexShrink: 0 }}>
+                    <img src="https://cdn.simpleicons.org/deliveroo/white" alt="Deliveroo" style={{ height: '11px', width: '11px' }} />
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>Deliveroo</span>
                   </div>
-                </div>
-                
-                {/* Secondary Metrics (Pristine Vertical List) */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1, justifyContent: 'center' }}>
-                  
-                  {/* Row 1: Local Rank */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.05em' }}>LOCAL RANK</span>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#D63B1F', lineHeight: 1 }}>#14</span>
+                  <div style={{ background: '#06C167', padding: '0.25rem 0.6rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(6, 193, 103, 0.2)', flexShrink: 0 }}>
+                    <img src="https://cdn.simpleicons.org/ubereats/white" alt="UberEats" style={{ height: '11px', width: '11px' }} />
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>UberEats</span>
                   </div>
-
-                  {/* Row 2: Price Gap */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.05em' }}>PRICE GAP</span>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#D63B1F', lineHeight: 1 }}>+8%</span>
+                  <div style={{ background: '#FF8000', padding: '0.25rem 0.6rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(255, 128, 0, 0.2)', flexShrink: 0 }}>
+                    <img src="https://cdn.simpleicons.org/justeat/white" alt="Just Eat" style={{ height: '11px', width: '11px' }} />
+                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>Just Eat</span>
                   </div>
-
-                  {/* Row 3: Promo Threat */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.05em' }}>PROMO THREAT</span>
-                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#D63B1F', lineHeight: 1 }}>40%</span>
-                  </div>
-
                 </div>
               </div>
             </div>
@@ -393,105 +444,251 @@ const DashboardContent = () => {
         <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Pricing Overview Consolidated Card */}
         <div className="col-span-12 md:col-span-5">
-          <div className="pricing-gauge-card" style={{ height: '280px' }}>
-            {/* Header */}
-            <div style={{ borderBottom: '1px solid rgba(228, 226, 228, 0.6)', paddingBottom: '1rem' }}>
-              <h2 style={{ fontSize: '1.5rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.025em', margin: 0 }}>Pricing Distribution</h2>
-              <p style={{ fontSize: '0.875rem', fontWeight: 500, color: 'rgba(90, 65, 59, 0.8)', marginTop: '0.75rem', textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0 }}>Menu Item Analysis</p>
+          <div className="pricing-gauge-card" style={{ minHeight: '280px', height: '100%', padding: 0, flexDirection: 'row' }}>
+            {/* Left 60% Column */}
+            <div style={{ width: '60%', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              {/* Header with Filters */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(228, 226, 228, 0.6)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.025em', margin: 0, whiteSpace: 'nowrap' }}>Menu Pricing</h2>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {[
+                    { id: 'All', label: 'All', color: '#E86A58', iconUrl: null },
+                    { id: 'Deliveroo', label: 'Deliveroo', color: '#00CCBC', iconUrl: 'https://cdn.simpleicons.org/deliveroo' },
+                    { id: 'UberEats', label: 'UberEats', color: '#06C167', iconUrl: 'https://cdn.simpleicons.org/ubereats' },
+                    { id: 'JustEat', label: 'Just Eat', color: '#F36D00', iconUrl: 'https://cdn.simpleicons.org/justeat' }
+                  ].map(platform => {
+                    const isActive = selectedPlatformFilter === platform.id;
+                    return (
+                      <button
+                        key={platform.id}
+                        onClick={() => setSelectedPlatformFilter(platform.id)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          height: '30px',
+                          width: platform.id === 'All' ? 'auto' : '38px',
+                          padding: platform.id === 'All' ? '0 1rem' : '0',
+                          borderRadius: '9999px',
+                          fontSize: '0.75rem',
+                          fontWeight: 700,
+                          transition: 'all 0.2s',
+                          background: isActive ? platform.color : '#ffffff',
+                          color: isActive ? '#ffffff' : '#6B7280',
+                          boxShadow: isActive ? `0 4px 12px ${platform.color}40` : '0 2px 4px rgba(0,0,0,0.02)',
+                          border: isActive ? 'none' : '1px solid rgba(0,0,0,0.05)',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        {platform.iconUrl && (
+                          <img 
+                            src={platform.iconUrl} 
+                            alt={platform.label} 
+                            style={{ 
+                              width: '18px', 
+                              height: '18px', 
+                              objectFit: 'contain',
+                              filter: isActive ? 'brightness(0) invert(1)' : 'grayscale(100%) opacity(50%)'
+                            }} 
+                          />
+                        )}
+                        {platform.id === 'All' && platform.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              
+              {/* Flat Continuous Stacked Bar Centerpiece */}
+              <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1rem 0.25rem' }}>
+                <div style={{ height: '1.75rem', width: '100%', display: 'flex', borderRadius: '12px', overflow: 'hidden', backgroundColor: 'rgba(0,0,0,0.05)', position: 'relative', zIndex: 10 }}>
+                  {/* Underpriced Segment (Amber) */}
+                  <div style={{ height: '100%', width: '25%', backgroundColor: '#F59E0B' }}></div>
+                  {/* Stable Segment (Teal) */}
+                  <div style={{ height: '100%', width: '50%', backgroundColor: '#10B981' }}></div>
+                  {/* Overpriced Segment (Red) */}
+                  <div style={{ height: '100%', width: '25%', backgroundColor: '#FF5E3A' }}></div>
+                </div>
+                
+                {/* Value markers above the gauge for visual context */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', padding: '0 1.25rem', marginTop: '0.75rem' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#F59E0B' }}>25%</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#10B981', textAlign: 'center', flexGrow: 1 }}>50%</span>
+                  <span className="animate-text-pulse" style={{ fontSize: '0.875rem', fontWeight: 600, color: '#FF5E3A' }}>25%</span>
+                </div>
+              </div>
+              
+              {/* Metrics Footer */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingTop: '1rem', borderTop: '1px solid rgba(228, 226, 228, 0.6)', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
+                {/* Underpriced Metric */}
+                <div 
+                  style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', padding: '0.5rem', margin: '-0.5rem', borderRadius: '0.5rem', transition: 'background-color 0.2s', flex: 1 }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(245,158,11,0.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  onClick={() => setSelectedCard({
+                    title: 'Underpriced Items',
+                    color: '#E86A58',
+                    items: [
+                      { name: 'Vegan Wrap', category: 'Wraps', price: '£5.50', image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £6.80. (£1.30 below market)', platform: 'Uber Eats' },
+                      { name: 'Avocado Toast', category: 'Breakfast', price: '£6.00', image: 'https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £7.50. (£1.50 below market)', platform: 'Uber Eats' },
+                      { name: 'Milkshake', category: 'Drinks', price: '£3.20', image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £4.00. (£0.80 below market)', platform: 'JustEat' }
+                    ]
+                  })}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.25rem' }}>
+                    <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '9999px', backgroundColor: '#F59E0B', boxShadow: '0 0 8px rgba(245,158,11,0.4)', flexShrink: 0 }}></div>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Underpriced</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', paddingLeft: '0.875rem', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111' }}>142</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#9CA3AF' }}>items</span>
+                  </div>
+                </div>
+                
+                {/* Stable Metric */}
+                <div 
+                  style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', padding: '0.5rem', margin: '-0.5rem', borderRadius: '0.5rem', transition: 'background-color 0.2s', flex: 1 }}
+                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(16,185,129,0.05)'}
+                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  onClick={() => setSelectedCard({
+                    title: 'Stable Items',
+                    color: '#10B981',
+                    items: [
+                      { name: 'Classic Cheeseburger', category: 'Mains', price: '£9.50', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £9.50. (Matches market perfectly)', platform: 'Uber Eats' }
+                    ]
+                  })}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.25rem' }}>
+                    <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '9999px', backgroundColor: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.4)', flexShrink: 0 }}></div>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Stable</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', paddingLeft: '0.875rem', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111' }}>284</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#9CA3AF' }}>items</span>
+                  </div>
+                </div>
+                
+                {/* Overpriced Metric (Pulsing) */}
+                <div 
+                  className="animate-text-pulse" 
+                  style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', padding: '0.5rem', margin: '-0.5rem', borderRadius: '0.5rem', transition: 'background-color 0.2s', flex: 1 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,94,58,0.05)'; e.currentTarget.style.animationPlayState = 'paused'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.animationPlayState = 'running'; }}
+                  onClick={() => setSelectedCard({
+                    title: 'Above Market Average',
+                    color: '#FF5E3A',
+                    items: [
+                      { name: 'Margherita Pizza', category: 'Mains', price: '£15.00', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £13.50. (£1.50 above market)', platform: 'Uber Eats' },
+                      { name: 'Cola Zero', category: 'Drinks', price: '£2.50', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £2.00. (£0.50 above market)', platform: 'Deliveroo' }
+                    ]
+                  })}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.25rem' }}>
+                    <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '9999px', backgroundColor: '#ff5e3a', boxShadow: '0 0 8px rgba(255,94,58,0.5)', flexShrink: 0 }}></div>
+                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Overpriced</span>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', paddingLeft: '0.875rem', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111' }}>142</span>
+                    <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#9CA3AF' }}>items</span>
+                  </div>
+                </div>
+              </div>
             </div>
-            
-            {/* 3D Segmented Gauge Centerpiece */}
-            <div style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', padding: '1rem 0.25rem' }}>
-              <div style={{ height: '2.5rem', width: '100%', display: 'flex', borderRadius: '9999px', padding: '0.375rem', backgroundColor: 'rgba(0,0,0,0.05)', boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.08), 0 1px 0 rgba(255,255,255,0.8)', position: 'relative', zIndex: 10, gap: '0.5rem' }}>
-                {/* Underpriced Segment (Amber) */}
-                <div className="glass-extrude" style={{ height: '100%', width: '25%', borderRadius: '9999px', backgroundColor: '#F59E0B', zIndex: 20 }}></div>
-                {/* Stable Segment (Teal) */}
-                <div className="glass-extrude" style={{ height: '100%', width: '50%', borderRadius: '9999px', backgroundColor: '#10B981', zIndex: 20 }}></div>
-                {/* Overpriced Segment (Red) - with soft pulse animation */}
-                <div className="glass-extrude animate-soft-pulse" style={{ height: '100%', width: '25%', borderRadius: '9999px', backgroundColor: '#FF5E3A', zIndex: 20 }}></div>
-              </div>
+
+            {/* Right 40% Column - Category Breakdown */}
+            <div style={{ width: '40%', padding: '1.5rem', borderLeft: '1px solid rgba(228, 226, 228, 0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '1.25rem' }}>
+              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>Category Breakdown</div>
               
-              {/* Value markers above the gauge for visual context */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', padding: '0 1.25rem', marginTop: '0.75rem' }}>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#F59E0B' }}>25%</span>
-                <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#10B981', textAlign: 'center', flexGrow: 1 }}>50%</span>
-                <span className="animate-text-pulse" style={{ fontSize: '0.875rem', fontWeight: 600, color: '#FF5E3A' }}>25%</span>
-              </div>
-            </div>
-            
-            {/* Metrics Footer */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', paddingTop: '1.25rem', borderTop: '1px solid rgba(228, 226, 228, 0.6)' }}>
-              {/* Underpriced Metric */}
-              <div 
-                style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', padding: '0.5rem', margin: '-0.5rem', borderRadius: '0.5rem', transition: 'background-color 0.2s' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(245,158,11,0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                onClick={() => setSelectedCard({
-                  title: 'Underpriced Items',
-                  color: '#E86A58',
-                  items: [
-                    { name: 'Vegan Wrap', category: 'Wraps', price: '£5.50', image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £6.80. (£1.30 below market)', platform: 'Uber Eats' },
-                    { name: 'Avocado Toast', category: 'Breakfast', price: '£6.00', image: 'https://images.unsplash.com/photo-1541519227354-08fa5d50c44d?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £7.50. (£1.50 below market)', platform: 'Uber Eats' },
-                    { name: 'Milkshake', category: 'Drinks', price: '£3.20', image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £4.00. (£0.80 below market)', platform: 'JustEat' }
-                  ]
-                })}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
-                  <div style={{ width: '0.625rem', height: '0.625rem', borderRadius: '9999px', backgroundColor: '#F59E0B', boxShadow: '0 0 8px rgba(245,158,11,0.4)' }}></div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#5a413b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Underpriced</span>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.75rem', alignItems: 'center', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
+                {/* Column Headers */}
+                <div></div>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>Under</div>
+                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>Over</div>
+                
+                {/* Mains */}
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111' }}>Mains</div>
+                
+                {/* Underpriced Column */}
+                <div style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', 
+                  background: 'rgba(245,158,11,0.1)', padding: '4px 0', borderRadius: '12px',
+                  minWidth: '42px', opacity: categoryData[selectedPlatformFilter]?.mains.u === 0 ? 0.3 : 1
+                }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#F59E0B', lineHeight: 1 }}>
+                    <AnimatedNumber value={categoryData[selectedPlatformFilter]?.mains.u ?? 0} />
+                  </span>
                 </div>
-                <span style={{ fontSize: '1.125rem', color: '#1b1b1d', fontWeight: 500, paddingLeft: '1.125rem' }}>142 items</span>
-              </div>
-              
-              {/* Stable Metric */}
-              <div 
-                style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', padding: '0.5rem', margin: '-0.5rem', borderRadius: '0.5rem', transition: 'background-color 0.2s' }}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(16,185,129,0.05)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                onClick={() => setSelectedCard({
-                  title: 'Stable Items',
-                  color: '#10B981',
-                  items: [
-                    { name: 'Classic Cheeseburger', category: 'Mains', price: '£9.50', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £9.50. (Matches market perfectly)', platform: 'Uber Eats' }
-                  ]
-                })}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
-                  <div style={{ width: '0.625rem', height: '0.625rem', borderRadius: '9999px', backgroundColor: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.4)' }}></div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#5a413b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stable</span>
+                
+                {/* Overpriced Column */}
+                <div style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', 
+                  background: 'rgba(255,94,58,0.1)', padding: '4px 0', borderRadius: '12px',
+                  minWidth: '42px', opacity: categoryData[selectedPlatformFilter]?.mains.o === 0 ? 0.3 : 1
+                }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#FF5E3A', lineHeight: 1 }}>
+                    <AnimatedNumber value={categoryData[selectedPlatformFilter]?.mains.o ?? 0} />
+                  </span>
                 </div>
-                <span style={{ fontSize: '1.125rem', color: '#1b1b1d', fontWeight: 500, paddingLeft: '1.125rem' }}>284 items</span>
-              </div>
-              
-              {/* Overpriced Metric (Pulsing) */}
-              <div 
-                className="animate-text-pulse" 
-                style={{ display: 'flex', flexDirection: 'column', cursor: 'pointer', padding: '0.5rem', margin: '-0.5rem', borderRadius: '0.5rem', transition: 'background-color 0.2s' }}
-                onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'rgba(255,94,58,0.05)'; e.currentTarget.style.animationPlayState = 'paused'; }}
-                onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.animationPlayState = 'running'; }}
-                onClick={() => setSelectedCard({
-                  title: 'Above Market Average',
-                  color: '#FF5E3A',
-                  items: [
-                    { name: 'Margherita Pizza', category: 'Mains', price: '£15.00', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £13.50. (£1.50 above market)', platform: 'Uber Eats' },
-                    { name: 'Cola Zero', category: 'Drinks', price: '£2.50', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=120&q=80', description: 'Market Average: £2.00. (£0.50 above market)', platform: 'Deliveroo' }
-                  ]
-                })}
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.375rem' }}>
-                  <div style={{ width: '0.625rem', height: '0.625rem', borderRadius: '9999px', backgroundColor: '#ff5e3a', boxShadow: '0 0 8px rgba(255,94,58,0.5)' }}></div>
-                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ff5e3a', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Overpriced</span>
+
+                {/* Sides */}
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111' }}>Sides</div>
+                
+                <div style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', 
+                  background: 'rgba(245,158,11,0.1)', padding: '4px 0', borderRadius: '12px',
+                  minWidth: '42px', opacity: categoryData[selectedPlatformFilter]?.sides.u === 0 ? 0.3 : 1
+                }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#F59E0B', lineHeight: 1 }}>
+                    <AnimatedNumber value={categoryData[selectedPlatformFilter]?.sides.u ?? 0} />
+                  </span>
                 </div>
-                <span style={{ fontSize: '1.125rem', color: '#1b1b1d', fontWeight: 500, paddingLeft: '1.125rem' }}>142 items</span>
+                
+                <div style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', 
+                  background: 'rgba(255,94,58,0.1)', padding: '4px 0', borderRadius: '12px',
+                  minWidth: '42px', opacity: categoryData[selectedPlatformFilter]?.sides.o === 0 ? 0.3 : 1
+                }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#FF5E3A', lineHeight: 1 }}>
+                    <AnimatedNumber value={categoryData[selectedPlatformFilter]?.sides.o ?? 0} />
+                  </span>
+                </div>
+
+                {/* Drinks */}
+                <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111' }}>Drinks</div>
+                
+                <div style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', 
+                  background: 'rgba(245,158,11,0.1)', padding: '4px 0', borderRadius: '12px',
+                  minWidth: '42px', opacity: categoryData[selectedPlatformFilter]?.drinks.u === 0 ? 0.3 : 1
+                }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#F59E0B', lineHeight: 1 }}>
+                    <AnimatedNumber value={categoryData[selectedPlatformFilter]?.drinks.u ?? 0} />
+                  </span>
+                </div>
+                
+                <div style={{ 
+                  display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', 
+                  background: 'rgba(255,94,58,0.1)', padding: '4px 0', borderRadius: '12px',
+                  minWidth: '42px', opacity: categoryData[selectedPlatformFilter]?.drinks.o === 0 ? 0.3 : 1
+                }}>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#FF5E3A', lineHeight: 1 }}>
+                    <AnimatedNumber value={categoryData[selectedPlatformFilter]?.drinks.o ?? 0} />
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
  
-        {/* Recommendations Widget (Moved to Row 2) */}
+        {/* Visibility Engine Widget (Moved to Row 2) */}
         <div className="col-span-12 md:col-span-3">
           <div style={{ height: '280px', overflow: 'hidden' }}>
-            <RecommendationsSimulationWidget onClick={() => setIsRecommendationsModalOpen(true)} />
+            <VisibilityEngineWidget 
+              onPlatformClick={(platform) => { 
+                setSelectedVisibilityPlatform(platform); 
+                setShowVisibilityModal(true); 
+              }} 
+            />
           </div>
         </div>
 
@@ -501,89 +698,7 @@ const DashboardContent = () => {
         </div>
       </div>
 
-        {/* ROW 3 - Blind Spots & Email Preview */}
-        <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6">
-          {/* Feature 2: Real Blind Spot Engine */}
-          <div className="col-span-12 md:col-span-6">
-            <div className="glass-panel rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)] bg-[#FAF8F4]" style={{ height: '100%', padding: '1.75rem 2rem', display: 'flex', flexDirection: 'column' }}>
-              <h3 className="font-sans text-xl font-bold text-gray-900 tracking-tight" style={{ marginBottom: '1.5rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Eye size={20} color="#10B981" /> Menu Blind Spots
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: '#6B7280', marginBottom: '1.5rem' }}>
-                We analyzed 15 Tier 1 competitors in your area. You are missing high-value items that your competitors are successfully selling.
-              </p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: '#fff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🍕</div>
-                    <div>
-                      <div style={{ fontWeight: 700, color: '#111', fontSize: '0.95rem' }}>Stuffed Crust Pizza</div>
-                      <div style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '2px' }}>Sold by 8 of 15 competitors</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#9CA3AF', fontWeight: 600 }}>Avg Market Price</div>
-                    <div style={{ fontWeight: 800, color: '#10B981' }}>£13.50</div>
-                  </div>
-                </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '1rem', background: '#fff', borderRadius: '12px', border: '1px solid #E5E7EB' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>🍟</div>
-                    <div>
-                      <div style={{ fontWeight: 700, color: '#111', fontSize: '0.95rem' }}>Loaded Chicken Fries</div>
-                      <div style={{ fontSize: '0.75rem', color: '#6B7280', marginTop: '2px' }}>Sold by 6 of 15 competitors</div>
-                    </div>
-                  </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '0.75rem', color: '#9CA3AF', fontWeight: 600 }}>Avg Market Price</div>
-                    <div style={{ fontWeight: 800, color: '#10B981' }}>£6.20</div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Feature 23: Weekly Intelligence Email Preview */}
-          <div className="col-span-12 md:col-span-6">
-            <div className="glass-panel rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)]" style={{ height: '100%', padding: '1.75rem 2rem', display: 'flex', flexDirection: 'column', background: 'linear-gradient(145deg, #111827, #1F2937)' }}>
-              <h3 className="font-sans text-xl font-bold text-white tracking-tight" style={{ marginBottom: '1.5rem', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <Send size={20} color="#60A5FA" /> Weekly Intelligence Email
-              </h3>
-              <p style={{ fontSize: '0.85rem', color: '#9CA3AF', marginBottom: '1.5rem' }}>
-                Preview of the digest sending to your inbox every Monday at 8:00 AM.
-              </p>
-
-              <div style={{ background: '#fff', borderRadius: '12px', padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                <div style={{ fontWeight: 800, color: '#111', fontSize: '1.1rem', borderBottom: '2px solid #F3F4F6', paddingBottom: '0.5rem' }}>MenuIQ Weekly Briefing</div>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#EF4444', marginTop: '6px' }} />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#111' }}>3 Price Changes Detected</div>
-                      <div style={{ fontSize: '0.8rem', color: '#6B7280' }}>Domino's and Pizza Palace updated their prices.</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#F59E0B', marginTop: '6px' }} />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#111' }}>New Promo Alert</div>
-                      <div style={{ fontSize: '0.8rem', color: '#6B7280' }}>Fire Crust launched a "Spend £20 Save £5" deal.</div>
-                    </div>
-                  </div>
-                  <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                    <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#10B981', marginTop: '6px' }} />
-                    <div>
-                      <div style={{ fontWeight: 600, fontSize: '0.9rem', color: '#111' }}>Recommended Action</div>
-                      <div style={{ fontSize: '0.8rem', color: '#6B7280' }}>Lower the price of your Vegan Wrap to match the market average of £6.80.</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
       {/* End Master Dashboard Wrapper */}
 
@@ -593,56 +708,111 @@ const DashboardContent = () => {
         <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 9999, background: 'rgba(255,255,255,0.4)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           <div className="glass-panel modal-content" style={{ width: '1200px', maxWidth: '95%', height: '80vh', padding: '2.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: 'rgba(250,248,244,0.95)', border: '1px solid #E5E7EB', boxShadow: '0 20px 40px rgba(0,0,0,0.1)' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: selectedCard.color || '#000', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', background: selectedCard.color || '#000' }}></span>
-                {selectedCard.title}
-              </h3>
-              <button onClick={() => setSelectedCard(null)} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #E5E7EB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s, transform 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.transform = 'scale(1.05)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'scale(1)'; }}>
-                <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>×</span>
-              </button>
+              <div style={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700, color: selectedCard.color || '#000', margin: 0, display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                  <span style={{ display: 'inline-block', width: '12px', height: '12px', borderRadius: '50%', background: selectedCard.color || '#000' }}></span>
+                  {selectedCard.title}
+                </h3>
+              </div>
+              
+              {/* Contextual Filtering (Platform Toggle Inheriting State) */}
+              <div style={{ display: 'flex', justifyContent: 'center', flex: 1 }}>
+                <div style={{ display: 'flex', gap: '0.25rem', background: '#fff', padding: '0.25rem', borderRadius: '9999px', border: '1px solid #E5E7EB' }}>
+                  {[
+                    { id: 'All', label: 'All', color: '#E86A58', iconUrl: null },
+                    { id: 'Deliveroo', label: 'Deliveroo', color: '#00CCBC', iconUrl: 'https://cdn.simpleicons.org/deliveroo' },
+                    { id: 'UberEats', label: 'UberEats', color: '#06C167', iconUrl: 'https://cdn.simpleicons.org/ubereats' },
+                    { id: 'JustEat', label: 'Just Eat', color: '#F36D00', iconUrl: 'https://cdn.simpleicons.org/justeat' }
+                  ].map(platform => {
+                    const isActive = selectedPlatformFilter === platform.id;
+                    return (
+                      <button
+                        key={platform.id}
+                        onClick={() => setSelectedPlatformFilter(platform.id)}
+                        style={{
+                          display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          height: '24px', width: platform.id === 'All' ? 'auto' : '28px',
+                          padding: platform.id === 'All' ? '0 0.75rem' : '0',
+                          borderRadius: '9999px', fontSize: '0.65rem', fontWeight: 700,
+                          transition: 'all 0.2s',
+                          background: isActive ? platform.color : '#ffffff',
+                          color: isActive ? '#ffffff' : '#6B7280',
+                          border: 'none', cursor: 'pointer'
+                        }}
+                      >
+                        {platform.iconUrl && (
+                          <img 
+                            src={platform.iconUrl} 
+                            alt={platform.label} 
+                            style={{ 
+                              width: '14px', height: '14px', objectFit: 'contain',
+                              filter: isActive ? 'brightness(0) invert(1)' : 'grayscale(100%) opacity(50%)'
+                            }} 
+                          />
+                        )}
+                        {platform.id === 'All' && platform.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', justifyContent: 'flex-end', flex: 1 }}>
+                <button onClick={() => setSelectedCard(null)} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid #E5E7EB', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', transition: 'background 0.2s, transform 0.2s' }} onMouseEnter={(e) => { e.currentTarget.style.background = '#f3f4f6'; e.currentTarget.style.transform = 'scale(1.05)'; }} onMouseLeave={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'scale(1)'; }}>
+                  <span style={{ fontSize: '1.25rem', lineHeight: 1 }}>×</span>
+                </button>
+              </div>
             </div>
             
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '2rem', flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              {['Uber Eats', 'JustEat', 'Deliveroo'].map(platform => {
-                const platformItems = selectedCard.items.filter(i => (i.platform === platform));
-                const platformColors = {
-                  'Uber Eats': '#06C167',
-                  'JustEat': '#F36D00',
-                  'Deliveroo': '#00CCBC'
-                };
+              {['Mains', 'Sides', 'Drinks'].map(category => {
+                const categoryItems = selectedCard.items.filter(i => {
+                  const matchCategory = i.category === category;
+                  const matchPlatform = selectedPlatformFilter === 'All' ? true : (i.platform === selectedPlatformFilter || i.platform.replace(' ', '') === selectedPlatformFilter);
+                  return matchCategory && matchPlatform;
+                });
+                
                 return (
-                  <div key={platform} style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, overflow: 'hidden' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.75rem', borderBottom: '2px solid #E5E7EB', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
-                      <h4 className="font-sans" style={{ fontSize: '1.25rem', fontWeight: 800, color: platformColors[platform] || '#111', margin: 0 }}>{platform}</h4>
+                  <div key={category} style={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0, overflow: 'hidden' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', borderBottom: '2px solid #E5E7EB', paddingBottom: '0.75rem', marginBottom: '1rem' }}>
+                      <h4 className="font-sans" style={{ fontSize: '1.1rem', fontWeight: 700, color: '#374151', margin: 0, fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>{category}</h4>
+                      <div style={{ background: 'rgba(0,0,0,0.05)', color: '#6B7280', fontSize: '0.75rem', fontWeight: 700, padding: '2px 8px', borderRadius: '12px', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
+                        {categoryItems.length}
+                      </div>
                     </div>
+                    
                     <div className="custom-scrollbar" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', flex: 1, paddingRight: '0.5rem' }}>
-                      {platformItems.length === 0 ? (
-                        <div style={{ textAlign: 'center', padding: '2rem', color: '#9CA3AF', fontSize: '0.9rem' }}>No items in this category.</div>
+                      {categoryItems.length === 0 ? (
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9CA3AF', fontSize: '0.9rem', opacity: 0.6, fontWeight: 500, paddingBottom: '2rem', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
+                          [ • 0 items ]
+                        </div>
                       ) : (
-                        platformItems.map((item, i) => {
-                          const parts = item.description ? item.description.split('. ') : [];
-                          const pricePart = parts[0] || '';
-                          const restPart = parts.length > 1 ? '. ' + parts.slice(1).join('. ') : (item.description && item.description.endsWith('.') && parts.length === 1 ? '.' : '');
+                        categoryItems.map((item, i) => {
+                          let varianceText = item.description || '';
+                          if (varianceText.includes('below market')) {
+                            varianceText = varianceText.replace('Market Average: ', 'Market Avg: ').replace('. (', ' | ↓ ').replace(' below market)', '');
+                          } else if (varianceText.includes('above market')) {
+                            varianceText = varianceText.replace('Market Average: ', 'Market Avg: ').replace('. (', ' | ↑ ').replace(' above market)', '');
+                          } else if (varianceText.includes('Matches market perfectly')) {
+                            varianceText = varianceText.replace('Market Average: ', 'Market Avg: ').replace('. (Matches market perfectly)', ' | =');
+                          }
+                          
+                          const platformKey = item.platform === 'Just Eat' || item.platform === 'JustEat' ? 'justeat' : item.platform.toLowerCase().replace(' ', '');
+                          
                           return (
-                            <div key={i} onClick={() => setSelectedItemDetails(item)} style={{ display: 'flex', gap: '1rem', background: '#fff', borderRadius: '12px', padding: '0.75rem', border: '1px solid #E5E7EB', boxShadow: '0 2px 4px rgba(0,0,0,0.02)', alignItems: 'center', minWidth: 0, cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
+                            <div key={i} onClick={() => setSelectedItemDetails(item)} style={{ display: 'flex', gap: '1rem', background: 'rgba(255, 255, 255, 0.4)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', borderRadius: '12px', padding: '0.75rem', border: '1px solid rgba(255, 255, 255, 0.8)', boxShadow: '0 4px 6px rgba(0,0,0,0.02)', alignItems: 'center', minWidth: 0, cursor: 'pointer', transition: 'transform 0.1s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'translateY(0)'}>
                               <img src={item.image} alt={item.name} style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0 }} />
                               <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                                  <h4 className="font-sans" style={{ fontSize: '1rem', fontWeight: 700, color: '#111', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{item.name}</h4>
-                                  <span className="font-sans" style={{ fontSize: '1rem', fontWeight: 800, color: '#111', flexShrink: 0, marginLeft: '0.5rem' }}>{item.price || '£--'}</span>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', overflow: 'hidden' }}>
+                                    <img src={`https://cdn.simpleicons.org/${platformKey}/9CA3AF`} alt={item.platform} style={{ width: '12px', height: '12px', flexShrink: 0 }} />
+                                    <h4 className="font-sans" style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111', margin: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>{item.name}</h4>
+                                  </div>
+                                  <span className="font-sans" style={{ fontSize: '0.95rem', fontWeight: 400, color: '#374151', flexShrink: 0, marginLeft: '0.5rem', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>{item.price || '£--'}</span>
                                 </div>
-                                {pricePart.includes('Your price') || pricePart.includes('Market Average') || pricePart.includes('Platform Price') ? (
-                                  <>
-                                    <span className="font-sans" style={{ color: '#D97706', fontSize: '0.75rem', fontWeight: 'bold', marginTop: '0.1rem' }}>{pricePart}</span>
-                                    <p className="font-sans" style={{ color: '#DC2626', fontSize: '0.75rem', margin: '0.25rem 0 0 0', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                      {restPart.replace(/^\.\s*/, '')}
-                                    </p>
-                                  </>
-                                ) : (
-                                  <p className="font-sans" style={{ color: '#9CA3AF', fontSize: '0.75rem', margin: '0.25rem 0 0 0', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                                    {item.description || 'Detailed item performance and market positioning information goes here.'}
-                                  </p>
-                                )}
+                                <p className="font-sans" style={{ color: '#6B7280', fontSize: '0.75rem', margin: '0.25rem 0 0 0', lineHeight: 1.3, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
+                                  {varianceText}
+                                </p>
                               </div>
                             </div>
                           );
@@ -653,44 +823,26 @@ const DashboardContent = () => {
                 );
               })}
             </div>
+
           </div>
         </div>
       )}
 
       {selectedItemDetails && (
-        <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 110, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div className="glass-panel modal-content" style={{ width: '400px', maxWidth: '90%', padding: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', background: '#fff', borderRadius: '16px', border: '1px solid #E5E7EB', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', position: 'relative' }}>
-            <button onClick={() => setSelectedItemDetails(null)} style={{ position: 'absolute', top: '1rem', right: '1rem', width: '32px', height: '32px', borderRadius: '50%', border: 'none', background: '#F3F4F6', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}>
-              <X size={16} color="#4B5563" />
-            </button>
-            <img src={selectedItemDetails.image} alt={selectedItemDetails.name} style={{ width: '100%', height: '200px', objectFit: 'cover', borderRadius: '12px' }} />
-            <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                <h3 className="font-sans" style={{ fontSize: '1.5rem', fontWeight: 700, margin: 0, color: '#111' }}>{selectedItemDetails.name}</h3>
-                <span className="font-sans" style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111' }}>{selectedItemDetails.price}</span>
-              </div>
-              <span className="font-sans" style={{ display: 'inline-block', background: '#F3F4F6', color: '#4B5563', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: '9999px', marginBottom: '1rem' }}>{selectedItemDetails.category || 'Category'}</span>
-              {(() => {
-                const parts = selectedItemDetails.description ? selectedItemDetails.description.split('. ') : [];
-                const pricePart = parts[0] || '';
-                const restPart = parts.length > 1 ? '. ' + parts.slice(1).join('. ') : (selectedItemDetails.description && selectedItemDetails.description.endsWith('.') && parts.length === 1 ? '.' : '');
-                return (
-                  <p className="font-sans" style={{ color: '#4B5563', fontSize: '0.9rem', lineHeight: 1.5, margin: 0 }}>
-                    {pricePart.includes('Your price') ? (
-                      <>
-                        <span style={{ color: '#E86A58', fontWeight: 600 }}>{pricePart}</span>
-                        <span>{restPart}</span>
-                      </>
-                    ) : (
-                      <span>{selectedItemDetails.description || 'No detailed description available.'}</span>
-                    )}
-                  </p>
-                );
-              })()}
-            </div>
-          </div>
-        </div>
+        <AuditCommandCenterModal 
+          activeItem={selectedItemDetails} 
+          initialPlatform={selectedItemDetails.platform ? selectedItemDetails.platform.toLowerCase().replace(/\s+/g, '') : 'deliveroo'} 
+          onClose={() => setSelectedItemDetails(null)} 
+        />
       )}
+
+      {/* Restaurant Health Detailed Modal */}
+      <RestaurantHealthModal 
+        isOpen={showHealthModal} 
+        onClose={() => setShowHealthModal(false)} 
+        restaurant={restaurant}
+      />
+
       {/* Modal Overlay for Promos */}
       <PromoTrackerModal 
         isOpen={showPromos} 
@@ -756,6 +908,14 @@ const DashboardContent = () => {
         } : null}
         priceChanges={selectedCompetitorForModal?.changes || []}
       />
+
+      {/* Visibility Engine Modal */}
+      <VisibilityEngineModal 
+        isOpen={showVisibilityModal} 
+        onClose={() => setShowVisibilityModal(false)} 
+        initialPlatform={selectedVisibilityPlatform} 
+      />
+
     </div>
   );
 };
