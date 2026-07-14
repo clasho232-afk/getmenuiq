@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Target, MapPin, SlidersHorizontal, ChevronDown, X, Sparkles } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Target, MapPin, SlidersHorizontal, ChevronDown, X, Sparkles, Search, Tag, Copy, Truck, Banknote, Gift, Filter } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, CircleMarker, ZoomControl, useMap, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import eastLondonAreas from './east_london_areas.json';
@@ -104,15 +104,15 @@ function getSinglePromoThreatScore(promo) {
 }
 
 // Map Controller for Zooming/Panning
-const MapController = ({ bounds, selectedPromo }) => {
+const MapController = ({ center, zoom, selectedPromo }) => {
   const map = useMap();
   useEffect(() => {
     if (selectedPromo) {
       map.flyTo([selectedPromo.lat, selectedPromo.lng], 16, { duration: 1.2 });
-    } else if (bounds) {
-      map.flyToBounds(bounds, { padding: [20, 20], duration: 1.2 });
+    } else if (center) {
+      map.flyTo(center, zoom, { duration: 1.2 });
     }
-  }, [bounds, selectedPromo, map]);
+  }, [center, zoom, selectedPromo, map]);
   return null;
 };
 
@@ -121,11 +121,27 @@ const MapController = ({ bounds, selectedPromo }) => {
 // ================================================================
 
 const PromoTrackerModal = ({ isOpen, onClose }) => {
-  const [intelPlatform, setIntelPlatform] = useState(null);
+  const [intelPlatforms, setIntelPlatforms] = useState(['all']);
+  const [promoTypeFilter, setPromoTypeFilter] = useState(['all']);
+  const [searchQuery, setSearchQuery] = useState('');
   const [areaFilter, setAreaFilter] = useState('ilford');
   const [sortBy, setSortBy] = useState('threat_desc');
   const [selectedPromo, setSelectedPromo] = useState(null);
   const [profileModalPromo, setProfileModalPromo] = useState(null);
+  const [showPlatformFilter, setShowPlatformFilter] = useState(false);
+  const filterDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setShowPlatformFilter(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const staticPromos = [
     {
@@ -189,16 +205,41 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
   const intelData = runIntel(staticPromos);
   
   useEffect(() => {
-    if (!intelPlatform && intelData.topResult) {
-      setIntelPlatform(intelData.topResult.key);
-    }
+    // Top result auto-select is no longer strictly necessary with 'all' default, but left intact for other logic if needed.
   }, []);
 
   const handlePlatformClick = (key) => {
-    if (intelPlatform === key) {
-      setIntelPlatform('all');
+    if (key === 'all') {
+      setIntelPlatforms(['all']);
     } else {
-      setIntelPlatform(key);
+      let next = [...intelPlatforms];
+      if (next.includes('all')) {
+        next = [key];
+      } else if (next.includes(key)) {
+        next = next.filter(k => k !== key);
+        if (next.length === 0) next = ['all'];
+      } else {
+        next.push(key);
+      }
+      setIntelPlatforms(next);
+    }
+    setSelectedPromo(null);
+  };
+
+  const handlePromoTypeClick = (type) => {
+    if (type === 'all') {
+      setPromoTypeFilter(['all']);
+    } else {
+      let next = [...promoTypeFilter];
+      if (next.includes('all')) {
+        next = [type];
+      } else if (next.includes(type)) {
+        next = next.filter(k => k !== type);
+        if (next.length === 0) next = ['all'];
+      } else {
+        next.push(type);
+      }
+      setPromoTypeFilter(next);
     }
     setSelectedPromo(null);
   };
@@ -209,9 +250,20 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
   };
 
   let displayFeed = staticPromos.filter(p => {
-    const matchPlatform = intelPlatform === 'all' || intelPlatform === null ? true : p.platform === intelPlatform;
+    const matchPlatform = intelPlatforms.includes('all') ? true : intelPlatforms.includes(p.platform);
     const matchArea = areaFilter === 'all' ? true : p.location === areaFilter;
-    return matchPlatform && matchArea;
+    const matchType = promoTypeFilter.includes('all') ? true : promoTypeFilter.includes(p.type);
+    
+    let matchSearch = true;
+    if (searchQuery.trim() !== '') {
+      const q = searchQuery.toLowerCase();
+      matchSearch = p.restaurant.toLowerCase().includes(q) || 
+                    p.promo.toLowerCase().includes(q) || 
+                    p.overlapContext.toLowerCase().includes(q) ||
+                    p.type.toLowerCase().includes(q);
+    }
+    
+    return matchPlatform && matchArea && matchType && matchSearch;
   });
 
   displayFeed = displayFeed.sort((a, b) => {
@@ -221,20 +273,10 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
     return 0;
   });
 
-  // Calculate Map Bounds based on selected area
-  const primarySector = areaFilter === 'ilford' 
-    ? (eastLondonAreas.find(s => s.name === 'Ilford') || eastLondonAreas[0])
-    : (eastLondonAreas.find(s => s.name === 'Barking and Dagenham') || eastLondonAreas[0]);
-
-  let bounds = null;
-  if (primarySector && primarySector.bounds) {
-    const lats = primarySector.bounds.map(b => b[0]);
-    const lngs = primarySector.bounds.map(b => b[1]);
-    bounds = [
-      [Math.min(...lats), Math.min(...lngs)],
-      [Math.max(...lats), Math.max(...lngs)]
-    ];
-  }
+  // Calculate Map Center based on selected area
+  const centerLat = areaFilter === 'ilford' ? 51.5588 : 51.5371;
+  const centerLng = areaFilter === 'ilford' ? 0.0711 : 0.0710;
+  const mapCenter = [centerLat, centerLng];
 
   if (!isOpen) return null;
 
@@ -254,81 +296,85 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
       }}>
         
         <div style={{ width: '60%', height: '100%', position: 'relative', background: '#E5E7EB' }}>
-          {bounds ? (
-            <MapContainer 
-              bounds={bounds}
-              boundsOptions={{ padding: [20, 20] }}
-              zoomControl={false}
-              scrollWheelZoom={true}
-              style={{ width: '100%', height: '100%' }}
-            >
-              <MapController bounds={bounds} selectedPromo={selectedPromo} />
-              <ZoomControl position="bottomright" />
-              <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-              <Polygon 
-                positions={primarySector.bounds}
-                pathOptions={{ 
-                  color: '#28a745',
-                  weight: 1.5,
-                  fillOpacity: 0.0,
-                  lineCap: "round",
-                  lineJoin: "round",
-                  className: 'dashboard-mini-map-polygon'
-                }}
-              />
-              {displayFeed.map((promo) => {
-                const threatScore = getSinglePromoThreatScore(promo);
-                const color = threatScore > 25 ? '#E63946' : '#F59E0B';
-                const isSelected = selectedPromo?.id === promo.id;
-                
-                return (
-                  <CircleMarker 
-                    key={promo.id}
-                    center={[promo.lat, promo.lng]}
-                    radius={isSelected ? 10 : 8}
-                    pathOptions={{ color: color, fillColor: color, fillOpacity: 1, weight: isSelected ? 3 : 2, className: isSelected ? 'modal-pulse-marker-active' : 'modal-pulse-marker' }}
-                    eventHandlers={{
-                      click: () => {
-                        setSelectedPromo(promo);
-                      }
-                    }}
-                  >
-                    {isSelected && (
-                      <Tooltip permanent interactive={true} direction="top" offset={[0, -12]} className="custom-map-tooltip">
-                        <div 
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setProfileModalPromo(promo);
-                          }}
-                          style={{ display: 'flex', flexDirection: 'column', width: '140px', overflow: 'hidden', borderRadius: '6px', cursor: 'pointer' }}
-                        >
-                          <img src={promo.image} style={{ width: '100%', height: '70px', objectFit: 'cover' }} alt={promo.restaurant} />
-                          <div style={{ padding: '8px 6px', textAlign: 'center', background: '#FFF' }}>
-                            <div style={{ fontWeight: 800, fontSize: '13px', color: '#111', fontFamily: "'Lufga', sans-serif", lineHeight: '1.3' }}>{promo.restaurant}</div>
-                          </div>
+          <MapContainer 
+            center={mapCenter}
+            zoom={13.5}
+            zoomControl={false}
+            scrollWheelZoom={true}
+            style={{ width: '100%', height: '100%' }}
+          >
+            <MapController center={mapCenter} zoom={13.5} selectedPromo={selectedPromo} />
+            <ZoomControl position="bottomright" />
+            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+            
+            {displayFeed.map((promo) => {
+              const PLATFORM_COLORS = {
+                ubereats: '#06C167',
+                deliveroo: '#00CCBC',
+                justeats: '#F36D00',
+                justeat: '#F36D00'
+              };
+              const color = PLATFORM_COLORS[promo.platform.toLowerCase()] || '#E63946';
+              const isSelected = selectedPromo?.id === promo.id;
+              
+              return (
+                <CircleMarker 
+                  key={promo.id}
+                  center={[promo.lat, promo.lng]}
+                  radius={isSelected ? 10 : 8}
+                  pathOptions={{ color: color, fillColor: color, fillOpacity: 1, weight: isSelected ? 3 : 2, className: isSelected ? 'modal-pulse-marker-active' : 'modal-pulse-marker' }}
+                  eventHandlers={{
+                    click: () => {
+                      setSelectedPromo(promo);
+                    }
+                  }}
+                >
+                  {isSelected && (
+                    <Tooltip permanent interactive={true} direction="top" offset={[0, -12]} className="custom-map-tooltip">
+                      <div 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setProfileModalPromo(promo);
+                        }}
+                        style={{ display: 'flex', flexDirection: 'column', width: '140px', overflow: 'hidden', borderRadius: '6px', cursor: 'pointer' }}
+                      >
+                        <img src={promo.image} style={{ width: '100%', height: '70px', objectFit: 'cover' }} alt={promo.restaurant} />
+                        <div style={{ padding: '8px 6px', textAlign: 'center', background: '#FFF' }}>
+                          <div style={{ fontWeight: 600, fontSize: '13px', color: '#111', fontFamily: "'Lufga', sans-serif", lineHeight: '1.3' }}>{promo.restaurant}</div>
                         </div>
-                      </Tooltip>
-                    )}
-                  </CircleMarker>
-                );
-              })}
-            </MapContainer>
-          ) : (
-            <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
-              Map Unavailable
-            </div>
-          )}
+                      </div>
+                    </Tooltip>
+                  )}
+                </CircleMarker>
+              );
+            })}
+          </MapContainer>
 
           <div style={{ position: 'absolute', top: '24px', left: '24px', zIndex: 1000, pointerEvents: 'none' }}>
             <h2 style={{ 
               fontSize: '28px', 
-              fontWeight: 900, 
+              fontWeight: 700, 
               color: '#111', 
               margin: 0, 
               textShadow: '0 2px 10px rgba(255,255,255,0.9), 0 0 4px rgba(255,255,255,1), 0 4px 20px rgba(255,255,255,0.8)'
             }}>
               Active Promos Map
             </h2>
+          </div>
+
+          <div style={{ 
+            position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', 
+            zIndex: 1000, display: 'flex', gap: '4px', background: 'rgba(255, 255, 255, 0.85)', 
+            backdropFilter: 'blur(10px)', WebkitBackdropFilter: 'blur(10px)', padding: '6px', borderRadius: '14px', 
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0,0,0,0.05)',
+            border: '1px solid rgba(255,255,255,0.5)' 
+          }}>
+            <button onClick={() => handleAreaClick('ilford')} style={{ padding: '8px 20px', borderRadius: '10px', background: areaFilter === 'ilford' ? '#111' : 'transparent', border: 'none', fontSize: '13px', fontWeight: 600, color: areaFilter === 'ilford' ? '#FFF' : '#4B5563', cursor: 'pointer', transition: 'all 0.2s' }}>
+              Ilford
+            </button>
+            <button onClick={() => handleAreaClick('neighborhood')} style={{ padding: '8px 20px', borderRadius: '10px', background: areaFilter === 'neighborhood' ? '#111' : 'transparent', border: 'none', fontSize: '13px', fontWeight: 600, color: areaFilter === 'neighborhood' ? '#FFF' : '#4B5563', cursor: 'pointer', transition: 'all 0.2s' }}>
+              Neighborhood
+            </button>
           </div>
         </div>
 
@@ -340,46 +386,91 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
             </button>
           </div>
 
-          <div style={{ padding: '24px', paddingBottom: '16px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-            <h3 style={{ fontSize: '16px', fontWeight: 700, color: '#111', margin: '0 0 16px 0' }}>Competitor Activity Feed</h3>
-            
-            <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '6px' }}>
-              <button onClick={() => handlePlatformClick('all')} style={{ padding: '4px 8px', borderRadius: '999px', background: intelPlatform === 'all' || !intelPlatform ? '#111' : '#FFFFFF', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: intelPlatform === 'all' || !intelPlatform ? '#FFF' : '#111' }}>All</span>
-                <span style={{ background: intelPlatform === 'all' || !intelPlatform ? '#374151' : '#F3F4F6', color: intelPlatform === 'all' || !intelPlatform ? '#FFF' : '#4B5563', padding: '2px 6px', borderRadius: '999px', fontSize: '10px', fontWeight: 700 }}>{staticPromos.length}</span>
-              </button>
-              
-              <button onClick={() => handlePlatformClick('ubereats')} style={{ padding: '4px 8px', borderRadius: '999px', background: intelPlatform === 'ubereats' ? '#111' : '#FFFFFF', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#06C167', color: '#fff', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>U</div>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: intelPlatform === 'ubereats' ? '#FFF' : '#111' }}>UberEats</span>
-              </button>
-
-              <button onClick={() => handlePlatformClick('deliveroo')} style={{ padding: '4px 8px', borderRadius: '999px', background: intelPlatform === 'deliveroo' ? '#111' : '#FFFFFF', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#00CCBC', color: '#fff', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>D</div>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: intelPlatform === 'deliveroo' ? '#FFF' : '#111' }}>Deliveroo</span>
-              </button>
-
-              <button onClick={() => handlePlatformClick('justeats')} style={{ padding: '4px 8px', borderRadius: '999px', background: intelPlatform === 'justeats' ? '#111' : '#FFFFFF', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer' }}>
-                <div style={{ width: '14px', height: '14px', borderRadius: '50%', background: '#FF8000', color: '#fff', fontSize: '9px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>J</div>
-                <span style={{ fontSize: '12px', fontWeight: 600, color: intelPlatform === 'justeats' ? '#FFF' : '#111' }}>JustEats</span>
-              </button>
+          <div style={{ padding: '24px 24px 16px 24px', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+              <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#111', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                Promo Activity Feed
+                <span style={{ fontSize: '12px', fontWeight: 500, color: '#6B7280', background: '#F3F4F6', padding: '2px 8px', borderRadius: '999px' }}>
+                  {displayFeed.length} {displayFeed.length === 1 ? 'result' : 'results'}
+                </span>
+              </h3>
             </div>
+            
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ position: 'relative', flex: 1 }}>
+                <Search size={14} color="#6B7280" style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)' }} />
+                <input 
+                  type="text" 
+                  placeholder="Search promos, food..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{ width: '100%', padding: '8px 12px 8px 32px', borderRadius: '8px', border: '1px solid #E5E7EB', fontSize: '13px', outline: 'none', background: '#FAFAFA', boxSizing: 'border-box' }}
+                />
+              </div>
 
-            <div style={{ display: 'flex', gap: '8px', marginTop: '16px' }}>
-              <button onClick={() => handleAreaClick('ilford')} style={{ padding: '6px 16px', borderRadius: '8px', background: areaFilter === 'ilford' ? '#111' : '#F3F4F6', border: 'none', fontSize: '13px', fontWeight: 600, color: areaFilter === 'ilford' ? '#FFF' : '#4B5563', cursor: 'pointer' }}>
-                Ilford
-              </button>
-              <button onClick={() => handleAreaClick('neighborhood')} style={{ padding: '6px 16px', borderRadius: '8px', background: areaFilter === 'neighborhood' ? '#111' : '#F3F4F6', border: 'none', fontSize: '13px', fontWeight: 600, color: areaFilter === 'neighborhood' ? '#FFF' : '#4B5563', cursor: 'pointer' }}>
-                Neighborhood
-              </button>
+              <div style={{ position: 'relative' }} ref={filterDropdownRef}>
+                <button 
+                  onClick={() => setShowPlatformFilter(!showPlatformFilter)} 
+                  style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#FFFFFF', border: '1px solid #E5E7EB', padding: '8px 14px', borderRadius: '8px', fontSize: '13px', fontWeight: 500, color: '#111', cursor: 'pointer', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }}
+                >
+                  <SlidersHorizontal size={14} />
+                  Filter
+                </button>
+                {showPlatformFilter && (
+                  <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: '8px', background: '#FFF', border: '1px solid #E5E7EB', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', zIndex: 50, display: 'flex', flexDirection: 'column', gap: '4px', padding: '8px', width: 'max-content', minWidth: '180px', maxHeight: '400px', overflowY: 'auto' }}>
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', padding: '4px 8px', letterSpacing: '0.5px' }}>Platforms</div>
+                    <button onClick={() => { handlePlatformClick('all'); }} style={{ padding: '8px 12px', borderRadius: '8px', background: intelPlatforms.includes('all') ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                      <span style={{ fontSize: '13px', fontWeight: 500, color: '#111' }}>All Platforms</span>
+                    </button>
+                    <button onClick={() => { handlePlatformClick('ubereats'); }} style={{ padding: '8px 12px', borderRadius: '8px', background: intelPlatforms.includes('ubereats') ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                      <img src="https://cdn.simpleicons.org/ubereats/06C167" alt="UberEats" style={{ width: '16px', height: '16px' }} />
+                      <span style={{ fontSize: '13px', fontWeight: 500, color: '#111' }}>UberEats</span>
+                    </button>
+                    <button onClick={() => { handlePlatformClick('deliveroo'); }} style={{ padding: '8px 12px', borderRadius: '8px', background: intelPlatforms.includes('deliveroo') ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                      <img src="https://cdn.simpleicons.org/deliveroo/00CCBC" alt="Deliveroo" style={{ width: '16px', height: '16px' }} />
+                      <span style={{ fontSize: '13px', fontWeight: 500, color: '#111' }}>Deliveroo</span>
+                    </button>
+                    <button onClick={() => { handlePlatformClick('justeats'); }} style={{ padding: '8px 12px', borderRadius: '8px', background: intelPlatforms.includes('justeats') ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                      <img src="https://cdn.simpleicons.org/justeat/FF8000" alt="Just Eat" style={{ width: '16px', height: '16px' }} />
+                      <span style={{ fontSize: '13px', fontWeight: 500, color: '#111' }}>Just Eat</span>
+                    </button>
+
+                    <div style={{ height: '1px', background: '#E5E7EB', margin: '4px 0' }}></div>
+
+                    <div style={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', padding: '4px 8px', letterSpacing: '0.5px' }}>Promo Types</div>
+                    <button onClick={() => { handlePromoTypeClick('all'); }} style={{ padding: '8px 12px', borderRadius: '8px', background: promoTypeFilter.includes('all') ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                      <Filter size={14} color="#4B5563" />
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: '#111', whiteSpace: 'nowrap' }}>All Types</span>
+                    </button>
+                    <button onClick={() => { handlePromoTypeClick('Discount'); }} style={{ padding: '8px 12px', borderRadius: '8px', background: promoTypeFilter.includes('Discount') ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                      <Tag size={14} color="#4B5563" />
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: '#111', whiteSpace: 'nowrap' }}>Discount (e.g. 10% off)</span>
+                    </button>
+                    <button onClick={() => { handlePromoTypeClick('BOGO'); }} style={{ padding: '8px 12px', borderRadius: '8px', background: promoTypeFilter.includes('BOGO') ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                      <Copy size={14} color="#4B5563" />
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: '#111', whiteSpace: 'nowrap' }}>BOGO (Buy 1 Get 1)</span>
+                    </button>
+                    <button onClick={() => { handlePromoTypeClick('Delivery'); }} style={{ padding: '8px 12px', borderRadius: '8px', background: promoTypeFilter.includes('Delivery') ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                      <Truck size={14} color="#4B5563" />
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: '#111', whiteSpace: 'nowrap' }}>Free Delivery</span>
+                    </button>
+                    <button onClick={() => { handlePromoTypeClick('Threshold'); }} style={{ padding: '8px 12px', borderRadius: '8px', background: promoTypeFilter.includes('Threshold') ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                      <Banknote size={14} color="#4B5563" />
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: '#111', whiteSpace: 'nowrap' }}>Threshold (Spend £X)</span>
+                    </button>
+                    <button onClick={() => { handlePromoTypeClick('Free Item'); }} style={{ padding: '8px 12px', borderRadius: '8px', background: promoTypeFilter.includes('Free Item') ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                      <Gift size={14} color="#4B5563" />
+                      <span style={{ fontSize: '12px', fontWeight: 500, color: '#111', whiteSpace: 'nowrap' }}>Free Item</span>
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="invisible-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '16px 24px', background: '#FAFAFA' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {displayFeed.map((promo) => {
-                const platformInitial = promo.platform === 'ubereats' ? 'U' : promo.platform === 'deliveroo' ? 'D' : 'J';
-                const platformColor = promo.platform === 'ubereats' ? '#06C167' : promo.platform === 'deliveroo' ? '#00CCBC' : '#FF8000';
                 const isSelected = selectedPromo?.id === promo.id;
                 
                 return (
@@ -401,26 +492,19 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
                       <img src={promo.image} alt={promo.restaurant} style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: 800, color: '#111' }}>{promo.restaurant}</span>
-                          <div style={{ width: '16px', height: '16px', borderRadius: '50%', background: platformColor, color: '#fff', fontSize: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>{platformInitial}</div>
+                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#111' }}>{promo.restaurant}</span>
+                          <img src={`https://cdn.simpleicons.org/${promo.platform === 'ubereats' ? 'ubereats/06C167' : promo.platform === 'deliveroo' ? 'deliveroo/00CCBC' : 'justeat/FF8000'}`} alt={promo.platform} style={{ width: '16px', height: '16px' }} />
                         </div>
-                        <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>{promo.promo}</span>
+                        <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 400 }}>{promo.promo}</span>
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                      <span style={{ background: '#F3F4F6', color: '#4B5563', fontSize: '11px', fontWeight: 700, padding: '4px 10px', borderRadius: '6px' }}>{promo.type}</span>
+                      <span style={{ background: 'rgba(224, 80, 70, 0.08)', color: '#E05046', border: '1px solid rgba(224, 80, 70, 0.2)', fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px' }}>{promo.type}</span>
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
-
-          <div style={{ padding: '24px', background: '#FFFFFF', borderTop: '1px solid rgba(0,0,0,0.05)' }}>
-            <button style={{ width: '100%', background: '#111', color: '#FFF', border: 'none', padding: '16px', borderRadius: '999px', fontSize: '15px', fontWeight: 800, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', cursor: 'pointer', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-              <Sparkles size={18} />
-              Suggest Strategy
-            </button>
           </div>
         </div>
         

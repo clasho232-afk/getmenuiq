@@ -2,9 +2,6 @@
    TANGERINE ANALYTICS MODULE (GLASSMORPHIC)
    ======================================================== */
 .market-alerts-card {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.4);
   border-radius: 20px;
   padding: 24px;
   min-height: 180px;
@@ -15,7 +12,7 @@
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.05);
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .market-alerts-card:hover {
@@ -151,6 +148,7 @@
   position: relative;
   width: 580px;
   max-width: 90vw;
+  height: 680px; /* Fixed height */
   max-height: 85vh;
   background: #ffffff;
   border-radius: 20px;
@@ -161,6 +159,8 @@
   transform: scale(0.95);
   opacity: 0;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
+  display: flex;
+  flex-direction: column;
 }
 .alerts-center-modal-overlay.active .modal-window-frame {
   transform: scale(1);
@@ -168,9 +168,16 @@
 }
 
 .modal-interior-scroll-wrapper {
-  max-height: calc(85vh - 64px);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.modal-rows-vertical-stack {
+  flex: 1;
   overflow-y: auto;
-  padding-right: 4px;
+  padding-right: 8px; /* Give the scrollbar some breathing room */
 }
 
 /* Close Window Trigger Mechanics styling options */
@@ -286,7 +293,7 @@
   gap: 12px;
   border: 1px solid #e5e5ea;
   border-radius: 12px;
-  padding: 10px 14px;
+  padding: 14px 16px;
   margin-bottom: 10px;
   background: #ffffff;
   transition: border-color 0.15s ease, transform 0.15s ease;
@@ -316,16 +323,19 @@
   flex-grow: 1;
   overflow: hidden;
 }
-.alert-restaurant-name { 
-  font-size: 12px; /* Reduced from 14px */
+.alert-primary-title { 
+  font-size: 12px; 
   font-weight: 800; 
   color: #1c1c1e;
   margin: 0;
   white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.alert-item-name { 
-  font-size: 10.5px; /* Reduced from 12px */
-  color: #636366; 
+.alert-secondary-subtitle { 
+  font-size: 11px; 
+  color: #4b5563; /* Charcoal */
+  font-weight: 600;
   margin-top: 1px;
   white-space: nowrap;
   overflow: hidden;

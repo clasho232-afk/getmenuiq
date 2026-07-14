@@ -31,8 +31,22 @@ function App() {
       setActiveTab('My Menu');
       setAnalyzeTrigger(prev => prev + 1);
     };
+    const handleOpenPromoIntel = (e) => {
+      if (e.detail && e.detail.platform) {
+        const url = new URL(window.location);
+        url.searchParams.set('platform', e.detail.platform);
+        window.history.pushState({}, '', url);
+      }
+      setActiveTab('Promo Intelligence');
+    };
+    
     window.addEventListener('open-menu-analysis', handleOpenAnalysis);
-    return () => window.removeEventListener('open-menu-analysis', handleOpenAnalysis);
+    window.addEventListener('open-promo-intel', handleOpenPromoIntel);
+    
+    return () => {
+      window.removeEventListener('open-menu-analysis', handleOpenAnalysis);
+      window.removeEventListener('open-promo-intel', handleOpenPromoIntel);
+    };
   }, []);
 
   useEffect(() => {

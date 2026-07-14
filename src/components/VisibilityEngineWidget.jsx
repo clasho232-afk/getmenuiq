@@ -8,113 +8,115 @@ const VisibilityEngineWidget = ({ onPlatformClick }) => {
     {
       name: 'Deliveroo',
       score: 65,
+      barColor: '#00CCBC',
+      textColor: '#0f172a',
       badge: (
         <div style={{
-          width: '52px', height: '34px', borderRadius: '17px',
+          width: '52px', height: '30px', borderRadius: '15px',
           backgroundColor: '#00CCBC', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          boxShadow: '0 4px 12px rgba(0, 204, 188, 0.3)'
+          alignItems: 'center', justifyContent: 'center', flexShrink: 0
         }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-            <path d="M15.4 1.5l-4.6 2.4-1.8-1.5-2.2.8 1.1 5.3-7.5 2.1 1.2 7.7s4 2.8 9.3 2.8c4.3 0 7.8-1.8 7.8-1.8l2.9-10.7-6.2-7.1zM11.5 13.8c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5zm3.8-1.1c-.8 0-1.5-.7-1.5-1.5s.7-1.5 1.5-1.5 1.5.7 1.5 1.5-.7 1.5-1.5 1.5z"/>
-          </svg>
+          <img 
+            src="https://cdn.simpleicons.org/deliveroo/white" 
+            alt="Deliveroo Logo" 
+            style={{ width: '16px', height: '16px', objectFit: 'contain' }}
+          />
         </div>
       )
     },
     {
       name: 'Uber Eats',
       score: 20,
+      barColor: '#EF4444',
+      textColor: '#EF4444',
       badge: (
         <div style={{
-          width: '52px', height: '34px', borderRadius: '17px',
+          width: '52px', height: '30px', borderRadius: '15px',
           backgroundColor: '#06C167', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          boxShadow: '0 4px 12px rgba(6, 193, 103, 0.3)'
+          alignItems: 'center', justifyContent: 'center', flexShrink: 0
         }}>
-          <span style={{ fontSize: '10px', fontWeight: 'bold', color: 'white', lineHeight: '1', textAlign: 'center' }}>Uber<br/>Eats</span>
+          <img 
+            src="https://cdn.simpleicons.org/ubereats/white" 
+            alt="Uber Eats Logo" 
+            style={{ width: '16px', height: '16px', objectFit: 'contain' }}
+          />
         </div>
       )
     },
     {
       name: 'Just Eat',
       score: 14,
+      barColor: '#EF4444',
+      textColor: '#EF4444',
       badge: (
         <div style={{
-          width: '52px', height: '34px', borderRadius: '17px',
-          backgroundColor: '#FF8000', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-          boxShadow: '0 4px 12px rgba(255, 128, 0, 0.3)'
+          width: '52px', height: '30px', borderRadius: '15px',
+          backgroundColor: '#F36D00', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', flexShrink: 0
         }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-             <path d="M12 2.5L2 11h3v10.5h14V11h3L12 2.5zM10.5 18h-2v-6h2v6zm5 0h-2v-6h2v6z"/>
-          </svg>
+          <img 
+            src="https://cdn.simpleicons.org/justeat/white" 
+            alt="Just Eat Logo" 
+            style={{ width: '16px', height: '16px', objectFit: 'contain' }}
+          />
         </div>
       )
     }
   ];
 
-  const getBarColor = (score) => {
-    if (score >= 70) return '#10B981'; // Green
-    if (score >= 40) return '#F59E0B'; // Amber
-    return '#EF4444'; // Red
-  };
-
-  const getTrackColor = (score) => {
-    if (score >= 70) return 'rgba(16, 185, 129, 0.15)'; // Green track
-    if (score >= 40) return 'rgba(245, 158, 11, 0.15)'; // Amber track
-    return 'rgba(239, 68, 68, 0.15)'; // Red track
-  };
-
   return (
-    <div className="w-full h-full flex flex-col relative transition-all" style={{ backgroundColor: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', border: '1px solid rgba(255, 255, 255, 0.6)', boxShadow: '0 8px 32px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 1)', borderRadius: '1.25rem', padding: '1.25rem' }}>
+    <div className="harmonized-card-bg w-full h-full flex flex-col relative transition-all duration-300 hover:-translate-y-1" style={{ borderRadius: '1.25rem', padding: '1.5rem 1.5rem 1.25rem' }}>
       
       {/* Header */}
       <div 
-        className="flex justify-between items-baseline cursor-pointer group" 
-        style={{ paddingBottom: '12px', marginBottom: '12px', borderBottom: '1px solid #E5E7EB' }}
+        className="flex justify-between items-start cursor-pointer group" 
+        style={{ marginBottom: '2rem' }}
         onClick={() => onPlatformClick && onPlatformClick('All')}
       >
         <div>
-          <h2 className="font-bold text-gray-900 leading-tight group-hover:text-[#E86A58] transition-colors" style={{ fontSize: '1.1rem' }}>
+          <h2 className="text-xl font-bold text-gray-900 leading-tight mb-0 group-hover:text-slate-700 transition-colors">
             Visibility Engine
           </h2>
         </div>
-        <div className="flex items-baseline shrink-0">
-          <span className="font-black leading-none" style={{ fontSize: '1.5rem', color: '#EF4444' }}>{totalScore}</span>
-          <span className="font-bold text-gray-400" style={{ fontSize: '0.85rem', marginLeft: '4px' }}>/100</span>
+        <div className="flex flex-col items-end shrink-0">
+          <span className="font-bold text-slate-400" style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px', color: '#94a3b8' }}>Health Score</span>
+          <div className="flex items-baseline">
+            <span className="font-black leading-none" style={{ fontSize: '1.75rem', color: '#EF4444', letterSpacing: '-0.02em' }}>{totalScore}</span>
+            <span className="font-bold" style={{ fontSize: '0.9rem', marginLeft: '2px', color: '#64748b', display: 'inline-block', transform: 'translateY(40%)' }}>/100</span>
+          </div>
         </div>
       </div>
 
       {/* Platform Rows */}
-      <div className="flex flex-col flex-1 gap-4 justify-center mb-4">
+      <div className="flex flex-col flex-1 gap-6 justify-center mb-6" style={{ transform: 'translateY(-10%)' }}>
         {platforms.map((platform, idx) => (
           <div 
             key={idx} 
-            className="flex items-center w-full cursor-pointer hover:bg-gray-50 rounded-lg p-1 -m-1 transition-colors" 
+            className="flex items-center w-full cursor-pointer hover:bg-slate-50 transition-colors" 
             style={{ gap: '1rem' }}
             onClick={() => onPlatformClick && onPlatformClick(platform.name)}
           >
-            {/* Badge */}
+            {/* Minimal Badge */}
             <div className="shrink-0 flex justify-center" style={{ width: '52px' }}>
               {platform.badge}
             </div>
             
-            {/* Progress Bar */}
+            {/* Clean Line-based Progress Bar */}
             <div className="flex-1 flex flex-col justify-center">
-              <div className="w-full rounded-full overflow-hidden" style={{ height: '8px', backgroundColor: getTrackColor(platform.score) }}>
+              <div className="w-full rounded-full overflow-hidden" style={{ height: '6px', backgroundColor: '#f1f5f9' }}>
                 <div 
                   className="h-full rounded-full transition-all duration-700 ease-out" 
                   style={{ 
                     width: `${platform.score}%`, 
-                    backgroundColor: getBarColor(platform.score)
+                    backgroundColor: platform.barColor
                   }}
                 ></div>
               </div>
             </div>
             
-            {/* Score Text */}
-            <div className="shrink-0 text-right" style={{ width: '28px' }}>
-              <span className="font-black font-sans" style={{ fontSize: '15px', color: getBarColor(platform.score) }}>
+            {/* Tabular Score Text */}
+            <div className="shrink-0 text-right" style={{ width: '32px' }}>
+              <span className="font-black" style={{ fontSize: '1rem', color: platform.textColor, fontVariantNumeric: 'tabular-nums' }}>
                 {platform.score}
               </span>
             </div>
@@ -122,13 +124,16 @@ const VisibilityEngineWidget = ({ onPlatformClick }) => {
         ))}
       </div>
 
-      {/* Footer Link */}
-      <div className="flex justify-end mt-auto pt-2">
+      {/* Footer Info / Link */}
+      <div className="flex justify-between items-center mt-auto pt-4" style={{ borderTop: '1px solid rgba(241, 245, 249, 0.4)' }}>
+        <span className="font-bold" style={{ fontSize: '0.67rem', textDecoration: 'none', color: '#64748b' }}>
+          Updated 2h ago
+        </span>
         <a 
           href="#" 
           onClick={(e) => { e.preventDefault(); onPlatformClick && onPlatformClick('All'); }}
-          className="font-bold text-gray-500 hover:text-gray-800 transition-colors" 
-          style={{ fontSize: '11px', textDecoration: 'none' }}
+          className="font-bold transition-colors" 
+          style={{ fontSize: '0.67rem', textDecoration: 'none', color: '#64748b' }}
         >
           View Visibility Data &rarr;
         </a>

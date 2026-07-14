@@ -16,9 +16,19 @@ import AICommandOverlay from './AICommandOverlay';
 import { supabase } from '../supabase';
 import InstantPriceAlertsWidget from './InstantPriceAlertsWidget';
 import MarketStatusCard from './MarketStatusCard';
-import { MapContainer, TileLayer, Polygon } from 'react-leaflet';
+import { MapContainer, TileLayer, Polygon, useMap } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import eastLondonAreas from './east_london_areas.json';
+
+const MapUpdater = ({ center, zoom }) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center) {
+      map.setView(center, zoom, { animate: false });
+    }
+  }, [center, zoom, map]);
+  return null;
+};
 
 const PricingCard = ({ title, count, items, colorClass, onShowMore }) => {
   const displayedItems = items.slice(0, 2);
@@ -145,6 +155,33 @@ const DashboardContent = () => {
   const [livePromos, setLivePromos] = useState([]);
   const [liveMenuItems, setLiveMenuItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // Dynamic map center state
+  const [mapCenter, setMapCenter] = useState([51.5588, 0.0711]); // Default to Ilford
+
+  const currentBoroughName = activeUserSession?.primaryArea || 'Ilford';
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchLocation = async () => {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(currentBoroughName)},London,UK&format=json`);
+        const data = await response.json();
+        
+        if (data && data.length > 0 && isMounted) {
+          const validResult = data[0];
+          if (validResult && validResult.lat && validResult.lon) {
+            setMapCenter([parseFloat(validResult.lat), parseFloat(validResult.lon)]);
+          }
+        }
+      } catch (err) {
+        console.error("Failed to fetch dynamic location from Nominatim:", err);
+      }
+    };
+    
+    fetchLocation();
+    return () => { isMounted = false; };
+  }, [currentBoroughName]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -244,27 +281,8 @@ const DashboardContent = () => {
   else if (promoCount <= 6) bgGradientClass = 'bg-gradient-to-br from-amber-400 to-orange-500'; // Medium
   
 
-  // Map bounds logic
-  const currentBoroughName = activeUserSession?.primaryArea || 'Ilford';
-  
-  const primarySector = eastLondonAreas.find(s => 
-    s.name.toLowerCase().includes(currentBoroughName.toLowerCase()) || 
-    (currentBoroughName === 'Ilford' && s.type === 'primary')
-  );
-  
-  let bounds = null;
-  let centerLat = 51.55;
-  let centerLng = 0.08;
-  if (primarySector && primarySector.bounds) {
-    const lats = primarySector.bounds.map(b => b[0]);
-    const lngs = primarySector.bounds.map(b => b[1]);
-    bounds = [
-      [Math.min(...lats), Math.min(...lngs)],
-      [Math.max(...lats), Math.max(...lngs)]
-    ];
-    centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-    centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-  }
+  const centerLat = mapCenter[0];
+  const centerLng = mapCenter[1];
 
   const mockCompetitors = [
     { id: 1, lat: centerLat + 0.005, lng: centerLng + 0.005, threat: 'high' },
@@ -291,7 +309,7 @@ const DashboardContent = () => {
         <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6">
           {/* Child 1: Restaurant Health */}
           <div className="col-span-12 md:col-span-5 dashboard-card restaurant-hero-card">
-            <div className="glass-panel breathing-glow rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)]" style={{ display: 'flex', overflow: 'hidden', padding: 0, height: '100%', background: '#fff' }}>
+            <div className="breathing-glow rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)] transition-transform duration-300 hover:-translate-y-1" style={{ display: 'flex', overflow: 'hidden', padding: 0, height: '100%', backgroundColor: 'transparent' }}>
               {/* LEFT — Brand Identity Hero */}
               <div id="dashboard-hero-bg" className="hero-image-cover-wrapper" style={{ 
                 flex: 1, 
@@ -308,20 +326,23 @@ const DashboardContent = () => {
 
               {/* RIGHT — MenuIQ Intelligence Snapshot */}
               <div 
+                className="pricing-gauge-card"
                 style={{ 
                   flex: 1, 
                   width: '50%', 
                   padding: '1.75rem', 
                   display: 'flex', 
                   flexDirection: 'column', 
-                  background: 'linear-gradient(180deg, rgba(248, 250, 252, 0.8) 0%, rgba(255, 255, 255, 0) 100%)', 
                   justifyContent: 'space-between', 
                   cursor: 'pointer', 
-                  transition: 'background-color 0.2s ease-in-out' 
-                }} 
+                  borderRadius: 0, // override the rounded corners on the left side to sit flush with the image
+                  borderTopRightRadius: '1rem',
+                  borderBottomRightRadius: '1rem',
+                  borderLeft: 'none'
+                }}  
                 onClick={() => setShowHealthModal(true)}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#fff'}
+                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'}
+                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.7)'}
               >
                 {/* Branding and Title */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -329,7 +350,7 @@ const DashboardContent = () => {
                     <span style={{ fontFamily: "'Lufga', sans-serif", fontSize: '15px', fontWeight: 800, color: '#e05046' }}>MenuIQ</span>
                     <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '0.15rem' }}>Intelligence</span>
                   </div>
-                  <h2 style={{ fontSize: '1.15rem', fontWeight: 800, color: '#0F172A', margin: 0, letterSpacing: '-0.02em', lineHeight: 1.1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  <h2 className="font-bold tracking-normal" style={{ fontSize: '1.15rem', color: '#0F172A', margin: 0, lineHeight: 1.1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {restaurant?.name || 'Loading...'}
                   </h2>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#64748B', marginTop: '0.35rem', fontSize: '0.7rem', fontWeight: 500 }}>
@@ -342,29 +363,30 @@ const DashboardContent = () => {
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '1rem' }}>
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
                     <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.1rem' }}>
-                      <span style={{ fontSize: '2.75rem', fontWeight: 900, color: '#0F172A', letterSpacing: '-0.04em', lineHeight: 1 }}>68</span>
+                      <span style={{ fontSize: '2.75rem', fontWeight: 900, color: '#E86A58', letterSpacing: '-0.04em', lineHeight: 1 }}>68</span>
                       <span style={{ fontSize: '0.99rem', fontWeight: 700, color: '#94A3B8', lineHeight: 1 }}>/100</span>
-                    </div>
-                    <div style={{ fontSize: '0.6rem', fontWeight: 800, color: '#F59E0B', textTransform: 'uppercase', letterSpacing: '0.1em', marginTop: '0.2rem', display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
-                      <Activity size={10} strokeWidth={3} />
-                      Fair Health
                     </div>
                   </div>
                 </div>
 
-                {/* Platform Pills */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '1rem', flexWrap: 'nowrap' }}>
-                  <div style={{ background: '#00CCBC', padding: '0.25rem 0.6rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(0, 204, 188, 0.2)', flexShrink: 0 }}>
-                    <img src="https://cdn.simpleicons.org/deliveroo/white" alt="Deliveroo" style={{ height: '11px', width: '11px' }} />
-                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>Deliveroo</span>
+                {/* Platform Pills Section */}
+                <div style={{ display: 'flex', flexDirection: 'column', marginTop: '1rem' }}>
+                  <div className="font-bold" style={{ fontSize: '0.67rem', color: '#64748b', marginBottom: '0.4rem' }}>
+                    Platform Coverage:
                   </div>
-                  <div style={{ background: '#06C167', padding: '0.25rem 0.6rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(6, 193, 103, 0.2)', flexShrink: 0 }}>
-                    <img src="https://cdn.simpleicons.org/ubereats/white" alt="UberEats" style={{ height: '11px', width: '11px' }} />
-                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>UberEats</span>
-                  </div>
-                  <div style={{ background: '#FF8000', padding: '0.25rem 0.6rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(255, 128, 0, 0.2)', flexShrink: 0 }}>
-                    <img src="https://cdn.simpleicons.org/justeat/white" alt="Just Eat" style={{ height: '11px', width: '11px' }} />
-                    <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>Just Eat</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'nowrap', transform: 'translateY(10%)' }}>
+                    <div style={{ background: '#00CCBC', padding: '0.25rem 0.6rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(0, 204, 188, 0.2)', flexShrink: 0 }}>
+                      <img src="https://cdn.simpleicons.org/deliveroo/white" alt="Deliveroo" style={{ height: '11px', width: '11px' }} />
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>Deliveroo</span>
+                    </div>
+                    <div style={{ background: '#06C167', padding: '0.25rem 0.6rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(6, 193, 103, 0.2)', flexShrink: 0 }}>
+                      <img src="https://cdn.simpleicons.org/ubereats/white" alt="UberEats" style={{ height: '11px', width: '11px' }} />
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>UberEats</span>
+                    </div>
+                    <div style={{ background: '#FF8000', padding: '0.25rem 0.6rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(255, 128, 0, 0.2)', flexShrink: 0 }}>
+                      <img src="https://cdn.simpleicons.org/justeat/white" alt="Just Eat" style={{ height: '11px', width: '11px' }} />
+                      <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>Just Eat</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -372,11 +394,16 @@ const DashboardContent = () => {
           </div>
 
           {/* Child 2: Promo Tracker (Combined Map & Tracker) */}
-          <div className="col-span-12 md:col-span-3">
-            <div onClick={() => setShowPromos(true)} className="w-full h-full bg-white rounded-[24px] p-6 shadow-sm border border-gray-100 flex items-center justify-between relative cursor-pointer group transition-transform duration-300 hover:-translate-y-1">
+          <div className="col-span-12 md:col-span-3 flex flex-col">
+            <div 
+              onClick={() => setShowPromos(true)} 
+              className="harmonized-card-bg w-full flex-1 rounded-[24px] flex items-stretch justify-between relative cursor-pointer group transition-transform duration-300 hover:-translate-y-1 overflow-hidden"
+            >
               
-              {/* Left Typography Column */}
-              <div className="flex flex-col z-10 w-3/5">
+              <div 
+                className="flex flex-col justify-center z-20 w-[60%] shrink-0 relative pointer-events-none"
+                style={{ paddingLeft: '26px', paddingRight: '0.5rem' }}
+              >
                 <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-1">
                   Competitor Promos
                 </span>
@@ -396,40 +423,27 @@ const DashboardContent = () => {
               </div>
 
               {/* Right Map Interface Column */}
-              <div className="relative w-24 h-24 flex items-center justify-center shrink-0 rounded-[12px] overflow-hidden shadow-inner bg-[#FAFAFA] border border-gray-100">
-                {bounds ? (
-                  <MapContainer 
-                    bounds={bounds}
-                    boundsOptions={{ padding: [5, 5] }}
+              <div 
+                className="relative w-[55%] shrink-0 -ml-[15%] z-10 pointer-events-none"
+                style={{ 
+                  WebkitMaskImage: 'linear-gradient(to right, transparent, black 35%)',
+                  maskImage: 'linear-gradient(to right, transparent, black 35%)'
+                }}
+              >
+                <MapContainer 
+                    center={mapCenter}
+                    zoom={13.5}
                     zoomControl={false}
                     dragging={false}
                     doubleClickZoom={false}
                     scrollWheelZoom={false}
                     attributionControl={false}
-                    style={{ width: '100%', height: '100%' }}
-                    key={currentBoroughName + '_tracker'}
+                    style={{ width: '100%', height: '100%', minHeight: '200px' }}
                   >
+                    <MapUpdater center={mapCenter} zoom={13.5} />
                     <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
-                    <Polygon 
-                      positions={primarySector.bounds}
-                      pathOptions={{ 
-                        color: '#28a745',
-                        weight: 1.5,
-                        fillOpacity: 0.0,
-                        lineCap: "round",
-                        lineJoin: "round",
-                        className: 'dashboard-mini-map-polygon'
-                      }}
-                    />
                   </MapContainer>
-                ) : (
-                  <div className="w-4 h-4 bg-[#E86A58] rounded-full z-20 shadow-[0_0_12px_rgba(232,106,88,0.8)] animate-pulse"></div>
-                )}
-                <style>{`
-                  .dashboard-mini-map-polygon {
-                    filter: drop-shadow(0px 1px 2px rgba(40, 167, 69, 0.15));
-                  }
-                `}</style>
+
               </div>
             </div>
           </div>
@@ -444,12 +458,12 @@ const DashboardContent = () => {
         <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Pricing Overview Consolidated Card */}
         <div className="col-span-12 md:col-span-5">
-          <div className="pricing-gauge-card" style={{ minHeight: '280px', height: '100%', padding: 0, flexDirection: 'row' }}>
+          <div className="pricing-gauge-card transition-transform duration-300 hover:-translate-y-1" style={{ minHeight: '280px', height: '100%', padding: 0, flexDirection: 'row' }}>
             {/* Left 60% Column */}
             <div style={{ width: '60%', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               {/* Header with Filters */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(228, 226, 228, 0.6)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
-                <h2 style={{ fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-primary)', letterSpacing: '-0.025em', margin: 0, whiteSpace: 'nowrap' }}>Menu Pricing</h2>
+                <h2 className="text-xl font-bold text-gray-900 leading-tight mb-0">Menu Pricing</h2>
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   {[
                     { id: 'All', label: 'All', color: '#E86A58', iconUrl: null },

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Target, MapPin, SlidersHorizontal, ChevronDown, Activity, Zap, Shield, Scale } from 'lucide-react';
+import { mockLondonEcosystem } from '../data/mockLondonEcosystem';
 
 // ================================================================
 // PROMO INTELLIGENCE ENGINE — PURE LOGIC
@@ -7,19 +8,23 @@ import { Target, MapPin, SlidersHorizontal, ChevronDown, Activity, Zap, Shield, 
 
 function getTimeVariable() {
   const now = new Date();
-  const day = now.getDay(); 
+  const day = now.getDay();
   const hour = now.getHours();
+  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  const dayName = dayNames[day];
+  const isTuesday = day === 2;
 
   const isAfterMidnight = hour < 2;
   const effectiveDay = isAfterMidnight ? (day === 0 ? 6 : day - 1) : day;
   const isEvening = hour >= 18 || isAfterMidnight;
 
-  if (day >= 1 && day <= 5 && hour >= 12 && hour < 18) return 'QUIET';
-  if (isEvening) {
-    if (effectiveDay >= 1 && effectiveDay <= 4) return 'BUSY'; 
-    if (effectiveDay === 5 || effectiveDay === 6 || effectiveDay === 0) return 'HYPER';
+  let state = 'OFF';
+  if (day >= 1 && day <= 5 && hour >= 12 && hour < 18) state = 'QUIET';
+  else if (isEvening) {
+    if (effectiveDay >= 1 && effectiveDay <= 4) state = 'BUSY';
+    if (effectiveDay === 5 || effectiveDay === 6 || effectiveDay === 0) state = 'HYPER';
   }
-  return 'OFF';
+  return { state, dayName, hour, isTuesday };
 }
 
 const AG_SCORES = {
@@ -78,73 +83,193 @@ function getThreatData(promos, platform) {
   return { total, level, volumeScore, aggressivenessScore, itemOverlapScore, count: pp.length, topPromo, description, structuredMetrics };
 }
 
-function getPromoOptions(time, threatLevel) {
+// ================================================================
+// PHASE 1 — MARKET DIAGNOSIS
+// Reads live conditions and produces a structured diagnosis.
+// No promo decision is made here — only facts are collected.
+// ================================================================
+
+function diagnoseMarket(promos, platform, timeObj) {
+  const { state, dayName, hour, isTuesday } = timeObj;
+  const pp = promos.filter(p => p.platform === platform);
+
+  // --- Promo type breakdown ---
+  const promoTypeMap = {};
+  pp.forEach(p => {
+    const t = p.type || 'Unknown';
+    promoTypeMap[t] = (promoTypeMap[t] || 0) + 1;
+  });
+  const promoTypeSummary = Object.entries(promoTypeMap)
+    .map(([type, count]) => `${count}x ${type}`)
+    .join(', ');
+
+  const directOverlap = pp.filter(p =>
+    p.itemOverlapLevel === 'direct_match_promo' ||
+    p.itemOverlapLevel === 'direct_match' ||
+    p.itemOverlapLevel === 'same_cuisine'
+  );
+
+  // --- Threat scoring ---
+  const volumeScore = pp.length === 0 ? 0 : pp.length <= 2 ? 8 : pp.length <= 5 ? 14 : 20;
+  const AG_SCORES_LOCAL = { free_delivery: 6, Delivery: 6, free_item: 12, 'Free Item': 12, spend_save: 18, Threshold: 18, discount_low: 24, discount_high: 30, Discount: 24, bogo: 35, BOGO: 35 };
+  const OL_SCORES_LOCAL = { same_cuisine: 15, direct_match: 30, direct_match_promo: 45 };
+  let aggressivenessScore = 0;
+  let topPromo = null;
+  pp.forEach(p => {
+    const s = AG_SCORES_LOCAL[p.promoCategory] || AG_SCORES_LOCAL[p.type] || 6;
+    if (s > aggressivenessScore) { aggressivenessScore = s; topPromo = p; }
+  });
+  const itemOverlapScore = pp.length > 0
+    ? pp.reduce((max, p) => Math.max(max, OL_SCORES_LOCAL[p.itemOverlapLevel] || 15), 0)
+    : 0;
+  const totalScore = Math.min(volumeScore + aggressivenessScore + itemOverlapScore, 100);
+  let threatLevel = 'Low';
+  if (totalScore > 25 && totalScore <= 50) threatLevel = 'Moderate';
+  if (totalScore > 50 && totalScore <= 75) threatLevel = 'High';
+  if (totalScore > 75) threatLevel = 'Extreme';
+
+  // --- Human-readable time label ---
+  const ampm = hour >= 12 ? 'pm' : 'am';
+  const hour12 = hour % 12 || 12;
+  const timeLabel = `${hour12}${ampm} on ${dayName}`;
+
+  const timeDescription = {
+    QUIET: 'a quiet traffic window — moderate organic demand, low competition',
+    BUSY: 'a busy traffic window — high organic demand, elevated competition',
+    HYPER: 'a peak traffic window — maximum platform demand of the week',
+    OFF: 'an off-peak window — very low platform traffic'
+  }[state] || 'an unknown traffic window';
+
+  return {
+    state, dayName, hour, isTuesday, timeLabel, timeDescription,
+    totalPromos: pp.length,
+    directOverlapCount: directOverlap.length,
+    promoTypeSummary: promoTypeSummary || 'None',
+    topPromo,
+    threatLevel, totalScore,
+    volumeScore, aggressivenessScore, itemOverlapScore,
+    structuredMetrics: {
+      totalArea: pp.length,
+      totalCategory: directOverlap.length,
+      categoryExample: directOverlap.length > 0 ? directOverlap[0] : null
+    }
+  };
+}
+
+// ================================================================
+// PHASE 2 — PROMO FORMULATION (Case Study Applied)
+// Takes the market diagnosis and applies validated research to
+// produce a promo recommendation with full reasoning chain.
+// ================================================================
+
+function formulatePromo(diagnosis, platform) {
+  const { state, threatLevel, timeLabel, timeDescription, totalPromos, directOverlapCount, promoTypeSummary, topPromo, isTuesday } = diagnosis;
+  const isJustEat = platform === 'justeats';
+
+  // Build the market summary prefix that goes into every reason
+  const marketSummary = totalPromos === 0
+    ? `The market scan shows zero active promos right now.`
+    : `The market scan detected ${totalPromos} active promo${totalPromos > 1 ? 's' : ''} (${promoTypeSummary})${directOverlapCount > 0 ? `, of which ${directOverlapCount} are from restaurants in your direct category` : ''}. ${topPromo ? `The most aggressive offer is from ${topPromo.restaurant} running "${topPromo.promo}".` : ''}`;
+
+  const timeSummary = `${timeLabel} is ${timeDescription}.`;
+
+  const tuesdayNote = isTuesday && isJustEat
+    ? ` Today is Tuesday — opt into JustEat Cheeky Tuesday now. The platform co-funds part of the 20% cost so your net cost is closer to 10–12%. This is the cheapest high-visibility play available to you today.`
+    : '';
+
   const options = [];
-  
-  if (time === 'QUIET') {
+
+  if (state === 'QUIET') {
     if (threatLevel === 'Low') {
-      options.push({ type: 'Conservative', title: 'Hold & Monitor', promoType: 'None', reason: 'No need to spend margin when traffic is quiet and competition is low.' });
-      options.push({ type: 'Normal', title: 'Visibility Boost', promoType: 'Free Delivery or 10% off', reason: 'No competition right now. A small push during quiet time is highly efficient — almost every order gained is incremental.' });
-      options.push({ type: 'Aggressive', title: 'Market Capture', promoType: '15% Off Entire Menu', reason: "Aggressively capture the limited quiet time traffic while competitors are completely asleep." });
+      options.push({ type: 'Conservative', title: 'Hold & Monitor', promoType: 'None',
+        reason: `${timeSummary} ${marketSummary} With no competitor activity and quiet traffic, holding your margins is the right call — there is nothing to defend against and organic demand is insufficient to justify a promo cost.${tuesdayNote}` });
+      options.push({ type: 'Normal', title: 'Visibility Boost', promoType: isJustEat && isTuesday ? 'Cheeky Tuesday — 20% off £15+' : 'Free Delivery or Free Item Add-on',
+        reason: `${timeSummary} ${marketSummary} No competition means every order you capture right now is purely incremental — it is not stealing from your own peak hours. A Free Item add-on costs you ~£0.80 in food vs. ~£5 for a 20% discount, with the same conversion impact. Research shows "free" consistently outperforms "% off" in customer psychology.${tuesdayNote}` });
+      options.push({ type: 'Aggressive', title: 'Market Capture', promoType: '15% off hero items with £15 minimum spend',
+        reason: `${timeSummary} ${marketSummary} With competitors asleep, an aggressive play captures all quiet-time traffic for yourself. Always enforce a minimum spend threshold (£15+) — without it, 15% off on a low-value order combined with 30% platform commission can push the order into a net loss.${tuesdayNote}` });
     } else if (threatLevel === 'Moderate') {
-      options.push({ type: 'Conservative', title: 'Defensive Delivery', promoType: 'Free Delivery', reason: 'Stay visible cheaply without cutting food margins during a quiet hour.' });
-      options.push({ type: 'Normal', title: 'Match Energy', promoType: 'Free Item add-on or 10-15% off', reason: 'Some competitors are active during a quiet window. Match their energy before they pull customers who would otherwise find you first.' });
-      options.push({ type: 'Aggressive', title: 'Volume Push', promoType: '20% Off Orders', reason: 'Overpower the moderate threat directly to dominate the quiet hour entirely.' });
-    } else { // High/Extreme
-      options.push({ type: 'Conservative', title: 'Protect Margins', promoType: 'None', reason: 'Competitors are burning cash during quiet hours. Protect your margins and wait for peak.' });
-      options.push({ type: 'Normal', title: 'Strategic Counter', promoType: '15-20% off hero items, or Spend & Save', reason: 'Competitors are aggressively pushing. Counter immediately before losing lunch, but avoid BOGO matching.' });
-      options.push({ type: 'Aggressive', title: 'Direct Match', promoType: 'Match Competitor (25%+ off)', reason: 'Do not let competitors monopolize the quiet hours. Match their heavy discounts to retain market share.' });
+      options.push({ type: 'Conservative', title: 'Free Delivery Shield', promoType: 'Free Delivery',
+        reason: `${timeSummary} ${marketSummary} Competitors are active during a quiet window — they are building algorithm ranking for later. Free Delivery is the cheapest defence: it costs a fraction of a % discount and places you inside the "Free Delivery" filter tab that a large share of customers browse first. It protects your food margin completely.${tuesdayNote}` });
+      options.push({ type: 'Normal', title: 'Counter with Value', promoType: isJustEat && isTuesday ? 'Cheeky Tuesday — 20% off £15+' : 'Free Item add-on or 10–15% off with £15 min spend',
+        reason: `${timeSummary} ${marketSummary} Competitors are buying feed position during a quiet window — counter before they pull customers who would otherwise find you first. Research principle: if they are running % off, respond with a Free Item instead. Your cost: ~£0.80. Their cost on 20% off: ~£5. You win on margin every time.${tuesdayNote}` });
+      options.push({ type: 'Aggressive', title: 'Volume Push', promoType: '20% off orders over £20',
+        reason: `${timeSummary} ${marketSummary} Overpower the moderate competition during this quiet window. Enforce a £20 minimum spend — this forces a higher basket size that dilutes the 20% cost and keeps you above your break-even threshold. Never run 20% off without a minimum spend floor.${tuesdayNote}` });
+    } else {
+      options.push({ type: 'Conservative', title: 'Anchor with Free Delivery', promoType: 'Free Delivery only',
+        reason: `${timeSummary} ${marketSummary} Heavy competitor promo spend during quiet hours means they are buying future algorithm ranking at a high cost. Your counter: run Free Delivery only as a cheap visibility anchor. Their promo cost is 5–10× yours — let them burn margin while you protect it.${tuesdayNote}` });
+      options.push({ type: 'Normal', title: 'Strategic Counter', promoType: '15% off hero items with £20 min spend, or Spend & Save (£5 off £25)',
+        reason: `${timeSummary} ${marketSummary} High competitor pressure requires a counter — but on your terms. Target your highest-margin hero items only, not a blanket menu discount. Spend & Save (£5 off £25) is especially powerful: it raises basket size, protects margin on small orders, and appears as attractive as a % discount to the customer.${tuesdayNote}` });
+      options.push({ type: 'Aggressive', title: 'Match & Contain', promoType: '20–25% off with £20 minimum spend',
+        reason: `${timeSummary} ${marketSummary} Competitors are monopolising quiet-hour feed position. Match their aggression — but the £20+ minimum spend is non-negotiable. Without it, 25% off combined with 30% platform commission on a small order is a guaranteed net loss on every order.${tuesdayNote}` });
     }
-  } else if (time === 'BUSY') {
+  } else if (state === 'BUSY') {
     if (threatLevel === 'Low') {
-      options.push({ type: 'Conservative', title: 'Organic Maximization', promoType: 'None', reason: 'Organic demand is high. No threat detected. Running a promo here burns margin for volume you would get anyway.' });
-      options.push({ type: 'Normal', title: 'Hold Strategy', promoType: 'None', reason: 'Traffic is elevated and no one is competing. Every order during BUSY with no threat is organic.' });
-      options.push({ type: 'Aggressive', title: 'Greedy Capture', promoType: 'Free Delivery', reason: 'Capitalize on high traffic to secure maximum volume while competitors are quiet.' });
+      options.push({ type: 'Conservative', title: 'Organic Maximisation', promoType: 'None',
+        reason: `${timeSummary} ${marketSummary} Peak traffic, zero competitor promos — this is the ideal trading scenario. Every order arriving right now is 100% organic. Running any promo means paying to discount orders you would receive anyway. Hold and collect the full margin.${tuesdayNote}` });
+      options.push({ type: 'Normal', title: 'Focus on Ops, Not Promos', promoType: 'None',
+        reason: `${timeSummary} ${marketSummary} High demand, no competition. The highest-ROI action right now is zero promo spend. Instead, focus on kitchen speed: platform algorithms track preparation time as a live ranking signal, and a drop from 4.5 to 4.0 stars can reduce your platform ranking by 20–30%, costing more than any promo could recover.${tuesdayNote}` });
+      options.push({ type: 'Aggressive', title: 'Low-Cost Volume Push', promoType: 'Free Delivery only',
+        reason: `${timeSummary} ${marketSummary} If pushing maximum volume is the goal, Free Delivery is the only justifiable promo during a no-threat busy window — it appears in the filter tab without touching food margin. Any % off here means discounting orders that were already coming to you organically.${tuesdayNote}` });
     } else if (threatLevel === 'Moderate') {
-      options.push({ type: 'Conservative', title: 'Margin Focus', promoType: 'None', reason: 'Traffic is busy, margin protection is prioritized over moderate threats.' });
-      options.push({ type: 'Normal', title: 'Low-cost Visibility', promoType: 'Free Delivery only', reason: 'Some competitor activity during a busy window. Free Delivery is the lowest-cost way to stay visible without cutting price.' });
-      options.push({ type: 'Aggressive', title: 'Counter Value', promoType: 'Free Item', reason: 'Push slightly harder than competitors to ensure you win the busy period outright.' });
-    } else { // High/Extreme
-      options.push({ type: 'Conservative', title: 'Defensive Delivery', promoType: 'Free Delivery', reason: 'Maintain baseline visibility without entering a destructive discount war during peak.' });
-      options.push({ type: 'Normal', title: 'Value Counter', promoType: 'Free Item or Spend & Save (Not %)', reason: 'Losing orders during peak. Counter with value, not heavy discount. Do not match a % discount with another % discount.' });
-      options.push({ type: 'Aggressive', title: 'Direct Match', promoType: 'Match % Discount directly', reason: 'Competitors are heavily discounting. Match them directly to ensure absolutely no lost orders.' });
+      options.push({ type: 'Conservative', title: 'Margin Priority', promoType: 'None',
+        reason: `${timeSummary} ${marketSummary} Busy period with moderate competitor activity. Your organic demand during this window is strong enough to absorb some competition — the moderate threat level is unlikely to significantly shift order share. Protecting margins is the right priority.${tuesdayNote}` });
+      options.push({ type: 'Normal', title: 'Free Delivery Only', promoType: 'Free Delivery',
+        reason: `${timeSummary} ${marketSummary} Competitor promos are active during peak. Free Delivery is the lowest-cost response — a fraction of the cost of % off, and it places you in the Free Delivery filter. Critical rule from case study research: never match competitors' % discount with your own % discount during busy hours. Counter value with value, not price with price.${tuesdayNote}` });
+      options.push({ type: 'Aggressive', title: 'Free Item Counter', promoType: 'Free Item add-on (e.g. free side or drink)',
+        reason: `${timeSummary} ${marketSummary} Case study finding: a free side costs ~£0.80–£1.20. A 20% discount on a £25 order costs ~£5. The perceived value to the customer is almost identical. By countering with a Free Item instead of matching on price, you spend 75–85% less for the same competitive effect.${tuesdayNote}` });
+    } else {
+      options.push({ type: 'Conservative', title: 'Defensive Free Delivery', promoType: 'Free Delivery',
+        reason: `${timeSummary} ${marketSummary} Heavy competitor activity during peak hours. Free Delivery maintains your baseline feed visibility without triggering a destructive margin war. You are not winning this window outright — but you are not losing ground either, and you protect your margin entirely.${tuesdayNote}` });
+      options.push({ type: 'Normal', title: 'Value Counter', promoType: 'Free Item + Free Delivery, or Spend & Save (£5 off £25)',
+        reason: `${timeSummary} ${marketSummary} You are actively losing orders during peak. Research rule: never match a % discount with another % discount during peak — it triggers a margin war neither side can win profitably. Combined Free Item + Free Delivery costs ~£1.50 total. A competitor's 20% off costs them ~£5. Counter value with value.${tuesdayNote}` });
+      options.push({ type: 'Aggressive', title: 'Targeted Match', promoType: '20% off with £25 minimum spend — never BOGO',
+        reason: `${timeSummary} ${marketSummary} You are losing serious order share during your best trading window. Match the competitor's discount level but enforce a £25+ minimum spend. Avoid BOGO at all costs — on a £30 order, BOGO combined with 30% platform commission leaves under £3 net profit on food that costs £10 to make. A 20% off with minimum spend is survivable. BOGO is a margin massacre.${tuesdayNote}` });
     }
-  } else { // HYPER / OFF
+  } else {
     if (threatLevel === 'Low') {
-      options.push({ type: 'Conservative', title: 'Absolute Hold', promoType: 'None', reason: 'Maximum traffic, zero threat. Do not spend a penny on promos.' });
-      options.push({ type: 'Normal', title: 'Organic Window', promoType: 'None', reason: 'This is the best organic window of the week. Focus on photos, ratings, and delivery time instead.' });
-      options.push({ type: 'Aggressive', title: 'Fuel the Fire', promoType: 'Free Delivery', reason: 'Pour fuel on the fire. Add Free Delivery to an already perfect organic window to maximize volume.' });
+      options.push({ type: 'Conservative', title: 'Absolute Hold', promoType: 'None',
+        reason: `${timeSummary} ${marketSummary} This is the single highest-value organic trading window of the week — Friday and Saturday evenings account for 55–65% of all weekly delivery demand. Zero competitor threat. Do not spend a penny on promos. A 4.5-star restaurant with no promo outperforms a 4.0-star with 30% off in every platform algorithm.${tuesdayNote}` });
+      options.push({ type: 'Normal', title: 'Organic Window', promoType: 'None',
+        reason: `${timeSummary} ${marketSummary} Peak hour, no threat. The highest-ROI action is zero promo spend. Use this window to focus on kitchen prep speed — platforms track preparation time as a live ranking signal. Slower prep during HYPER directly reduces your visibility for the next trading session.${tuesdayNote}` });
+      options.push({ type: 'Aggressive', title: 'Volume Amplifier', promoType: 'Free Delivery on this platform only',
+        reason: `${timeSummary} ${marketSummary} If pushing beyond organic volume is the goal, Free Delivery on this single platform is the only justifiable play. Research shows running promos across all three platforms simultaneously during HYPER does not generate sufficient incremental return to justify the cross-platform cost.${tuesdayNote}` });
     } else if (threatLevel === 'Moderate') {
-      options.push({ type: 'Conservative', title: 'Hold & Monitor', promoType: 'None', reason: "Organic traffic is immense. Do not waste money matching moderate threats." });
-      options.push({ type: 'Normal', title: 'Targeted Play', promoType: 'Free Delivery on this platform only', reason: 'Some competition during peak hour. One low-cost visibility play on the most active platform only.' });
-      options.push({ type: 'Aggressive', title: 'Value Differentiator', promoType: 'Free Item', reason: 'Differentiate with high perceived value to actively pull traffic from moderately active competitors.' });
-    } else { // High/Extreme
-      options.push({ type: 'Conservative', title: 'Margin Protection', promoType: 'Free Item / Spend & Save', reason: 'Avoid matching heavy discounts, counter with pure value to protect margins during war.' });
-      options.push({ type: 'Normal', title: 'Promo War Defense', promoType: 'Match within 5% or Free Item', reason: 'Peak hour promo war. Client is losing visible share in the highest-volume window. Match or counter directly.' });
-      options.push({ type: 'Aggressive', title: 'Nuclear Option', promoType: 'BOGO or 30% Off', reason: 'Crush competitors in the highest-volume window of the week. Absolute market domination.' });
+      options.push({ type: 'Conservative', title: 'Hold & Monitor', promoType: 'None',
+        reason: `${timeSummary} ${marketSummary} Peak hour with moderate competition. The organic traffic volume during HYPER is substantial enough to absorb moderate competitor promos without you spending anything. Monitor live order volume — if it drops below your expected peak baseline, activate Free Delivery immediately.${tuesdayNote}` });
+      options.push({ type: 'Normal', title: 'Single Platform Play', promoType: 'Free Delivery on this platform only',
+        reason: `${timeSummary} ${marketSummary} Moderate competition during your best trading window. Run Free Delivery on this one platform only — not across all three. Case study finding: the incremental return of simultaneous multi-platform promos during HYPER does not justify the combined cost. Stay targeted.${tuesdayNote}` });
+      options.push({ type: 'Aggressive', title: 'Free Item Differentiator', promoType: 'Free Item add-on (e.g. free garlic bread or soft drink)',
+        reason: `${timeSummary} ${marketSummary} Differentiate from moderately active competitors. A free side has very high perceived value while costing ~£0.80–£1.20 in food. Research consistently shows "free" outperforms "% off" in customer conversion — at a fraction of the cost. This is the most efficient promo type available.${tuesdayNote}` });
+    } else {
+      options.push({ type: 'Conservative', title: 'Value Counter', promoType: 'Free Item + Free Delivery',
+        reason: `${timeSummary} ${marketSummary} Heavy competitor promos during peak. Avoid matching large % discounts. Counter with Free Item + Free Delivery — your combined cost: ~£1.50. A competitor running 25% off a £25 order spends £6.25. You achieve identical feed visibility at 76% lower cost.${tuesdayNote}` });
+      options.push({ type: 'Normal', title: 'Promo War Response', promoType: topPromo?.type === 'BOGO' ? 'Counter BOGO with Free Item + Free Delivery (never match BOGO)' : 'Match competitor % within 5% with £25 min spend',
+        reason: `${timeSummary} ${marketSummary} Peak-hour promo war — you are losing visible feed share in the highest-volume window of the week. Case study rule: if competitors run BOGO, counter with Free Item — never match BOGO directly (it is a margin massacre). If they run % off, match within 5% but enforce a £25+ minimum spend to protect margin.${tuesdayNote}` });
+      options.push({ type: 'Aggressive', title: 'Full Response', promoType: '25% off with £25 minimum spend — never BOGO',
+        reason: `${timeSummary} ${marketSummary} All-out peak-hour response. Match competitor aggression at 25% but enforce £25+ minimum spend — without it, combined platform commission (30%) and discount (25%) on a small order guarantees a net loss. Avoid BOGO entirely: on a £30 order, BOGO plus commission leaves you netting ~£3–5 on food that cost £10 to prepare.${tuesdayNote}` });
     }
   }
-  
+
   return options;
 }
 
 function runIntel(promos) {
-  const time = getTimeVariable();
+  const timeObj = getTimeVariable();
   const platforms = [
-    { key: 'ubereats',  label: 'UBEREATS' },
-    { key: 'deliveroo', label: 'DELIVEROO' },
-    { key: 'justeats',  label: 'JUSTEATS' },
+    { key: 'ubereats',  label: 'Uber Eats' },
+    { key: 'deliveroo', label: 'Deliveroo' },
+    { key: 'justeats',  label: 'Just Eat' },
   ];
   const results = platforms.map(plt => {
-    const td = getThreatData(promos, plt.key);
-    const outputOptions = getPromoOptions(time, td.level);
-    return { ...plt, time, threatData: td, outputOptions };
+    const diagnosis = diagnoseMarket(promos, plt.key, timeObj);
+    const outputOptions = formulatePromo(diagnosis, plt.key);
+    return { ...plt, time: timeObj.state, timeObj, diagnosis, threatData: diagnosis, outputOptions };
   });
-  
-  const sorted = [...results].sort((a, b) => (b.threatData.total || 0) - (a.threatData.total || 0));
-  
-  return { time, results, topResult: sorted[0] };
+
+  const sorted = [...results].sort((a, b) => (b.diagnosis.totalScore || 0) - (a.diagnosis.totalScore || 0));
+  return { time: timeObj.state, timeObj, results, topResult: sorted[0] };
 }
+
 
 // ================================================================
 // COMPONENT
@@ -238,8 +363,12 @@ const PromoOptionCard = ({ option, onClick }) => {
 }
 
 const PromoIntelligenceContent = () => {
-  const [intelPlatform, setIntelPlatform] = useState('ubereats');
+  const urlParams = new URLSearchParams(window.location.search);
+  const initialPlatform = urlParams.get('platform') || 'ubereats';
+  const [intelPlatform, setIntelPlatform] = useState(initialPlatform);
   const [selectedPromoOption, setSelectedPromoOption] = useState(null);
+  const [activePromoFilter, setActivePromoFilter] = useState('All');
+  const [expandedPromoIndex, setExpandedPromoIndex] = useState(null);
 
   const staticPromos = [
     { restaurant: "Domino's Ilford", promo: '25% off selected pizzas', type: 'Discount', active: 'Active', platform: 'deliveroo', itemOverlapLevel: 'direct_match_promo' },
@@ -297,12 +426,25 @@ const PromoIntelligenceContent = () => {
       return `${d.color} ${start}% ${currentPct}%`;
     }).join(', ');
 
-    const promos = [
-      { logo: '/logo_bk.png', name: 'Burger King', type: 'Buy 1 Get 1 Free', status: 'Active' },
-      { logo: '/logo_pizza.png', name: 'Pizza Express', type: '20% Off Orders', status: 'Active' },
-      { logo: '/logo_wagamama.png', name: 'Wagamama', type: 'Free Delivery', status: 'Active' },
-      { logo: 'https://images.unsplash.com/photo-1562967914-608f82629710?w=100&h=100&fit=crop', name: 'KFC', type: 'Family Bucket Deal', status: 'Active' },
-    ];
+    const promos = mockLondonEcosystem.flatMap(restaurant => 
+      restaurant.promos.map(promo => {
+        let mappedType = 'Discount';
+        const titleLower = promo.title.toLowerCase();
+        if (titleLower.includes('buy 1 get 1') || titleLower.includes('bogo')) mappedType = 'Buy 1 Get 1 Free';
+        else if (titleLower.includes('% off') || promo.type === 'Discount') mappedType = '20% Off Orders';
+        else if (titleLower.includes('delivery')) mappedType = 'Free Delivery';
+        else if (titleLower.includes('free')) mappedType = 'Free Item';
+        
+        return {
+          logo: restaurant.image,
+          name: restaurant.name,
+          type: mappedType,
+          status: 'Active',
+          details: `${promo.title} — ${promo.description}`,
+          itemImage: promo.image || restaurant.topDishes?.[0]?.image || restaurant.image
+        };
+      })
+    );
 
     return (
       <div style={{
@@ -315,15 +457,6 @@ const PromoIntelligenceContent = () => {
         boxShadow: '0 20px 40px rgba(0,0,0,0.04)',
         gap: '40px'
       }}>
-        <button 
-          onClick={() => setIntelPlatform(null)}
-          style={{ position: 'absolute', top: '24px', right: '24px', background: 'transparent', border: 'none', cursor: 'pointer', color: '#6B7280', zIndex: 10 }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <line x1="18" y1="6" x2="6" y2="18"></line>
-            <line x1="6" y1="6" x2="18" y2="18"></line>
-          </svg>
-        </button>
 
         {/* LEFT COLUMN: Platform Info (60%) */}
         <div style={{ flex: '0 0 58%', display: 'flex', flexDirection: 'column', paddingRight: '40px', borderRight: '1px solid rgba(55, 65, 81, 0.2)' }}>
@@ -356,12 +489,12 @@ const PromoIntelligenceContent = () => {
 
           <div style={{
             background: '#FFFFFF',
-            borderRadius: '20px',
-            padding: '24px',
+            borderRadius: '16px',
+            padding: '16px',
             display: 'flex',
             justifyContent: 'space-between',
             alignItems: 'center',
-            marginBottom: '32px',
+            marginBottom: '24px',
             boxShadow: '0 4px 15px rgba(0,0,0,0.03)',
             border: '1px solid rgba(0,0,0,0.04)',
             flexShrink: 0,
@@ -370,105 +503,191 @@ const PromoIntelligenceContent = () => {
             zIndex: 5
           }}>
             {[
-              { label: 'TOTAL COMPETITORS', value: '142' },
-              { label: 'ILFORD', value: '45' },
-              { label: 'NEIGHBORHOOD', value: '97' },
-              { label: 'AVG. DISCOUNT', value: '15%' },
+              { label: 'Total Competitors', value: '142' },
+              { label: 'Ilford', value: '45' },
+              { label: 'Neighborhood', value: '97' },
+              { label: 'Active Promos', value: '18' },
             ].map(stat => (
-              <div key={stat.label} style={{ display: 'flex', flexDirection: 'column', gap: '6px', alignItems: 'center', flex: 1 }}>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: '#64748B', letterSpacing: '0.05em', textTransform: 'uppercase', textAlign: 'center' }}>{stat.label}</span>
-                <span style={{ fontSize: '22px', fontWeight: 700, color: '#E86A58' }}>{stat.value}</span>
+              <div key={stat.label} style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', flex: 1 }}>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B', letterSpacing: '0.01em', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>{stat.label}</span>
+                <span style={{ fontSize: '20px', fontWeight: 700, color: '#E86A58' }}>{stat.value}</span>
               </div>
             ))}
           </div>
 
-          <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#1F2937', marginBottom: '20px', marginTop: 0, flexShrink: 0 }}>
-            Promotion Distribution
-          </h3>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1F2937', margin: 0 }}>
+              Live Promos
+            </h3>
+            <span style={{ fontSize: '12px', fontWeight: 600, color: '#6B7280' }}>
+              {promos.filter(p => {
+                if (activePromoFilter === 'All') return true;
+                if (activePromoFilter === 'BOGO') return p.type.includes('Buy 1 Get 1 Free');
+                if (activePromoFilter === 'Discount') return p.type.includes('% Off');
+                if (activePromoFilter === 'Free Delivery') return p.type === 'Free Delivery';
+                return true;
+              }).length} Active
+            </span>
+          </div>
 
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', flexShrink: 0, flexDirection: 'column' }}>
-            
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '4px' }}>
+            {['All', 'BOGO', 'Discount', 'Free Delivery'].map(filter => {
+              const isActive = activePromoFilter === filter;
+              return (
+                <button
+                  key={filter}
+                  onClick={() => setActivePromoFilter(filter)}
+                  style={{
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    fontSize: '12px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    border: isActive ? `1px solid ${platformConfig.bg}` : '1px solid rgba(0,0,0,0.06)',
+                    background: isActive ? `${platformConfig.bg}15` : '#FFFFFF',
+                    color: isActive ? platformConfig.bg : '#6B7280',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isActive ? 'none' : '0 2px 4px rgba(0,0,0,0.02)',
+                    whiteSpace: 'nowrap'
+                  }}
+                >
+                  {filter}
+                </button>
+              );
+            })}
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '24px', padding: '0 8px' }}>
+            {/* Glowing Ring */}
             <div style={{
-              width: '100%',
-              background: '#FFFFFF',
-              borderRadius: '20px',
-              padding: '24px',
-              boxShadow: '0 4px 15px rgba(0,0,0,0.03)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              gap: '24px'
+              width: '100px', height: '100px', borderRadius: '50%',
+              background: `conic-gradient(#DC2626 0% 20%, #F59E0B 20% 65%, #10B981 65% 100%)`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 8px 20px rgba(0,0,0,0.06)'
             }}>
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                {distribution.map(d => (
-                  <div key={d.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: d.color }}></div>
-                      <span style={{ fontSize: '14px', fontWeight: 600, color: '#4B5563' }}>{d.label}</span>
-                    </div>
-                    <span style={{ fontSize: '14px', fontWeight: 700, color: '#111' }}>{d.count}</span>
-                  </div>
-                ))}
-              </div>
-
-              <div style={{ display: 'flex', justifyContent: 'center' }}>
-                <div style={{
-                  width: '160px', height: '160px', borderRadius: '50%',
-                  background: `conic-gradient(${gradientStops})`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center'
-                }}>
-                  <div style={{
-                    width: '120px', height: '120px', borderRadius: '50%', background: '#fff',
-                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                    boxShadow: 'inset 0 2px 8px rgba(0,0,0,0.05)'
-                  }}>
-                    <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 600, marginBottom: '2px' }}>Active</span>
-                    <span style={{ fontSize: '24px', color: '#111', fontWeight: 700 }}>63%</span>
-                  </div>
-                </div>
+              <div style={{
+                width: '90px', height: '90px', borderRadius: '50%', background: '#fff',
+                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)'
+              }}>
+                <span style={{ fontSize: '24px', color: '#111', fontWeight: 700, lineHeight: 1 }}>
+                  {promos.filter(p => {
+                    if (activePromoFilter === 'All') return true;
+                    if (activePromoFilter === 'BOGO') return p.type.includes('Buy 1 Get 1 Free');
+                    if (activePromoFilter === 'Discount') return p.type.includes('% Off');
+                    if (activePromoFilter === 'Free Delivery') return p.type === 'Free Delivery';
+                    return true;
+                  }).length}
+                </span>
+                <span style={{ fontSize: '9px', color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px' }}>
+                  {activePromoFilter === 'All' ? 'Total' : activePromoFilter}
+                </span>
               </div>
             </div>
 
+            {/* Legend */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+              {[
+                { label: 'BOGO', pct: '20%', color: '#DC2626' },
+                { label: 'Discount', pct: '45%', color: '#F59E0B' },
+                { label: 'Free Delivery', pct: '35%', color: '#10B981' }
+              ].map(d => {
+                const isFaded = activePromoFilter !== 'All' && activePromoFilter !== d.label;
+                return (
+                  <div key={d.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: isFaded ? 0.3 : 1, transition: 'opacity 0.2s ease' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: d.color, boxShadow: `0 0 8px ${d.color}60` }}></div>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#4B5563' }}>{d.label}</span>
+                    </div>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>{d.pct}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+
+          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexShrink: 0, flexDirection: 'column' }}>
+
             <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', padding: '0 24px', marginBottom: '12px', marginTop: '12px' }}>
-                <span style={{ flex: 2, fontSize: '12px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.05em' }}>PROMOS</span>
-                <span style={{ flex: 1, fontSize: '12px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.05em' }}>TYPE</span>
-                <span style={{ width: '80px', fontSize: '12px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.05em', textAlign: 'right' }}>STATUS</span>
+              <div style={{ display: 'flex', padding: '0 20px', marginBottom: '8px', marginTop: '8px' }}>
+                <span style={{ flex: 2, fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.05em' }}>PROMOS</span>
+                <span style={{ flex: 1, fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.05em' }}>TYPE</span>
+                <span style={{ width: '70px', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.05em', textAlign: 'right' }}>STATUS</span>
               </div>
 
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {promos.map((p, i) => (
-                  <div key={i} style={{
-                    background: '#FFFFFF',
-                    borderRadius: '16px',
-                    padding: '16px 24px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    boxShadow: '0 2px 10px rgba(0,0,0,0.02)'
-                  }}>
-                    <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: '16px' }}>
-                      <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#F3F4F6', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <img src={p.logo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-                        <span style={{ display: 'none', fontSize: '16px', fontWeight: 700, color: '#9CA3AF' }}>{p.name.charAt(0)}</span>
-                      </div>
-                      <span style={{ fontSize: '14px', fontWeight: 700, color: '#111' }}>{p.name}</span>
-                    </div>
-                    <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <div style={{ width: '24px', height: '24px', borderRadius: '6px', overflow: 'hidden', flexShrink: 0, border: '1px solid #E5E7EB' }}>
-                        <img 
-                          src={p.type === 'Free Delivery' ? '/promo_conservative.png' : p.type === 'Buy 1 Get 1 Free' ? '/promo_aggressive.png' : '/promo_normal.png'} 
-                          alt="Promo level"
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      </div>
-                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>{p.type}</span>
-                    </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {promos.filter(p => {
+                  if (activePromoFilter === 'All') return true;
+                  if (activePromoFilter === 'BOGO') return p.type.includes('Buy 1 Get 1 Free');
+                  if (activePromoFilter === 'Discount') return p.type.includes('% Off');
+                  if (activePromoFilter === 'Free Delivery') return p.type === 'Free Delivery';
+                  return true;
+                }).map((p, i) => {
+                  const isExpanded = expandedPromoIndex === i;
+                  return (
+                    <div key={i} style={{
+                      background: '#FFFFFF',
+                      borderRadius: '14px',
+                      boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      flexDirection: 'column'
+                    }}>
+                      <div 
+                        onClick={() => setExpandedPromoIndex(isExpanded ? null : i)}
+                        style={{
+                          padding: '12px 20px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          cursor: 'pointer',
+                          transition: 'background 0.2s ease',
+                          background: isExpanded ? '#F9FAFB' : 'transparent'
+                        }}
+                      >
+                        <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#F3F4F6', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <img src={p.logo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
+                            <span style={{ display: 'none', fontSize: '14px', fontWeight: 700, color: '#9CA3AF' }}>{p.name.charAt(0)}</span>
+                          </div>
+                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>{p.name}</span>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          <div style={{ width: '20px', height: '20px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0, border: '1px solid #E5E7EB' }}>
+                            <img 
+                              src={p.type === 'Free Delivery' ? '/promo_conservative.png' : p.type === 'Buy 1 Get 1 Free' ? '/promo_aggressive.png' : '/promo_normal.png'} 
+                              alt="Promo level"
+                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                            />
+                          </div>
+                          <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>{p.type}</span>
+                        </div>
 
-                    <div style={{ width: '80px', textAlign: 'right', fontSize: '13px', fontWeight: 700, color: '#DC2626' }}>
-                      {p.status}
+                        <div style={{ width: '70px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: '#DC2626' }}>
+                          {p.status}
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div style={{
+                          padding: '12px 20px 16px 64px',
+                          borderTop: '1px solid rgba(0,0,0,0.04)',
+                          background: '#FAFAFA',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '14px'
+                        }}>
+                          <div style={{ width: '46px', height: '46px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
+                            <img src={p.itemImage} alt="Promo item" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          </div>
+                          <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.4 }}>
+                            <strong style={{ color: '#111', display: 'block', marginBottom: '2px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Offer Details</strong> 
+                            {p.details}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
@@ -544,34 +763,56 @@ const PromoIntelligenceContent = () => {
           if (res.key === 'deliveroo') { platformColor = '#00CCBC'; platformGradient = 'linear-gradient(135deg, #00CCBC, #00A699)'; iconUrl = 'https://cdn.simpleicons.org/deliveroo/white'; }
           if (res.key === 'justeats') { platformColor = '#FF8000'; platformGradient = 'linear-gradient(135deg, #FF8000, #E67300)'; iconUrl = 'https://cdn.simpleicons.org/justeat/white'; }
 
+          const threatLevel = res.diagnosis?.threatLevel || res.threatData?.level || 'Low';
+          const statusMeta = {
+            Low:      { label: 'Quiet', color: '#10B981' },
+            Moderate: { label: 'Busy',  color: '#F59E0B' },
+            High:     { label: 'Hyper', color: '#E63946' },
+            Extreme:  { label: 'Hyper', color: '#E63946' },
+          }[threatLevel] || { label: 'Quiet', color: '#10B981' };
+          const isPulsing = threatLevel === 'High' || threatLevel === 'Extreme';
+
           return (
-            <div 
+            <div
               key={res.key}
               onClick={() => handlePlatformClick(res.key)}
-              style={{ 
-                padding: '16px',
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                padding: '12px 16px',
                 cursor: 'pointer',
-                border: isSelected ? `2px solid ${platformColor}40` : '1px solid rgba(0,0,0,0.03)',
-                boxShadow: isSelected ? `0 10px 30px rgba(0,0,0,0.05)` : '0 4px 15px rgba(0,0,0,0.02)',
-                background: '#FFFFFF',
-                borderRadius: '20px',
+                border: isSelected ? `1px solid ${platformColor}40` : '1px solid rgba(0,0,0,0.06)',
+                background: isSelected ? `${platformColor}08` : '#FFFFFF',
+                borderRadius: '14px',
                 transition: 'all 0.2s ease',
+                boxShadow: isSelected ? `0 4px 16px ${platformColor}18` : '0 2px 6px rgba(0,0,0,0.02)',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '16px' }}>
-                <div style={{ width: '32px', height: '32px', borderRadius: '10px', background: platformGradient, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
-                  <img src={iconUrl} alt={res.label} style={{ width: '16px', height: '16px', objectFit: 'contain' }} />
+              {/* Left: logo + name */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{
+                  width: '36px', height: '36px', borderRadius: '8px',
+                  background: platformGradient,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+                }}>
+                  <img src={iconUrl} alt={res.label} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
                 </div>
-                <div style={{ fontSize: '15px', fontWeight: 700, color: '#111', letterSpacing: '0.02em' }}>{res.label}</div>
+                <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#334155', letterSpacing: '0.01em', fontFamily: 'Inter, sans-serif' }}>
+                  {res.label}
+                </span>
               </div>
-              
-              <div>
-                <div style={{ fontSize: '10px', color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.12em', marginBottom: '4px', fontWeight: 700 }}>
-                  COMPETITOR ACTIVITY
-                </div>
-                <div className="text-gradient" style={{ fontSize: '24px', fontWeight: 700, backgroundImage: 'linear-gradient(135deg, #111 0%, #4B5563 100%)', letterSpacing: '-0.03em' }}>
-                  {res.threatData.level}
-                </div>
+
+              {/* Right: dot + status */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingRight: '4px' }}>
+                <div style={{
+                  width: '8px', height: '8px', borderRadius: '50%',
+                  backgroundColor: statusMeta.color,
+                  boxShadow: `0 0 8px ${statusMeta.color}80`,
+                  animation: isPulsing ? 'live-pulse 1.5s infinite' : 'none'
+                }} />
+                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569' }}>{statusMeta.label}</span>
               </div>
             </div>
           );
@@ -631,64 +872,101 @@ const PromoIntelligenceContent = () => {
 
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
 
-                {/* 1. Algorithm Reasoning (Time + Competitor) */}
+                {/* PHASE 1 — MARKET DIAGNOSIS */}
                 <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '12px' }}>Algorithm Reasoning</div>
-                  
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '16px', background: '#F9FAFB', padding: '16px', borderRadius: '16px', border: '1px solid #F3F4F6' }}>
-                    
-                    {/* Time Context */}
-                    <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Time Context</div>
-                      <div style={{ fontSize: '14px', fontWeight: 700, color: '#111' }}>
-                        {(() => {
-                           const now = new Date();
-                           const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-                           const dayName = days[now.getDay()];
-                           const rawHour = now.getHours();
-                           const ampm = rawHour >= 12 ? 'pm' : 'am';
-                           const hour12 = rawHour % 12 || 12;
-                           return `${hour12}${ampm} on ${dayName} is considered a ${activePlatformData?.time} traffic window`;
-                        })()}
-                      </div>
-                    </div>
-
-                    <div style={{ height: '1px', background: '#E5E7EB', margin: '4px 0' }}></div>
-
-                    {/* Competitor Activity with Metrics */}
-                    <div>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>Competitor Activity</div>
-                      
-                      <div style={{ fontSize: '13px', color: '#111', lineHeight: 1.6, display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                        <div>
-                           <span style={{ fontWeight: 700 }}>Active Promos:</span> {activePlatformData?.threatData?.structuredMetrics?.totalArea} in your area.
-                        </div>
-                        <div>
-                           <span style={{ fontWeight: 700 }}>Direct Overlap:</span> {activePlatformData?.threatData?.structuredMetrics?.totalCategory} in your exact category.
-                        </div>
-                        
-                        <div style={{ color: '#4B5563', marginTop: '4px' }}>
-                           {activePlatformData?.threatData?.structuredMetrics?.totalCategory > 0 ? 
-                             `The most aggressive overlapping competitor is offering '${activePlatformData?.threatData?.structuredMetrics?.categoryExample?.promo}'.` :
-                             `None of the active promos are from direct competitors in your category.`
-                           }
-                        </div>
-                      </div>
-                    </div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ background: '#F3F4F6', borderRadius: '4px', padding: '2px 8px', fontWeight: 800 }}>Phase 1</span> Market Diagnosis
                   </div>
 
-                  <div style={{ fontSize: '14px', color: '#4B5563', lineHeight: 1.6, fontWeight: 500 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: '#F3F4F6', borderRadius: '16px', overflow: 'hidden' }}>
+                    {/* Time */}
+                    <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600 }}>Time Window</span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>
+                        {activePlatformData?.diagnosis?.timeLabel} · {activePlatformData?.diagnosis?.state}
+                      </span>
+                    </div>
+                    {/* Active Promos */}
+                    <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600 }}>Active Promos in Area</span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>{activePlatformData?.diagnosis?.totalPromos}</span>
+                    </div>
+                    {/* Promo Types */}
+                    <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600, flexShrink: 0 }}>Promo Types Detected</span>
+                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#374151', textAlign: 'right' }}>{activePlatformData?.diagnosis?.promoTypeSummary || 'None'}</span>
+                    </div>
+                    {/* Direct Overlap */}
+                    <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600 }}>Direct Category Overlap</span>
+                      <span style={{ fontSize: '13px', fontWeight: 700, color: activePlatformData?.diagnosis?.directOverlapCount > 0 ? '#DC2626' : '#111' }}>
+                        {activePlatformData?.diagnosis?.directOverlapCount} restaurant{activePlatformData?.diagnosis?.directOverlapCount !== 1 ? 's' : ''}
+                      </span>
+                    </div>
+
+                    {/* Score Breakdown */}
+                    <div style={{ background: '#F9FAFB', padding: '14px 16px' }}>
+                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Threat Score Breakdown</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                        {[
+                          { label: 'Volume (how many promos)', score: activePlatformData?.diagnosis?.volumeScore, max: 20 },
+                          { label: 'Aggressiveness (promo type)', score: activePlatformData?.diagnosis?.aggressivenessScore, max: 35 },
+                          { label: 'Item Overlap (menu match)', score: activePlatformData?.diagnosis?.itemOverlapScore, max: 45 },
+                        ].map(({ label, score, max }) => (
+                          <div key={label}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>{label}</span>
+                              <span style={{ fontSize: '12px', fontWeight: 700, color: '#111' }}>{score ?? 0} / {max}</span>
+                            </div>
+                            <div style={{ height: '5px', background: '#E5E7EB', borderRadius: '99px', overflow: 'hidden' }}>
+                              <div style={{ height: '100%', width: `${((score ?? 0) / max) * 100}%`, background: (score ?? 0) / max > 0.6 ? '#EF4444' : (score ?? 0) / max > 0.3 ? '#F59E0B' : '#10B981', borderRadius: '99px', transition: 'width 0.4s ease' }} />
+                            </div>
+                          </div>
+                        ))}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #E5E7EB', marginTop: '4px' }}>
+                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#111' }}>Total Threat Score</span>
+                          <span style={{ fontSize: '13px', fontWeight: 800, color: '#111' }}>{activePlatformData?.diagnosis?.totalScore ?? 0} / 100</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Threat Level */}
+                    <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600 }}>Threat Level</span>
+                      <span style={{ fontSize: '13px', fontWeight: 800, color: activePlatformData?.diagnosis?.threatLevel === 'Low' ? '#059669' : activePlatformData?.diagnosis?.threatLevel === 'Moderate' ? '#D97706' : '#DC2626' }}>
+                        {activePlatformData?.diagnosis?.threatLevel}
+                      </span>
+                    </div>
+                    {/* Most Aggressive Competitor */}
+                    {activePlatformData?.diagnosis?.topPromo && (
+                      <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
+                        <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600, flexShrink: 0 }}>Top Competitor</span>
+                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#374151', textAlign: 'right' }}>
+                          {activePlatformData.diagnosis.topPromo.restaurant} — "{activePlatformData.diagnosis.topPromo.promo}"
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* PHASE 2 — PROMO FORMULATION */}
+                <div>
+                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ background: '#111', color: '#fff', borderRadius: '4px', padding: '2px 8px', fontWeight: 800 }}>Phase 2</span> Promo Formulation
+                  </div>
+
+                  <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: 1.7, fontWeight: 500, background: '#F9FAFB', padding: '16px', borderRadius: '16px', border: '1px solid #F3F4F6', marginBottom: '16px' }}>
                     {selectedPromoOption.reason}
                   </div>
                 </div>
 
-                {/* 2. Suggested Promo */}
+                {/* Suggested Promo */}
                 <div style={{ background: '#F9FAFB', padding: '16px', borderRadius: '16px', border: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: '16px' }}>
                   <div style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                    <img 
-                      src={selectedPromoOption.type === 'Aggressive' ? '/promo_aggressive.png' : selectedPromoOption.type === 'Normal' ? '/promo_normal.png' : '/promo_conservative.png'} 
-                      alt="Strategy Thumbnail" 
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+                    <img
+                      src={selectedPromoOption.type === 'Aggressive' ? '/promo_aggressive.png' : selectedPromoOption.type === 'Normal' ? '/promo_normal.png' : '/promo_conservative.png'}
+                      alt="Strategy Thumbnail"
+                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                     />
                   </div>
                   <div>

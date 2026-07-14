@@ -38,7 +38,7 @@ const PromoTrackerCard = ({ onClick, activeSession, promoCount = 8 }) => {
   return (
     <div 
       onClick={onClick}
-      className="bg-white rounded-[16px] p-6 flex flex-row items-stretch justify-between relative cursor-pointer group transition-transform duration-300 hover:-translate-y-1"
+      className="bg-white rounded-[16px] p-6 flex flex-row items-stretch justify-between relative cursor-pointer group transition-transform duration-300 hover:-translate-y-1 overflow-hidden"
       style={{
         boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.04)',
         minHeight: '260px',
@@ -85,7 +85,14 @@ const PromoTrackerCard = ({ onClick, activeSession, promoCount = 8 }) => {
       </div>
 
       {/* Right Pane: Map Interface */}
-      <div className="w-1/2 relative rounded-xl overflow-hidden shadow-inner bg-[#FAFAFA]" style={{ height: '100%', minHeight: '210px' }}>
+      <div 
+        className="absolute top-0 right-0 bottom-0 w-[55%] z-0" 
+        style={{ 
+          WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 100%)',
+          maskImage: 'linear-gradient(to right, transparent 0%, black 25%, black 100%)',
+          pointerEvents: 'none'
+        }}
+      >
         {bounds ? (
           <MapContainer 
             bounds={bounds}
