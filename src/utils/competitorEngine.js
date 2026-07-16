@@ -526,7 +526,7 @@ export async function fetchCompetitors(supabase, owner) {
  */
 export const MOCK_DATASET = [
   {
-    id: 1,
+    id: '10867fd0-03b5-54e0-8975-ddd2fbe6ece3',
     name: "Yummie Pizza and Peri Peri",
     tier: 1,
     lat: 51.5272, // Bethnal Green coordinate baseline
@@ -543,7 +543,7 @@ export const MOCK_DATASET = [
     ]
   },
   {
-    id: 2,
+    id: '81fa4062-738a-5d8a-b3d5-2d2ab93a82ab',
     name: "Simply Pizza",
     tier: 1,
     lat: 51.5276, // Bromley by Bow baseline
@@ -560,7 +560,7 @@ export const MOCK_DATASET = [
     ]
   },
   {
-    id: 3,
+    id: '948ea864-0250-59da-beac-9f552c1c2612',
     name: "The White Haus",
     tier: 2,
     lat: 51.5305, // Adjacent border zone coordinate
@@ -575,7 +575,7 @@ export const MOCK_DATASET = [
     promotions: []
   },
   {
-    id: 4,
+    id: 'e4bd5673-cd47-5906-aa1d-f503c5429b58',
     name: "King Pizza & Grill",
     tier: 1,
     lat: 51.5585, // Core Ilford area grid
@@ -592,7 +592,7 @@ export const MOCK_DATASET = [
     ]
   },
   {
-    id: 5,
+    id: '01e34f44-471f-44b1-86d2-ea308ee967e6',
     name: "Mamma Mia Pizzeria",
     tier: 1,
     lat: 51.5542,
@@ -607,7 +607,7 @@ export const MOCK_DATASET = [
     promotions: []
   },
   {
-    id: 6,
+    id: '1534bd43-364e-4034-91a5-c65900f1cde8',
     name: "Waltham Grill",
     tier: 2,
     lat: 51.5682, // Waltham Forest adjacent border zone

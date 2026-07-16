@@ -79,7 +79,7 @@ const VisibilityEngineWidget = ({ onPlatformClick }) => {
           </h2>
         </div>
         <div className="flex flex-col items-end shrink-0">
-          <span className="font-bold text-slate-400" style={{ fontSize: '0.6rem', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '2px', color: '#94a3b8' }}>Health Score</span>
+          <span className="font-bold text-slate-400" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px', color: '#9CA3AF' }}>Health Score</span>
           <div className="flex items-baseline">
             <span className="font-black leading-none" style={{ fontSize: '1.75rem', color: '#EF4444', letterSpacing: '-0.02em' }}>{totalScore}</span>
             <span className="font-bold" style={{ fontSize: '0.9rem', marginLeft: '2px', color: '#64748b', display: 'inline-block', transform: 'translateY(40%)' }}>/100</span>

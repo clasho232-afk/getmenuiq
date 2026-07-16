@@ -95,7 +95,7 @@ const InstantPriceAlertsWidget = () => {
             <div className="split-pane" style={{ borderTop: 'none', paddingTop: '0', marginTop: '0', alignItems: 'center' }}>
               <div className="left-pane" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
                 <h2 style={{ fontSize: '56px', margin: '0 0 4px 0', color: '#E86A58', lineHeight: '1', fontWeight: '800' }}>{MODAL_CROSS_FILTER_DATA.length}</h2>
-                <p style={{ fontSize: '11px', color: '#1c1c1e', margin: '0', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Alerts</p>
+                <p style={{ fontSize: '11px', color: '#9CA3AF', margin: '0', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Total Alerts</p>
               </div>
               <div className="right-pane" style={{ transform: 'translateX(-30%)', width: '120%' }}>
                 {[

@@ -49,7 +49,7 @@ const PromoTrackerCard = ({ onClick, activeSession, promoCount = 8 }) => {
       {/* Left Pane: Tracker Metrics & Brand Toggles */}
       <div className="w-1/2 flex flex-col justify-between pr-6 z-10 relative">
         <div>
-          <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-1 block">
+          <span className="uppercase mb-1 block" style={{ fontSize: '11px', color: '#9CA3AF', fontWeight: '700', letterSpacing: '0.08em' }}>
             Competitor Promos
           </span>
           <h2 className="text-xl font-bold text-gray-900 leading-tight mb-4">

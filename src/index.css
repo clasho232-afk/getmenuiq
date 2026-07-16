@@ -1,5 +1,5 @@
 @import url('./MarketNiche.css');
-@import url('https://fonts.cdnfonts.com/css/lufga');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
 :root {
   --bg-main: #F3F4F6;
@@ -27,11 +27,15 @@
 }
 
 body {
-  font-family: 'Lufga', sans-serif;
+  font-family: 'Inter', sans-serif;
   background-color: var(--bg-main);
   color: var(--text-primary);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, .card-title {
+  letter-spacing: -0.02em;
 }
 
 /* Typography Utilities */
@@ -67,11 +71,11 @@ body {
 
 /* Glass Panel â€” global card treatment applied to every card on every page */
 .glass-panel {
-  background: linear-gradient(135deg, #FFFFFF 0%, #FAF8F4 100%);
+  background: #fcfaf8;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.5);
-  box-shadow: 0 10px 40px -10px rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.06), 0 2px 10px rgba(0, 0, 0, 0.04);
   border-radius: 24px;
 }
 
@@ -788,7 +792,7 @@ button {
 }
 
 /* Pricing Distribution Card */
-.pricing-gauge-card { position: relative; overflow: hidden; background-color: rgba(255, 255, 255, 0.7); backdrop-filter: blur(24px); border: 1px solid rgba(255, 255, 255, 0.6); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 1); border-radius: 1rem; padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between; }
+.pricing-gauge-card { position: relative; overflow: hidden; background-color: #ffffff; border: 1px solid rgba(0, 0, 0, 0.05); box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03); border-radius: 1rem; padding: 1.75rem; display: flex; flex-direction: column; justify-content: space-between; }
 .animate-soft-pulse { animation: softPulse 4s ease-in-out infinite; }
 @keyframes softPulse { 0%, 100% { opacity: 1; box-shadow: inset 0 2px 4px rgba(255,255,255,0.6), inset 0 -2px 4px rgba(0,0,0,0.1), 0 0 12px rgba(255,94,58,0.3); } 50% { opacity: 0.9; box-shadow: inset 0 2px 4px rgba(255,255,255,0.6), inset 0 -2px 4px rgba(0,0,0,0.1), 0 0 4px rgba(255,94,58,0.1); } }
 .animate-text-pulse { animation: textPulse 4s ease-in-out infinite; }
@@ -797,9 +801,8 @@ button {
 .glass-extrude { position: relative; overflow: hidden; backdrop-filter: blur(12px); box-shadow: inset 0 2px 4px rgba(255,255,255,0.6), inset 0 -2px 4px rgba(0,0,0,0.1), 0 4px 8px rgba(0,0,0,0.05); }
 
 .harmonized-card-bg {
-  background-color: rgba(255, 255, 255, 0.7) !important;
-  backdrop-filter: blur(24px) !important;
-  border: 1px solid rgba(255, 255, 255, 0.6) !important;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 1) !important;
+  background-color: #ffffff !important;
+  border: 1px solid rgba(0, 0, 0, 0.05) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03) !important;
 }
 

@@ -93,7 +93,7 @@
     flex: 1;
     display: flex;
     flex-direction: column;
-    justify-content: center;
+    justify-content: flex-start;
 }
 
 .row-category {
@@ -102,14 +102,14 @@
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.5px;
-    margin-bottom: 8px;
+    margin-bottom: auto;
 }
 
 .row-title {
     font-size: 20px;
     font-weight: 700;
     color: #1A1A1A;
-    margin: 0 0 12px 0;
+    margin: 0 0 4px 0;
 }
 
 .row-metrics {
@@ -117,14 +117,14 @@
     align-items: center;
     font-size: 13px;
     color: #666;
-    margin-bottom: 16px;
+    margin-bottom: 0px;
     flex-wrap: wrap;
     gap: 8px 0; /* Vertical gap between wrapped rows */
 }
 
 .metric-group {
     display: flex;
-    align-items: center;
+    align-items: baseline;
     white-space: nowrap;
     gap: 4px;
 }
@@ -136,7 +136,7 @@
 
 .metric-highlight {
     color: #1A1A1A;
-    font-weight: 800;
+    font-weight: 500;
 }
 
 .metric-separator {
@@ -192,13 +192,14 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    margin-top: 5%;
 }
 
 .detail-gallery {
     display: flex;
     gap: 12px;
     height: 160px; /* Reduced from 300px */
-    margin-bottom: 8px; /* Reduced margin */
+    margin-bottom: 1.5%;
     flex-shrink: 0;
 }
 
@@ -233,7 +234,7 @@
 }
 
 .detail-title {
-    font-size: 22px; /* Reduced from 28px */
+    font-size: 14px;
     font-weight: 700;
     color: #1A1A1A;
     margin: 0 0 6px 0;
@@ -265,12 +266,13 @@
 .detail-tabs {
     display: flex;
     border-bottom: 1px solid #E5E5E5;
-    margin-bottom: 8px;
+    margin-bottom: 5px;
     flex-shrink: 0;
 }
 
 .detail-tab {
-    padding: 8px 20px;
+    padding: 8px 0;
+    margin-right: 32px;
     font-size: 14px;
     font-weight: 600;
     color: #999;

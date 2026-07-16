@@ -6,13 +6,14 @@ import {
 import { MapContainer, TileLayer, Circle, Marker, Tooltip, Popup, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import CompetitorSummaryModal from './CompetitorSummaryModal';
+import RestaurantProfilePage from './RestaurantProfilePage';
 import { supabase } from '../supabase';
 import {
   getRankedCompetitors,
   TIER,
   threatFromScore,
 } from '../utils/competitorEngine';
+import ComparisonModal from './ComparisonModal';
 
 // ─── Platform icons ────────────────────────────────────────────────────────────
 const PLATFORM_ICONS = {
@@ -128,6 +129,7 @@ const CompetitorsContent = () => {
   const [rankedCompetitors, setRankedCompetitors] = useState([]);
   const [loading,           setLoading]           = useState(true);
   const [error,             setError]             = useState(null);
+  const [comparisonTarget,  setComparisonTarget]  = useState(null);
 
   // ── UI state ─────────────────────────────────────────────────────────────────
   const [activeTier,     setActiveTier]     = useState(null); // null | 1 | 2 | 'WATCHLIST'
@@ -138,6 +140,38 @@ const CompetitorsContent = () => {
   const [isMapExpanded,  setIsMapExpanded]  = useState(true);
   const [isMapFullScreen, setIsMapFullScreen] = useState(false);
   const [activePlatformFilter, setActivePlatformFilter] = useState(null);
+  const [viewMode, setViewMode] = useState('List');
+  const [matrixCompetitors, setMatrixCompetitors] = useState([]); // Now stores full restaurant objects
+  const [toastMessage, setToastMessage] = useState('');
+
+  useEffect(() => {
+    const handleMatrixDataReady = () => {
+      const saved = localStorage.getItem('matrix_selected_competitors');
+      if (saved) {
+        try {
+          const list = JSON.parse(saved);
+          if (list && list.length > 0) {
+            setComparisonTarget(list[list.length - 1]); // Open popup
+            
+            // Silently update matrix
+            setMatrixCompetitors(prev => {
+              const newList = [...prev];
+              list.forEach(item => {
+                if (!newList.some(r => r.id === item.id)) {
+                  newList.push(item);
+                }
+              });
+              return newList.length > 3 ? newList.slice(0, 3) : newList;
+            });
+            localStorage.removeItem('matrix_selected_competitors');
+          }
+        } catch(e) {}
+      }
+    };
+    handleMatrixDataReady();
+    window.addEventListener('matrix-data-ready', handleMatrixDataReady);
+    return () => window.removeEventListener('matrix-data-ready', handleMatrixDataReady);
+  }, []);
 
   // ── Refs & Progressive Zoom State ───────────────────────────────────────────────
   const mapRef = useRef(null);
@@ -304,8 +338,57 @@ const CompetitorsContent = () => {
   };
 
   // ════════════════════════════════════════════════════════════════════════════
+  if (selectedItem) {
+    return (
+      <div style={{ height: '100%', overflowY: 'auto' }}>
+        <RestaurantProfilePage 
+          restaurantId={toModalShape(selectedItem).id} 
+          onBack={() => setSelectedItem(null)} 
+          onCompare={(restaurant) => {
+            setComparisonTarget(restaurant); // Open popup
+            
+            // Silently update matrix
+            setMatrixCompetitors(prev => {
+              if (prev.some(r => r.id === restaurant.id)) return prev;
+              const newList = [...prev, restaurant];
+              return newList.length > 3 ? newList.slice(0, 3) : newList;
+            });
+          }}
+        />
+        <ComparisonModal 
+          isOpen={!!comparisonTarget} 
+          onClose={() => setComparisonTarget(null)} 
+          ownerRestaurant={ownerRestaurant} 
+          competitorRestaurant={comparisonTarget} 
+        />
+      </div>
+    );
+  }
+
   return (
     <>
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#EF4444',
+          color: '#FFF',
+          padding: '0.75rem 1.5rem',
+          borderRadius: '8px',
+          fontWeight: 600,
+          fontSize: '0.875rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          zIndex: 2000,
+          animation: 'slideDown 0.3s ease-out',
+          fontFamily: "'Lufga', sans-serif"
+        }}>
+          {toastMessage}
+        </div>
+      )}
+      
       <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
         <style>
           {`
@@ -488,26 +571,31 @@ const CompetitorsContent = () => {
         {/* ── DIRECTORY PANEL ──────────────────────────────────────────────── */}
         <div className="glass-panel" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
+          {/* Header & View Mode Toggle */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#111827' }}>Competitor Directory</h2>
+            
+            <div style={{ display: 'flex', backgroundColor: '#F3F4F6', borderRadius: '8px', padding: '0.25rem' }}>
+              <button 
+                onClick={() => setViewMode('List')}
+                style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: 'none', backgroundColor: viewMode === 'List' ? '#FFF' : 'transparent', color: viewMode === 'List' ? '#111' : '#6B7280', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer', boxShadow: viewMode === 'List' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontFamily: "'Lufga', sans-serif" }}
+              >List View</button>
+              <button 
+                onClick={() => setViewMode('Matrix')}
+                style={{ padding: '0.4rem 0.8rem', borderRadius: '6px', border: 'none', backgroundColor: viewMode === 'Matrix' ? '#FFF' : 'transparent', color: viewMode === 'Matrix' ? '#111' : '#6B7280', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer', boxShadow: viewMode === 'Matrix' ? '0 1px 3px rgba(0,0,0,0.1)' : 'none', fontFamily: "'Lufga', sans-serif" }}
+              >Matrix View</button>
+            </div>
+          </div>
+
           {/* Tabs row */}
-          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.08)', paddingBottom: '0.75rem' }}>
+          <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.08)', paddingBottom: '0.75rem', opacity: viewMode === 'Matrix' ? 0.5 : 1, pointerEvents: viewMode === 'Matrix' ? 'none' : 'auto' }}>
             {/* All */}
             <button onClick={() => setActiveTier(null)}
               style={{ background: 'transparent', border: 'none', fontSize: '0.85rem', fontWeight: 600, color: activeTier === null ? '#E86A58' : '#6B7280', cursor: 'pointer', position: 'relative', paddingBottom: '0.25rem', fontFamily: 'inherit' }}>
               All ({rankedCompetitors.length})
               {activeTier === null && <div style={{ position: 'absolute', bottom: '-12px', left: 0, right: 0, height: '2px', background: '#E86A58', borderRadius: '2px' }} />}
             </button>
-            {/* Tier 1 */}
-            <button onClick={() => setActiveTier(activeTier === TIER.DIRECT ? null : TIER.DIRECT)}
-              style={{ background: 'transparent', border: 'none', fontSize: '0.85rem', fontWeight: 600, color: activeTier === TIER.DIRECT ? '#E86A58' : '#6B7280', cursor: 'pointer', position: 'relative', paddingBottom: '0.25rem', fontFamily: 'inherit' }}>
-              {primaryAreaName} ({tier1Count})
-              {activeTier === TIER.DIRECT && <div style={{ position: 'absolute', bottom: '-12px', left: 0, right: 0, height: '2px', background: '#E86A58', borderRadius: '2px' }} />}
-            </button>
-            {/* Tier 2 */}
-            <button onClick={() => setActiveTier(activeTier === TIER.ADJACENT ? null : TIER.ADJACENT)}
-              style={{ background: 'transparent', border: 'none', fontSize: '0.85rem', fontWeight: 600, color: activeTier === TIER.ADJACENT ? '#E86A58' : '#6B7280', cursor: 'pointer', position: 'relative', paddingBottom: '0.25rem', fontFamily: 'inherit' }}>
-              Neighborhood ({tier2Count})
-              {activeTier === TIER.ADJACENT && <div style={{ position: 'absolute', bottom: '-12px', left: 0, right: 0, height: '2px', background: '#E86A58', borderRadius: '2px' }} />}
-            </button>
+
             {/* Watchlist */}
             <button onClick={() => setActiveTier(activeTier === 'WATCHLIST' ? null : 'WATCHLIST')}
               style={{ background: 'transparent', border: 'none', fontSize: '0.85rem', fontWeight: 600, color: activeTier === 'WATCHLIST' ? '#E86A58' : '#6B7280', cursor: 'pointer', position: 'relative', paddingBottom: '0.25rem', fontFamily: 'inherit', display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -579,8 +667,109 @@ const CompetitorsContent = () => {
             </div>
           )}
 
-          {/* ── COMPETITOR CARDS ────────────────────────────────────────── */}
-          {!loading && !error && (
+          {/* ── COMPETITOR CARDS / MATRIX VIEW ────────────────────────────────────────── */}
+          {!loading && !error && viewMode === 'Matrix' && (
+            <div style={{ display: 'flex', gap: '1.5rem', overflowX: 'auto', paddingBottom: '1rem', fontFamily: "'Lufga', sans-serif" }}>
+              {/* Sticky Sidebar */}
+              <div style={{ flex: '0 0 160px', position: 'sticky', left: 0, backgroundColor: '#FFFFFF', zIndex: 10, paddingTop: '200px', paddingRight: '1rem' }}>
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111', margin: '0 0 0 0', display: 'flex', alignItems: 'flex-end', height: '3.5rem', paddingBottom: '0.5rem' }}>Performance</h3>
+                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', color: '#6B7280', fontSize: '0.85rem' }}>MenuIQ Score</div>
+                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', color: '#6B7280', fontSize: '0.85rem' }}>Rating</div>
+                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', color: '#6B7280', fontSize: '0.85rem' }}>Reviews</div>
+                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', color: '#6B7280', fontSize: '0.85rem' }}>Platforms</div>
+
+                <h3 style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111', margin: '0 0 0 0', display: 'flex', alignItems: 'flex-end', height: '4rem', paddingBottom: '0.5rem' }}>Financials</h3>
+                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', color: '#6B7280', fontSize: '0.85rem' }}>Avg. Item Price</div>
+                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', color: '#6B7280', fontSize: '0.85rem' }}>Delivery Fee</div>
+                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', color: '#6B7280', fontSize: '0.85rem' }}>Active Promos</div>
+                <div style={{ height: '3rem', display: 'flex', alignItems: 'center', color: '#6B7280', fontSize: '0.85rem' }}>Price Changes</div>
+              </div>
+
+              {/* Data Columns */}
+              {matrixCompetitors.map((restaurant, idx) => {
+                const isPrimary = idx === matrixCompetitors.length - 1; // Highlight the most recently added
+
+                // Mock/Derived Data
+                const score = restaurant.score || Math.floor(Math.random() * 30 + 60); 
+                const rating = restaurant.rating || (Math.random() * 1 + 4).toFixed(1);
+                const reviews = restaurant.reviews || Math.floor(Math.random() * 500 + 50);
+                const platformsCount = detectPlatforms(restaurant).length;
+                const avgPrice = restaurant.avg_price ? `£${parseFloat(restaurant.avg_price).toFixed(2)}` : '£12.50';
+                const delivery = restaurant.delivery_fee ? `£${parseFloat(restaurant.delivery_fee).toFixed(2)}` : 'Free';
+                const promos = restaurant.promo_count || 0;
+                const priceChanges = restaurant.price_change_count || 0;
+
+                const cellStyle = { height: '3rem', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.9rem', fontWeight: 700, color: '#111' };
+
+                return (
+                  <div key={restaurant.id} style={{ flex: '0 0 280px', display: 'flex', flexDirection: 'column', backgroundColor: isPrimary ? '#F0FDF4' : '#F9FAFB', borderRadius: '24px', border: isPrimary ? '1px solid #BBF7D0' : '1px solid #E5E7EB', overflow: 'hidden', paddingBottom: '1.5rem', position: 'relative' }}>
+                    
+                    {/* Remove button */}
+                    <button 
+                      onClick={() => {
+                        setMatrixCompetitors(prev => prev.filter(r => r.id !== restaurant.id));
+                        if (matrixCompetitors.length === 1) setViewMode('List');
+                      }}
+                      style={{ position: 'absolute', top: '12px', right: '12px', zIndex: 20, width: '28px', height: '28px', borderRadius: '50%', backgroundColor: 'rgba(255,255,255,0.9)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}
+                    >
+                      <X size={14} color="#111" />
+                    </button>
+
+                    {/* Image Header (Flush with edges) */}
+                    <div style={{ width: '100%', height: '200px', position: 'relative', flexShrink: 0 }}>
+                      <img src={restaurant.hero_image_url || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=300&q=80'} style={{ width: '100%', height: '100%', objectFit: 'cover' }} alt={restaurant.name} />
+                      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.8), transparent)', padding: '2rem 1rem 0.75rem', color: '#fff', fontWeight: 800, textAlign: 'center', fontSize: '1.05rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                        {restaurant.name}
+                      </div>
+                    </div>
+
+                    {/* Spacer for "Performance" heading */}
+                    <div style={{ height: '3.5rem' }}></div>
+
+                    {/* Cells */}
+                    <div style={cellStyle}>
+                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                         <TrendingUp size={14} color="#2563EB" /> 
+                         <span>{score} / 100</span>
+                       </span>
+                    </div>
+                    <div style={cellStyle}>
+                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                         <Star size={14} fill="#2563EB" color="#2563EB" /> 
+                         <span>{rating}</span>
+                       </span>
+                    </div>
+                    <div style={cellStyle}>
+                       <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', color: '#2563EB', fontWeight: 800 }}>
+                         <span>{reviews}</span>
+                       </span>
+                    </div>
+                    <div style={cellStyle}>
+                       <span>{platformsCount} Active</span>
+                    </div>
+
+                    {/* Spacer for "Financials" heading */}
+                    <div style={{ height: '4rem' }}></div>
+
+                    <div style={cellStyle}>{avgPrice}</div>
+                    <div style={cellStyle}>{delivery}</div>
+                    <div style={cellStyle}>{promos}</div>
+                    <div style={cellStyle}>
+                       {priceChanges > 0 ? (
+                         <span style={{ color: '#DC2626', fontSize: '0.75rem', padding: '0.25rem 0.5rem', background: '#FEE2E2', borderRadius: '9999px' }}>{priceChanges} Updates</span>
+                       ) : (
+                         <span style={{ color: '#E86A58', fontSize: '0.85rem', fontWeight: 600 }}>Stable</span>
+                       )}
+                    </div>
+                  </div>
+                );
+              })}
+              {matrixCompetitors.length === 0 && (
+                <div style={{ padding: '2rem', width: '100%', textAlign: 'center', color: '#6B7280' }}>No competitors selected for matrix.</div>
+              )}
+            </div>
+          )}
+          {!loading && !error && viewMode === 'List' && (
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
               {displayList.map(({ restaurant, tier, score, classification, threat }) => {
                 const cfg       = TIER_CONFIG[tier] || {};
@@ -696,14 +885,18 @@ const CompetitorsContent = () => {
         </div>
       </div>
 
-      {/* ── COMPETITOR MODAL ──────────────────────────────────────────────── */}
-      <CompetitorSummaryModal
-        competitor={toModalShape(selectedItem)}
-        onClose={() => setSelectedItem(null)}
-        asSidebar={isMapFullScreen}
+      {/* 
+        We no longer render a fixed modal here.
+        Instead, RestaurantProfilePage is returned at the top of the component.
+      */}
+      
+      {/* ── COMPARISON MODAL ─────────────────────────────────────────────────── */}
+      <ComparisonModal 
+        isOpen={!!comparisonTarget} 
+        onClose={() => setComparisonTarget(null)} 
+        ownerRestaurant={ownerRestaurant} 
+        competitorRestaurant={comparisonTarget} 
       />
     </>
   );
-};
-
-export default CompetitorsContent;
+};export default CompetitorsContent;

@@ -295,8 +295,12 @@ const DashboardContent = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
-      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-start', gap: '3rem', width: '100%' }}>
-        <div style={{ fontSize: '1.875rem', fontWeight: 700, flexShrink: 0 }}>Menu Pricing Health</div>
+      <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '3rem', width: '100%' }}>
+        <div style={{ fontSize: '1.875rem', fontWeight: 700, flexShrink: 0, letterSpacing: '-0.02em' }}>Menu Pricing Health</div>
+      </div>
+      
+      {/* Floating AI Greeting */}
+      <div style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 50, background: '#ffffff', padding: '0.75rem 1.25rem', borderRadius: '999px', boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.04)', cursor: 'pointer', transition: 'all 0.2s ease' }} className="hover:-translate-y-1 hover:shadow-lg">
         <AIGreeting onClick={() => setIsAIOverlayOpen(true)} />
       </div>
       
@@ -341,16 +345,15 @@ const DashboardContent = () => {
                   borderLeft: 'none'
                 }}  
                 onClick={() => setShowHealthModal(true)}
-                onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.9)'}
-                onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.7)'}
+
               >
                 {/* Branding and Title */}
                 <div style={{ display: 'flex', flexDirection: 'column' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.5rem' }}>
                     <span style={{ fontFamily: "'Lufga', sans-serif", fontSize: '15px', fontWeight: 800, color: '#e05046' }}>MenuIQ</span>
-                    <span style={{ fontSize: '0.55rem', fontWeight: 700, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.15em', marginTop: '0.15rem' }}>Intelligence</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', marginTop: '0.15rem' }}>Intelligence</span>
                   </div>
-                  <h2 className="font-bold tracking-normal" style={{ fontSize: '1.15rem', color: '#0F172A', margin: 0, lineHeight: 1.1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  <h2 className="font-bold tracking-normal" style={{ fontSize: '1.15rem', color: '#0F172A', margin: 0, lineHeight: 1.1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden', textTransform: 'capitalize' }}>
                     {restaurant?.name || 'Loading...'}
                   </h2>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#64748B', marginTop: '0.35rem', fontSize: '0.7rem', fontWeight: 500 }}>
@@ -551,11 +554,11 @@ const DashboardContent = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.25rem' }}>
                     <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '9999px', backgroundColor: '#F59E0B', boxShadow: '0 0 8px rgba(245,158,11,0.4)', flexShrink: 0 }}></div>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Underpriced</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>Underpriced</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', paddingLeft: '0.875rem', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111' }}>142</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#9CA3AF' }}>items</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', paddingLeft: '0.875rem', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111', lineHeight: '1' }}>142</span>
+                    <span style={{ fontSize: '11px', fontWeight: 500, color: '#9CA3AF', marginTop: '2px' }}>items</span>
                   </div>
                 </div>
                 
@@ -576,9 +579,9 @@ const DashboardContent = () => {
                     <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '9999px', backgroundColor: '#10B981', boxShadow: '0 0 8px rgba(16,185,129,0.4)', flexShrink: 0 }}></div>
                     <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Stable</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', paddingLeft: '0.875rem', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111' }}>284</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#9CA3AF' }}>items</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', paddingLeft: '0.875rem', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111', lineHeight: '1' }}>284</span>
+                    <span style={{ fontSize: '11px', fontWeight: 500, color: '#9CA3AF', marginTop: '2px' }}>items</span>
                   </div>
                 </div>
                 
@@ -599,11 +602,11 @@ const DashboardContent = () => {
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.375rem', marginBottom: '0.25rem' }}>
                     <div style={{ width: '0.5rem', height: '0.5rem', borderRadius: '9999px', backgroundColor: '#ff5e3a', boxShadow: '0 0 8px rgba(255,94,58,0.5)', flexShrink: 0 }}></div>
-                    <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap' }}>Overpriced</span>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', whiteSpace: 'nowrap' }}>Overpriced</span>
                   </div>
-                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', paddingLeft: '0.875rem', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontSize: '1.25rem', fontWeight: 700, color: '#111' }}>142</span>
-                    <span style={{ fontSize: '0.75rem', fontWeight: 400, color: '#9CA3AF' }}>items</span>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', paddingLeft: '0.875rem', whiteSpace: 'nowrap' }}>
+                    <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#111', lineHeight: '1' }}>142</span>
+                    <span style={{ fontSize: '11px', fontWeight: 500, color: '#9CA3AF', marginTop: '2px' }}>items</span>
                   </div>
                 </div>
               </div>
@@ -611,13 +614,13 @@ const DashboardContent = () => {
 
             {/* Right 40% Column - Category Breakdown */}
             <div style={{ width: '40%', padding: '1.5rem', borderLeft: '1px solid rgba(228, 226, 228, 0.6)', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '1.25rem' }}>
-              <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>Category Breakdown</div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.08em', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>Category Breakdown</div>
               
               <div style={{ display: 'grid', gridTemplateColumns: '1fr auto auto', gap: '0.75rem', alignItems: 'center', fontFamily: 'ui-sans-serif, system-ui, sans-serif' }}>
                 {/* Column Headers */}
                 <div></div>
-                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>Under</div>
-                <div style={{ fontSize: '0.65rem', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.05em' }}>Over</div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.08em' }}>Under</div>
+                <div style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', textAlign: 'center', letterSpacing: '0.08em' }}>Over</div>
                 
                 {/* Mains */}
                 <div style={{ fontSize: '0.85rem', fontWeight: 700, color: '#111' }}>Mains</div>

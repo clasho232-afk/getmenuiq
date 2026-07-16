@@ -31,6 +31,25 @@ const MarketSearchPage = ({
   const [activeRestaurantId, setActiveRestaurantId] = useState(null);
   const [activeDishId, setActiveDishId] = useState(null);
   const [isAIOverlayOpen, setIsAIOverlayOpen] = useState(false);
+  const [compareList, setCompareList] = useState([]);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const toggleCompetitorSelection = (e, restaurant) => {
+    e.stopPropagation();
+    setCompareList(prev => {
+      const isSelected = prev.some(c => c.id === restaurant.id);
+      if (isSelected) {
+        return prev.filter(c => c.id !== restaurant.id);
+      } else {
+        if (prev.length >= 3) {
+          setToastMessage('Maximum 3 competitors allowed for comparison.');
+          setTimeout(() => setToastMessage(''), 3000);
+          return prev;
+        }
+        return [...prev, restaurant];
+      }
+    });
+  };
 
   // Fetch Logic
   useEffect(() => {
@@ -94,6 +113,52 @@ const MarketSearchPage = ({
   const getMockDeal = (id) => {
     const deals = ['BOGO', '20% Off £15+', 'Free Delivery', '15% Off', 'Buy 1 Get 1 Half Price'];
     return deals[id % deals.length];
+  };
+
+  // Platform Mock Helpers
+  const getMockPlatforms = (idStr) => {
+    let hash = 0;
+    for (let i = 0; i < idStr.length; i++) hash = idStr.charCodeAt(i) + ((hash << 5) - hash);
+    const num = Math.abs(hash);
+    
+    const p = [];
+    if (num % 2 === 0 || num % 3 === 0) p.push('Uber Eats');
+    if (num % 3 === 0 || num % 5 === 0) p.push('Deliveroo');
+    if (num % 2 !== 0) p.push('Just Eat');
+    if (p.length === 0) p.push('Uber Eats');
+    return p;
+  };
+
+  const getSmallPlatformLogo = (platform) => {
+    switch(platform) {
+      case 'Deliveroo':
+        return (
+          <div key="dl" style={{ width: '22px', height: '22px', borderRadius: '6px', backgroundColor: '#00CDBC', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFF">
+              <path d="M12 2L2 22h20L12 2zm0 6l5 10H7l5-10z" />
+            </svg>
+          </div>
+        );
+      case 'Uber Eats':
+        return (
+          <div key="ue" style={{ width: '22px', height: '22px', borderRadius: '6px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, textAlign: 'left', fontSize: '0.4rem', fontWeight: 800, color: '#FFF' }}>
+              <span>Uber</span>
+              <span>Eats</span>
+            </div>
+          </div>
+        );
+      case 'Just Eat':
+        return (
+          <div key="je" style={{ width: '22px', height: '22px', borderRadius: '6px', backgroundColor: '#FE5000', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+              <polyline points="9 22 9 12 15 12 15 22"></polyline>
+            </svg>
+          </div>
+        );
+      default: return null;
+    }
   };
 
   return (
@@ -184,7 +249,7 @@ const MarketSearchPage = ({
                   cursor: 'pointer',
                   fontFamily: 'inherit',
                   fontSize: '0.85rem',
-                  fontWeight: 700,
+                  fontWeight: 500,
                   transition: 'all 0.2s ease',
                   backgroundColor: activeCategory === cat ? '#FFF' : 'transparent',
                   color: activeCategory === cat ? '#111' : '#6B7280',
@@ -213,11 +278,33 @@ const MarketSearchPage = ({
           }}>
             {/* Price Slider */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase' }}>Max Price: £{priceRange}</span>
+              <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#374151' }}>Max Price: £{priceRange}</span>
+              <style>{`
+                .custom-range-slider {
+                  -webkit-appearance: none;
+                  width: 120px;
+                  height: 4px;
+                  background: #E5E7EB;
+                  border-radius: 4px;
+                  outline: none;
+                }
+                .custom-range-slider::-webkit-slider-thumb {
+                  -webkit-appearance: none;
+                  appearance: none;
+                  width: 16px;
+                  height: 16px;
+                  border-radius: 50%;
+                  background: #FFF;
+                  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+                  cursor: pointer;
+                  border: 1px solid #E5E7EB;
+                }
+              `}</style>
               <input 
                 type="range" min="0" max="100" value={priceRange} 
                 onChange={(e) => setPriceRange(Number(e.target.value))}
-                style={{ width: '120px', accentColor: '#111' }}
+                className="custom-range-slider"
+                style={{ background: `linear-gradient(to right, #00CDBC ${(priceRange / 100) * 100}%, #E5E7EB ${(priceRange / 100) * 100}%)` }}
               />
             </div>
 
@@ -271,6 +358,22 @@ const MarketSearchPage = ({
               const cuisineString = Array.isArray(restaurant.cuisines) && restaurant.cuisines.length > 0 ? restaurant.cuisines[0] : 'Various';
               const locationString = Array.isArray(restaurant.areas) && restaurant.areas.length > 0 ? restaurant.areas[0] : (restaurant.city || 'London');
               
+              // Generate the platform list for this card
+              const pList = getMockPlatforms(restaurant.id?.toString() || '');
+              
+              // Generate Health Score
+              let hash = 0;
+              const idStr = restaurant.id?.toString() || '';
+              for (let i = 0; i < idStr.length; i++) hash = idStr.charCodeAt(i) + ((hash << 5) - hash);
+              const healthScore = Math.abs(hash) % 45 + 55; // 55 to 99 range
+              const overlapScore = Math.abs(hash * 3) % 40 + 30; // 30-69 range
+              
+              let scoreColor = '#EF4444'; // Red
+              if (healthScore >= 80) scoreColor = '#10B981'; // Green
+              else if (healthScore >= 50) scoreColor = '#F59E0B'; // Orange
+              
+              const healthColor = '#FE5000'; // Orange/Red combination for overlap
+
               return (
                 <div 
                   key={restaurant.id}
@@ -298,11 +401,82 @@ const MarketSearchPage = ({
                       </div>
                     )}
                   </div>
-                  <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1 }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 800, color: '#111', margin: 0 }}>{restaurant.name}</h3>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#6B7280', fontSize: '0.75rem', fontWeight: 500 }}>
-                      <span>{cuisineString}</span><span>•</span><span>{locationString}</span>
+                  <div style={{ padding: '1rem', display: 'flex', flexDirection: 'column', gap: '0.75rem', flex: 1 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                      <h3 style={{ 
+                        fontSize: '1rem', 
+                        fontWeight: 600, 
+                        color: '#111', 
+                        margin: 0, 
+                        display: '-webkit-box',
+                        WebkitLineClamp: 1,
+                        WebkitBoxOrient: 'vertical',
+                        overflow: 'hidden', 
+                        textOverflow: 'ellipsis' 
+                      }}>
+                        {restaurant.name ? restaurant.name.toLowerCase().replace(/\b\w/g, c => c.toUpperCase()) : ''}
+                      </h3>
+                      
+                      {/* Middle Metrics Row */}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+                        
+                        {/* Menu Overlap Metric */}
+                        <div style={{ flex: '0 0 60%', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#6B7280' }}>Menu Overlap</span>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#4B5563' }}>{overlapScore}%</span>
+                          </div>
+                          <div style={{ width: '100%', height: '4px', backgroundColor: '#F3F4F6', borderRadius: '999px', overflow: 'hidden' }}>
+                            <div style={{ width: `${overlapScore}%`, height: '100%', backgroundColor: healthColor, borderRadius: '999px' }} />
+                          </div>
+                        </div>
+
+                        {/* Health Score Metric */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '0.1rem', marginTop: '-0.4rem', textAlign: 'right' }}>
+                          <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Health Score</span>
+                          <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.1rem', justifyContent: 'flex-end' }}>
+                            <span style={{ fontSize: '1.2rem', fontWeight: 900, color: scoreColor, letterSpacing: '-0.02em', lineHeight: 1 }}>{healthScore}</span>
+                            <span style={{ fontSize: '0.8rem', fontWeight: 800, color: '#64748B' }}>/100</span>
+                          </div>
+                        </div>
+                      </div>
                     </div>
+
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 'auto' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                        {locationString && (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#8A92A6', fontSize: '0.75rem', fontWeight: 500 }}>
+                            <MapPin size={12} color="#8A92A6" />
+                            <span>{locationString}</span>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        {pList.map(p => getSmallPlatformLogo(p))}
+                      </div>
+                    </div>
+                    <button
+                      onClick={(e) => toggleCompetitorSelection(e, restaurant)}
+                      style={{
+                        marginTop: '0.75rem',
+                        padding: '0.5rem',
+                        width: '100%',
+                        borderRadius: '6px',
+                        border: compareList.some(c => c.id === restaurant.id) ? '1px solid #E86A58' : '1px solid #E5E7EB',
+                        backgroundColor: compareList.some(c => c.id === restaurant.id) ? '#FFF0EE' : '#F9FAFB',
+                        color: compareList.some(c => c.id === restaurant.id) ? '#E86A58' : '#6B7280',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        gap: '0.4rem',
+                        transition: 'all 0.2s ease',
+                      }}
+                    >
+                      <span style={{ fontSize: '1.2em' }}>⇄</span> {compareList.some(c => c.id === restaurant.id) ? 'Selected' : 'Compare'}
+                    </button>
                   </div>
                 </div>
               );
@@ -327,9 +501,10 @@ const MarketSearchPage = ({
                       <th key={header} style={{ 
                         padding: '0.8rem 1.25rem', 
                         textAlign: i === 3 ? 'right' : 'left', 
-                        fontSize: '0.7rem', 
-                        fontWeight: 800, 
-                        color: '#6B7280', 
+                        fontSize: '11px', 
+                        fontWeight: 600, 
+                        color: '#8A92A6', 
+                        fontFamily: "'Inter', sans-serif",
                         textTransform: 'uppercase', 
                         letterSpacing: '0.05em' 
                       }}>
@@ -397,11 +572,11 @@ const MarketSearchPage = ({
                             </span>
                           ) : isPromo ? (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                              <span style={{ textDecoration: 'line-through', color: '#9CA3AF', fontSize: '0.8rem', fontWeight: 500 }}>£{originalPrice}</span>
-                              <span style={{ color: '#EF4444', fontWeight: 800, fontSize: '0.9rem' }}>£{dish.price}</span>
+                              <span style={{ textDecoration: 'line-through', color: '#D1D5DB', fontSize: '12px', fontWeight: 500 }}>£{originalPrice}</span>
+                              <span style={{ color: '#EF4444', fontWeight: 700, fontSize: '0.9rem' }}>£{Number(dish.price).toFixed(2)}</span>
                             </div>
                           ) : (
-                            <span style={{ color: '#111', fontWeight: 800, fontSize: '0.9rem' }}>£{dish.price}</span>
+                            <span style={{ color: '#111', fontWeight: 800, fontSize: '0.9rem' }}>£{Number(dish.price).toFixed(2)}</span>
                           )}
                         </td>
                       </tr>
@@ -434,6 +609,75 @@ const MarketSearchPage = ({
         isOpen={isAIOverlayOpen} 
         onClose={() => setIsAIOverlayOpen(false)} 
       />
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div style={{
+          position: 'fixed',
+          top: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#EF4444',
+          color: '#FFF',
+          padding: '0.75rem 1.5rem',
+          borderRadius: '8px',
+          fontWeight: 600,
+          fontSize: '0.875rem',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+          zIndex: 2000,
+          animation: 'slideDown 0.3s ease-out',
+          fontFamily: "'Lufga', sans-serif"
+        }}>
+          {toastMessage}
+        </div>
+      )}
+
+      {/* Floating Action Bar */}
+      {compareList.length > 0 && (
+        <div style={{
+          position: 'fixed',
+          bottom: '24px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: '#111',
+          borderRadius: '999px',
+          padding: '0.75rem 1.25rem',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '1.5rem',
+          boxShadow: '0 8px 30px rgba(0,0,0,0.3)',
+          zIndex: 1000,
+          animation: 'slideUp 0.3s ease-out'
+        }}>
+          <span style={{ color: '#FFF', fontWeight: 600, fontSize: '0.85rem', fontFamily: "'Lufga', sans-serif" }}>
+            <span style={{ color: '#E86A58' }}>{compareList.length}</span> Restaurants selected for comparison.
+          </span>
+          <button
+            onClick={() => {
+              // Dispatch event with the entire compareList
+              window.dispatchEvent(new CustomEvent('open-comparison-modal', { detail: { competitorsList: compareList } }));
+            }}
+            style={{
+              backgroundColor: '#E86A58',
+              color: '#FFF',
+              border: 'none',
+              borderRadius: '999px',
+              padding: '0.5rem 1rem',
+              fontWeight: 800,
+              fontSize: '0.75rem',
+              cursor: 'pointer',
+              textTransform: 'uppercase',
+              letterSpacing: '0.05em',
+              transition: 'transform 0.2s ease',
+              fontFamily: "'Lufga', sans-serif"
+            }}
+            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+          >
+            Run Matrix
+          </button>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useRef, useCallback, useEffect } from 'react';
 import { MapPin, Search, ChevronUp, ChevronDown, Plus, Minus, Maximize, X } from 'lucide-react';
-import Map, { Source, Layer } from 'react-map-gl/maplibre';
+import Map, { Source, Layer, Marker } from 'react-map-gl/maplibre';
 import eastLondonGeojson from '../data/east-london-boundaries.json';
 import CompetitorPricingTab from './CompetitorPricingTab';
 
@@ -16,6 +16,7 @@ const mockNiches = [
     nicheCategory: 'Burgers',
     type: 'Beef Burger',
     itemType: 'Mains',
+    isSuggested: true,
     locationName: 'Trending in Whitechapel',
     description: 'High demand for premium smash burgers. Quick prep time and high margin.',
     image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80',
@@ -72,6 +73,7 @@ const mockNiches = [
     nicheCategory: 'Mexican',
     type: 'Nachos',
     itemType: 'Sides',
+    isSuggested: true,
     locationName: 'Trending in Shoreditch',
     description: 'Perfect add-on item for groups. Very low cost of goods.',
     image: 'https://images.unsplash.com/photo-1513442542250-854d436a73f2?auto=format&fit=crop&w=800&q=80',
@@ -120,17 +122,8 @@ const mockNiches = [
 ];
 
 const MarketNicheContent = () => {
-  const mapRef = useRef();
-  
-  const getPlatformLogoUrl = (platform) => {
-    switch (platform) {
-      case 'UberEats': return 'https://img.icons8.com/color/48/uber-eats-app.png';
-      case 'Deliveroo': return 'https://img.icons8.com/color/48/deliveroo.png';
-      case 'Just Eat': return 'https://img.icons8.com/color/48/just-eat.png';
-      default: return 'https://img.icons8.com/color/48/uber-eats-app.png';
-    }
-  };
-  
+  const mapRef = useRef(null);
+
   const [hoveredCardId, setHoveredCardId] = useState(null);
   const [selectedModalNiche, setSelectedModalNiche] = useState(mockNiches[0]);
   const [analysisState, setAnalysisState] = useState('idle'); // 'idle', 'analyzing', 'results'
@@ -138,6 +131,79 @@ const MarketNicheContent = () => {
   const [activeDetailTab, setActiveDetailTab] = useState('Overview');
   const [hoveredAreaId, setHoveredAreaId] = useState(null);
   const [selectedAreaId, setSelectedAreaId] = useState(null);
+
+  const mockMapLocations = useMemo(() => {
+    if (!selectedModalNiche) return [];
+    
+    // Vary the spread based on the niche id to simulate the user's request
+    let baseLat = 51.52;
+    let baseLng = -0.05;
+    let spread = 0.01; // tight spread
+    let numLocations = 8;
+    
+    if (selectedModalNiche.id === 'niche_02' || selectedModalNiche.id === 'niche_04') {
+      spread = 0.08; // wide spread across central & east london
+      numLocations = 15;
+    } else if (selectedModalNiche.id === 'niche_03') {
+      spread = 0.03; // medium spread
+      numLocations = 12;
+    }
+    
+    // Seeded random for consistent locations per niche
+    const seed = selectedModalNiche.id.charCodeAt(selectedModalNiche.id.length - 1);
+    const random = (i) => Math.abs(Math.sin(seed + i) * 10000 % 1); 
+    
+    const restaurantNames = ['Gourmet Kitchen', 'The Rustic Oven', 'Street Food Co.', 'Local Favorites', 'Bite Club', 'Quick Eats', 'Value Meals', 'Burger Point', 'Flame Grill', 'Smash Bros', 'The Grill House', 'Urban Bites', 'Taste of London', 'City Diner', 'The Food Hub'];
+    
+    const locations = [];
+    for (let i = 0; i < numLocations; i++) {
+      locations.push({
+        id: i,
+        name: restaurantNames[i % restaurantNames.length],
+        price: `£${(10 + random(i) * 10).toFixed(2)}`,
+        lat: baseLat + (random(i + 10) - 0.5) * spread,
+        lng: baseLng + (random(i + 20) - 0.5) * spread,
+      });
+    }
+    return locations;
+  }, [selectedModalNiche]);
+
+  const getPlatformLogoUrl = (platform) => {
+    switch (platform) {
+      case 'UberEats': return 'https://img.icons8.com/color/48/uber-eats-app.png';
+      case 'Deliveroo': return 'https://img.icons8.com/color/48/deliveroo.png';
+      case 'Just Eat': return 'https://img.icons8.com/color/48/just-eat.png';
+      default: return 'https://img.icons8.com/color/48/food-delivery.png';
+    }
+  };
+
+  const getPlatformPill = (platform) => {
+    if (platform === 'UberEats') {
+        return (
+          <div style={{ background: '#06C167', padding: '0.2rem 0.5rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(6, 193, 103, 0.2)' }}>
+            <img src="https://cdn.simpleicons.org/ubereats/white" alt="UberEats" style={{ height: '10px', width: '10px' }} />
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap', lineHeight: 1 }}>UberEats</span>
+          </div>
+        );
+    }
+    if (platform === 'Deliveroo') {
+        return (
+          <div style={{ background: '#00CCBC', padding: '0.2rem 0.5rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(0, 204, 188, 0.2)' }}>
+            <img src="https://cdn.simpleicons.org/deliveroo/white" alt="Deliveroo" style={{ height: '10px', width: '10px' }} />
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap', lineHeight: 1 }}>Deliveroo</span>
+          </div>
+        );
+    }
+    if (platform === 'Just Eat') {
+        return (
+          <div style={{ background: '#FF8000', padding: '0.2rem 0.5rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(255, 128, 0, 0.2)' }}>
+            <img src="https://cdn.simpleicons.org/justeat/white" alt="Just Eat" style={{ height: '10px', width: '10px' }} />
+            <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap', lineHeight: 1 }}>Just Eat</span>
+          </div>
+        );
+    }
+    return null;
+  };
   
   const USER_CATEGORY = 'Pizza';
 
@@ -145,9 +211,7 @@ const MarketNicheContent = () => {
     let niches = mockNiches;
     if (selectedAreaId) niches = niches.filter(n => n.areaId === selectedAreaId);
     
-    if (activePrimaryTab === 'Suggested') {
-      niches = niches.filter(n => n.parentCategory === USER_CATEGORY);
-    } else if (activePrimaryTab !== 'All') {
+    if (activePrimaryTab !== 'All') {
       niches = niches.filter(n => n.category.includes('Pizza') || n.score > 85); 
     }
     return niches;
@@ -213,18 +277,25 @@ const MarketNicheContent = () => {
   };
 
   useEffect(() => {
-    if (selectedModalNiche && mapRef.current && eastLondonGeojson) {
-        const feature = eastLondonGeojson.features.find(f => f.properties.id === selectedModalNiche.areaId);
-        if (feature) {
-            const coords = feature.geometry.coordinates[0];
-            const lngs = coords.map(c => c[0]);
-            const lats = coords.map(c => c[1]);
-            const centerLng = (Math.min(...lngs) + Math.max(...lngs)) / 2;
-            const centerLat = (Math.min(...lats) + Math.max(...lats)) / 2;
-            mapRef.current.flyTo({ center: [centerLng, centerLat], duration: 1000, zoom: 13.5 });
-        }
+    if (mapRef.current && mockMapLocations.length > 0) {
+      const lats = mockMapLocations.map(l => l.lat);
+      const lngs = mockMapLocations.map(l => l.lng);
+      
+      const minLng = Math.min(...lngs);
+      const maxLng = Math.max(...lngs);
+      const minLat = Math.min(...lats);
+      const maxLat = Math.max(...lats);
+      
+      // Calculate a small padding manually if fitBounds padding has issues or just use fitBounds
+      mapRef.current.fitBounds(
+        [
+          [minLng, minLat],
+          [maxLng, maxLat]
+        ],
+        { padding: 60, duration: 1000 }
+      );
     }
-  }, [selectedModalNiche]);
+  }, [mockMapLocations, selectedModalNiche]);
 
   return (
     <div className="niche-terminal-root">
@@ -232,21 +303,49 @@ const MarketNicheContent = () => {
       {/* LEFT PANE: Niche Feed (List View) */}
       <div className="niche-feed-container">
         <div className="feed-header-wrapper">
-            <h1 className="feed-title sans-serif">
+            <h1 className="feed-title sans-serif" style={{ marginBottom: '12px' }}>
                 Market Niches
             </h1>
 
             {/* FILTER CHIPS */}
-            <div className="primary-tabs-group">
-                {['All', 'Suggested', 'Just Eat', 'Uber Eats', 'Deliveroo'].map(tab => (
-                  <button 
-                    key={tab}
-                    className={`filter-chip ${activePrimaryTab === tab ? 'active' : ''}`}
-                    onClick={() => setActivePrimaryTab(tab)}
-                  >
-                    {tab}
-                  </button>
-                ))}
+            <div className="primary-tabs-group" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                {['All', 'Uber Eats', 'Deliveroo', 'Just Eat'].map(tab => {
+                    const isActive = activePrimaryTab === tab;
+                    const opacityStyle = { opacity: 1, cursor: 'pointer', border: '2px solid transparent', transition: 'all 0.2s', transform: isActive ? 'scale(1.05)' : 'scale(1)', filter: isActive ? 'saturate(1.2) brightness(1.05)' : 'saturate(1)' };
+                    
+                    if (tab === 'All') {
+                        return (
+                          <button key={tab} onClick={() => setActivePrimaryTab(tab)} style={{ background: '#1A1A1A', padding: '0.4rem 1.2rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', ...opacityStyle }}>
+                            <span style={{ fontSize: '12px', fontWeight: 700, color: '#FFFFFF', whiteSpace: 'nowrap' }}>All</span>
+                          </button>
+                        );
+                    }
+                    if (tab === 'Deliveroo') {
+                        return (
+                          <button key={tab} onClick={() => setActivePrimaryTab(tab)} style={{ background: '#00CCBC', padding: '0.4rem 0.8rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 1px 2px rgba(0, 204, 188, 0.2)', ...opacityStyle }}>
+                            <img src="https://cdn.simpleicons.org/deliveroo/white" alt="Deliveroo" style={{ height: '14px', width: '14px' }} />
+                            <span style={{ fontSize: '12px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>Deliveroo</span>
+                          </button>
+                        );
+                    }
+                    if (tab === 'Uber Eats') {
+                        return (
+                          <button key={tab} onClick={() => setActivePrimaryTab(tab)} style={{ background: '#06C167', padding: '0.4rem 0.8rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 1px 2px rgba(6, 193, 103, 0.2)', ...opacityStyle }}>
+                            <img src="https://cdn.simpleicons.org/ubereats/white" alt="UberEats" style={{ height: '14px', width: '14px' }} />
+                            <span style={{ fontSize: '12px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>UberEats</span>
+                          </button>
+                        );
+                    }
+                    if (tab === 'Just Eat') {
+                        return (
+                          <button key={tab} onClick={() => setActivePrimaryTab(tab)} style={{ background: '#FF8000', padding: '0.4rem 0.8rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.4rem', boxShadow: '0 1px 2px rgba(255, 128, 0, 0.2)', ...opacityStyle }}>
+                            <img src="https://cdn.simpleicons.org/justeat/white" alt="Just Eat" style={{ height: '14px', width: '14px' }} />
+                            <span style={{ fontSize: '12px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap' }}>Just Eat</span>
+                          </button>
+                        );
+                    }
+                    return null;
+                })}
             </div>
         </div>
 
@@ -262,7 +361,14 @@ const MarketNicheContent = () => {
             >
               <img src={niche.image} alt={niche.name} className="row-image" />
               <div className="row-content">
-                <div className="row-category">{niche.category}</div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 'auto' }}>
+                  <div className="row-category" style={{ marginBottom: 0 }}>{niche.category}</div>
+                  {niche.isSuggested && (
+                    <div style={{ background: '#FFF0F0', color: '#E05046', padding: '4px 10px', borderRadius: '20px', fontSize: '10px', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '4px', letterSpacing: '0.5px' }}>
+                      SUGGESTED
+                    </div>
+                  )}
+                </div>
                 <h3 className="row-title">{niche.name}</h3>
                   <div className="row-metrics expanded-metrics">
                     <div className="metric-group">
@@ -282,11 +388,7 @@ const MarketNicheContent = () => {
                     <span className="metric-separator">|</span> 
                     <div className="metric-group">
                       <span className="metric-label">Platform:</span>
-                      <img 
-                        src={getPlatformLogoUrl(niche.platform)} 
-                        alt="platform" 
-                        className="platform-micro-icon" 
-                      />
+                      {getPlatformPill(niche.platform)}
                     </div>
                   </div>
               </div>
@@ -310,22 +412,17 @@ const MarketNicheContent = () => {
             </div>
 
             {/* Header Info */}
-            <div className="detail-header-row" style={{ position: 'relative', marginBottom: '8px' }}>
+            <div className="detail-header-row" style={{ position: 'relative', marginBottom: '0' }}>
                 <div className="detail-title-col" style={{ paddingRight: '160px' }}>
-                    <h2 className="detail-title" style={{ margin: 0, paddingBottom: '4px' }}>{selectedModalNiche.name}</h2>
+                    <h2 className="detail-title" style={{ margin: 0, paddingBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ color: '#64748B', fontWeight: '400' }}>Restaurant:</span>
+                        {selectedModalNiche.name}
+                    </h2>
                 </div>
-                <div className="detail-price-col" style={{ display: 'flex', gap: '24px', alignItems: 'flex-start', position: 'absolute', right: 0, top: 0 }}>
-                    <div className="detail-platform" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                      <img 
-                          src={getPlatformLogoUrl(selectedModalNiche.platform)} 
-                          alt="platform" 
-                          style={{ width: '28px', height: '28px', borderRadius: '50%', marginBottom: '2px', objectFit: 'cover' }} 
-                        />
-                      <span style={{ fontSize: '11px', color: '#E05046', fontWeight: '600' }}>{selectedModalNiche.platform}</span>
-                    </div>
+                <div className="detail-price-col" style={{ display: 'flex', gap: '16px', alignItems: 'center', position: 'absolute', right: 0, top: 0 }}>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                         <div className="detail-price">{selectedModalNiche.stat1Value}</div>
-                        <div className="detail-price-label" style={{ color: '#E05046' }}>Avg Market Price</div>
+                        <div className="detail-price-label" style={{ color: '#64748B', fontWeight: '500' }}>Avg Market Price</div>
                     </div>
                 </div>
             </div>
@@ -341,58 +438,53 @@ const MarketNicheContent = () => {
                   onClick={() => setActiveDetailTab('Competitor Pricing')}
                 >Competitor Pricing</div>
                 <div 
-                  className={`detail-tab ${activeDetailTab === 'Local Rivals' ? 'active' : ''}`}
-                  onClick={() => setActiveDetailTab('Local Rivals')}
-                >Local Rivals</div>
+                  className={`detail-tab ${activeDetailTab === 'Market Insights' ? 'active' : ''}`}
+                  onClick={() => setActiveDetailTab('Market Insights')}
+                >Market Insights</div>
             </div>
 
             {activeDetailTab === 'Overview' && (
               <>
-                {/* Niche Taxonomy */}
-                <div className="detail-taxonomy" style={{ display: 'flex', gap: '32px', marginBottom: '8px', fontSize: '13px', color: '#444' }}>
-                    <div>
-                        <strong>Niche Category:</strong> <span style={{ color: '#E05046', fontWeight: '500' }}>{selectedModalNiche.nicheCategory}</span>
-                    </div>
-                    <div>
-                        <strong>Type:</strong> <span style={{ color: '#E05046', fontWeight: '500' }}>{selectedModalNiche.type}</span>
-                    </div>
-                </div>
+                  {/* Niche Taxonomy */}
+                  <div className="detail-taxonomy row-metrics detail-expanded-metrics" style={{ display: 'flex', gap: '48px', paddingTop: '7px', paddingBottom: '12px', marginBottom: '12px', borderBottom: '1px solid #E2E8F0' }}>
+                      <div className="metric-group">
+                          <span className="metric-label" style={{ color: '#64748B' }}>Niche Category:</span> 
+                          <span className="metric-highlight">{selectedModalNiche.nicheCategory}</span>
+                      </div>
+                      <div className="metric-group">
+                          <span className="metric-label" style={{ color: '#64748B' }}>Type:</span> 
+                          <span className="metric-highlight">{selectedModalNiche.type}</span>
+                      </div>
+                  </div>
 
                 {/* Stats Row */}
-                <div className="row-metrics expanded-metrics detail-expanded-metrics" style={{ marginTop: '-4px', marginBottom: '24px' }}>
+                <div className="row-metrics expanded-metrics detail-expanded-metrics" style={{ marginTop: '0', marginBottom: '24px' }}>
                     <div className="metric-group">
-                      <span className="metric-label" style={{ color: '#E05046' }}>Sellers:</span>
+                      <span className="metric-label" style={{ color: '#64748B' }}>Sellers:</span>
                       <span className="metric-highlight">{selectedModalNiche.stat2Value}</span>
                     </div>
-                    <span className="metric-separator">|</span> 
+                    <span className="metric-separator" style={{ color: '#E2E8F0' }}>|</span> 
                     <div className="metric-group">
-                      <span className="metric-label" style={{ color: '#E05046' }}>Sold in:</span>
+                      <span className="metric-label" style={{ color: '#64748B' }}>Sold in:</span>
                       <span className="metric-highlight">{selectedModalNiche.areas.length} areas</span>
                     </div>
-                    <span className="metric-separator">|</span> 
+                    <span className="metric-separator" style={{ color: '#E2E8F0' }}>|</span> 
                     <div className="metric-group">
-                      <span className="metric-label" style={{ color: '#E05046' }}>Highest Price:</span>
+                      <span className="metric-label" style={{ color: '#64748B' }}>Highest Price:</span>
                       <span className="metric-highlight">{selectedModalNiche.highPrice}</span> 
                     </div>
-                    <span className="metric-separator">|</span> 
+                    <span className="metric-separator" style={{ color: '#E2E8F0' }}>|</span> 
                     <div className="metric-group">
-                      <span className="metric-label" style={{ color: '#E05046' }}>Lowest Price:</span>
+                      <span className="metric-label" style={{ color: '#64748B' }}>Lowest Price:</span>
                       <span className="metric-highlight">{selectedModalNiche.lowPrice}</span> 
                     </div>
                 </div>
 
                 {/* Mini Map at the bottom */}
                 <div className="detail-minimap-container">
-                    <div className="minimap-overlay-card">
-                        <img src={selectedModalNiche.image} alt="thumb" />
-                        <div className="minimap-card-text">
-                            <strong>{selectedModalNiche.name}</strong>
-                            <span>Being sold in {selectedModalNiche.areas[0]}</span>
-                        </div>
-                    </div>
                     <Map
                       ref={mapRef}
-                      initialViewState={{ longitude: -0.05, latitude: 51.52, zoom: 13, pitch: 0, bearing: 0 }}
+                      initialViewState={{ longitude: -0.052, latitude: 51.522, zoom: 12.5, pitch: 0, bearing: 0 }}
                       mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
                       interactiveLayerIds={['areas-fill']}
                       onMouseMove={onMapHover}
@@ -402,6 +494,24 @@ const MarketNicheContent = () => {
                         <Layer {...polygonFillStyle} />
                         <Layer {...polygonOutlineStyle} />
                       </Source>
+                      
+                      {mockMapLocations.map(loc => (
+                        <Marker key={loc.id} longitude={loc.lng} latitude={loc.lat} anchor="bottom">
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                            {/* Small Banner */}
+                            <div style={{ background: 'rgba(255, 255, 255, 0.95)', padding: '4px', borderRadius: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px', marginBottom: '4px', border: '1px solid #E2E8F0', backdropFilter: 'blur(4px)' }}>
+                              <img src={selectedModalNiche.image} style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover' }} alt="restaurant" />
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
+                                <span style={{ fontSize: '9px', fontWeight: '700', color: '#1A1A1A', whiteSpace: 'nowrap', lineHeight: '1.2' }}><span style={{ color: '#64748B', fontWeight: '500' }}>Restaurant: </span>{loc.name}</span>
+                                <span style={{ fontSize: '8px', fontWeight: '500', color: '#64748B', whiteSpace: 'nowrap', lineHeight: '1.2', marginBottom: '2px' }}>{selectedModalNiche.name}</span>
+                                <span style={{ fontSize: '10px', fontWeight: '800', color: '#F97316', lineHeight: '1.2' }}>{loc.price}</span>
+                              </div>
+                            </div>
+                            {/* Red Dot */}
+                            <div style={{ width: '10px', height: '10px', backgroundColor: '#EF4444', borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}></div>
+                          </div>
+                        </Marker>
+                      ))}
                     </Map>
                 </div>
               </>
@@ -409,6 +519,40 @@ const MarketNicheContent = () => {
 
             {activeDetailTab === 'Competitor Pricing' && (
               <CompetitorPricingTab niche={selectedModalNiche} />
+            )}
+
+            {activeDetailTab === 'Market Insights' && (
+              <div className="niche-insight-container" style={{ padding: '16px 0', animation: 'fadeIn 0.3s ease-out' }}>
+                  <div style={{ background: 'linear-gradient(145deg, rgba(249, 115, 22, 0.08) 0%, rgba(249, 115, 22, 0.02) 100%)', border: '1px solid rgba(249, 115, 22, 0.15)', borderRadius: '16px', padding: '24px', marginBottom: '16px', position: 'relative', overflow: 'hidden' }}>
+                      <div style={{ position: 'absolute', top: '-10px', right: '-10px', fontSize: '80px', opacity: '0.05', transform: 'rotate(15deg)', pointerEvents: 'none' }}>💡</div>
+                      <h3 style={{ margin: '0 0 16px 0', fontSize: '18px', color: '#1A1A1A', display: 'flex', alignItems: 'center', gap: '8px', fontWeight: '800' }}>
+                          <span style={{ fontSize: '20px' }}>💡</span> Why is this a Market Niche?
+                      </h3>
+                      <p style={{ margin: '0 0 20px 0', fontSize: '14px', color: '#334155', lineHeight: '1.6' }}>
+                          This item was automatically identified using our <strong>Menu Overlap Method</strong>. We found <strong>10 highly successful local takeaways</strong> whose core menus (mains & drinks) overlap with yours by 70% or more. Out of those close competitors, the vast majority are successfully selling this exact item, while you are currently missing out.
+                      </p>
+                      
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                          <div style={{ background: '#FFF', borderRadius: '12px', padding: '16px', border: '1px solid rgba(249, 115, 22, 0.1)', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                              <span style={{ display: 'block', fontSize: '10px', color: '#64748B', fontWeight: '800', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Competitor Adoption</span>
+                              <span style={{ display: 'block', fontSize: '28px', fontWeight: '900', color: '#F97316', lineHeight: '1' }}>80%</span>
+                              <span style={{ display: 'block', fontSize: '12px', color: '#64748B', marginTop: '8px', fontWeight: '500' }}>8 of 10 similar menus sell this</span>
+                          </div>
+                          <div style={{ background: '#FFF', borderRadius: '12px', padding: '16px', border: '1px solid #E2E8F0', boxShadow: '0 4px 12px rgba(0,0,0,0.02)' }}>
+                              <span style={{ display: 'block', fontSize: '10px', color: '#64748B', fontWeight: '800', textTransform: 'uppercase', marginBottom: '6px', letterSpacing: '0.5px' }}>Premium Add-on</span>
+                              <span style={{ display: 'block', fontSize: '28px', fontWeight: '900', color: '#1A1A1A', lineHeight: '1' }}>{selectedModalNiche.stat1Value.replace('A', '£')}</span>
+                              <span style={{ display: 'block', fontSize: '12px', color: '#64748B', marginTop: '8px', fontWeight: '500' }}>Average market selling price</span>
+                          </div>
+                      </div>
+                  </div>
+                  
+                  <div style={{ background: '#F8FAFC', borderRadius: '16px', padding: '20px', border: '1px solid #E2E8F0' }}>
+                      <h3 style={{ margin: '0 0 8px 0', fontSize: '15px', color: '#1A1A1A', fontWeight: '700' }}>Suggestion Priority: <span style={{ color: '#10B981' }}>High Synergy</span></h3>
+                      <p style={{ margin: '0', fontSize: '13px', color: '#475569', lineHeight: '1.6' }}>
+                          Because this item acts as a highly desirable side/add-on that bundles perfectly with your existing main dishes, it carries a very low operational risk. Adding this requires minimal new inventory while instantly increasing your average basket value and matching local market expectations.
+                      </p>
+                  </div>
+              </div>
             )}
 
           </div>

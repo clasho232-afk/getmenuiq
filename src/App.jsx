@@ -14,10 +14,12 @@ import IntelligenceHub from './components/IntelligenceHub';
 import CompetitorFinderContent from './components/CompetitorFinderContent';
 import SearchContent from './components/SearchContent';
 import PromoIntelligenceContent from './components/PromoIntelligenceContent';
+import ComparisonModal from './components/ComparisonModal';
 
 
 function App() {
   const [showLanding, setShowLanding] = useState(true);
+
   const [loggedIn, setLoggedIn] = useState(false);
   const [onboardingComplete, setOnboardingComplete] = useState(false);
   const [selectedRestaurant, setSelectedRestaurant] = useState(null);
@@ -25,6 +27,8 @@ function App() {
   const [activeTab, setActiveTab] = useState('Dashboard');
   const [isCommandPaletteOpen, setIsCommandPaletteOpen] = useState(false);
   const [analyzeTrigger, setAnalyzeTrigger] = useState(0);
+  const [globalComparisonTarget, setGlobalComparisonTarget] = useState(null);
+  const [globalComparisonList, setGlobalComparisonList] = useState([]);
 
   useEffect(() => {
     const handleOpenAnalysis = () => {
@@ -39,13 +43,36 @@ function App() {
       }
       setActiveTab('Promo Intelligence');
     };
+    const handleOpenCompetitorsMatrix = (e) => {
+      if (e.detail && e.detail.compareList) {
+        localStorage.setItem('matrix_selected_competitors', JSON.stringify(e.detail.compareList));
+      }
+      setActiveTab('Competitors');
+      // Fire event to tell CompetitorsContent to read from localStorage if it's already mounted
+      setTimeout(() => {
+        window.dispatchEvent(new Event('matrix-data-ready'));
+      }, 50);
+    };
+    const handleOpenComparisonModal = (e) => {
+      if (e.detail && e.detail.competitorsList) {
+        setGlobalComparisonList(e.detail.competitorsList);
+        setGlobalComparisonTarget(null);
+      } else if (e.detail && e.detail.competitor) {
+        setGlobalComparisonTarget(e.detail.competitor);
+        setGlobalComparisonList([]);
+      }
+    };
     
     window.addEventListener('open-menu-analysis', handleOpenAnalysis);
     window.addEventListener('open-promo-intel', handleOpenPromoIntel);
+    window.addEventListener('open-competitors-matrix', handleOpenCompetitorsMatrix);
+    window.addEventListener('open-comparison-modal', handleOpenComparisonModal);
     
     return () => {
       window.removeEventListener('open-menu-analysis', handleOpenAnalysis);
       window.removeEventListener('open-promo-intel', handleOpenPromoIntel);
+      window.removeEventListener('open-competitors-matrix', handleOpenCompetitorsMatrix);
+      window.removeEventListener('open-comparison-modal', handleOpenComparisonModal);
     };
   }, []);
 
@@ -161,6 +188,15 @@ function App() {
         </div>
       </div>
       <CommandPalette isOpen={isCommandPaletteOpen} onClose={() => setIsCommandPaletteOpen(false)} />
+      <ComparisonModal 
+        isOpen={!!globalComparisonTarget || globalComparisonList.length > 0}
+        onClose={() => {
+          setGlobalComparisonTarget(null);
+          setGlobalComparisonList([]);
+        }}
+        competitorRestaurant={globalComparisonTarget}
+        competitorsList={globalComparisonList}
+      />
     </>
   );
 }
