@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
-import { Search, Mail, Bell, UtensilsCrossed, Menu, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Search, Mail, Bell, UtensilsCrossed, Menu, X, MapPin, ChevronDown, Lock, Loader2, Check } from 'lucide-react';
+import PremiumUpsellModal from './PremiumUpsellModal';
+import AreaSelectorWidget from './AreaSelectorWidget';
 
 const TopNav = ({ activeTab, setActiveTab, onOpenCommandPalette }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [showUpsell, setShowUpsell] = useState(false);
+  const [targetTier, setTargetTier] = useState('Gold');
 
   const navLinks = [
     { id: 'Dashboard', label: 'Dashboard' },
@@ -27,15 +31,25 @@ const TopNav = ({ activeTab, setActiveTab, onOpenCommandPalette }) => {
       top: 0,
       zIndex: 9999
     }}>
-      {/* Logo Area */}
-      <div className="flex items-center gap-2" style={{ color: '#e05046', flexShrink: 0, fontFamily: "'Lufga', sans-serif", fontSize: '24px', fontWeight: 800 }}>
-        <span>MenuIQ</span>
+      {/* Logo Area & Workspace Selector */}
+      <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+        <div className="flex items-center gap-2" style={{ color: '#e05046', fontFamily: "'Lufga', sans-serif", fontSize: '24px', fontWeight: 800 }}>
+          <span>MenuIQ</span>
+        </div>
+        
+        {/* The Divider */}
+        <div style={{ width: '1px', height: '24px', background: '#E5E7EB', margin: '0 16px' }} />
+
+        {/* Location Selector */}
+        <AreaSelectorWidget />
       </div>
       
       {/* Desktop Navigation Links */}
       <nav className="desktop-only" style={{ 
-        flex: 1, 
-        justifyContent: 'center', 
+        position: 'absolute',
+        left: '50%',
+        transform: 'translateX(-50%)',
+        display: 'flex',
         gap: '2rem', 
         fontSize: '0.875rem', 
         fontWeight: 500, 
@@ -59,19 +73,17 @@ const TopNav = ({ activeTab, setActiveTab, onOpenCommandPalette }) => {
 
       {/* Right Actions */}
       <div className="flex items-center gap-2 sm:gap-4" style={{ flexShrink: 0 }}>
-        <button className="btn-icon desktop-only" onClick={onOpenCommandPalette}>
-          <Search size={20} />
-        </button>
-        <button className="btn-icon">
-          <Bell size={20} />
-        </button>
-        <img src="https://i.pravatar.cc/150?u=admin" alt="Profile" className="avatar avatar-sm" style={{ border: '2px solid white' }} />
-        
         {/* Mobile Menu Toggle */}
-        <button className="mobile-only btn-icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+        <button className="mobile-only btn-icon" onClick={() => setIsMenuOpen(!isMenuOpen)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#4B5563' }}>
           {isMenuOpen ? <X size={24} /> : <Menu size={24} />}
         </button>
       </div>
+
+      <PremiumUpsellModal 
+        isOpen={showUpsell} 
+        onClose={() => setShowUpsell(false)} 
+        targetTier={targetTier} 
+      />
 
       {/* Mobile Menu Overlay */}
       {isMenuOpen && (
@@ -91,6 +103,7 @@ const TopNav = ({ activeTab, setActiveTab, onOpenCommandPalette }) => {
           ))}
         </div>
       )}
+
     </header>
   );
 };

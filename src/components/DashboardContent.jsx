@@ -159,7 +159,27 @@ const DashboardContent = () => {
   // Dynamic map center state
   const [mapCenter, setMapCenter] = useState([51.5588, 0.0711]); // Default to Ilford
 
-  const currentBoroughName = activeUserSession?.primaryArea || 'Ilford';
+  const [monitoredAreas, setMonitoredAreas] = useState(['Ilford']);
+
+  useEffect(() => {
+    const handleStorageUpdate = (e) => {
+      if (e.detail) {
+        setMonitoredAreas(e.detail);
+      }
+    };
+    
+    const stored = localStorage.getItem('menu_iq_monitored_areas');
+    if (stored) {
+      try {
+        setMonitoredAreas(JSON.parse(stored));
+      } catch (err) {}
+    }
+
+    window.addEventListener('monitoring-areas-updated', handleStorageUpdate);
+    return () => window.removeEventListener('monitoring-areas-updated', handleStorageUpdate);
+  }, []);
+
+  const currentBoroughName = monitoredAreas[0] || activeUserSession?.primaryArea || 'Ilford';
 
   useEffect(() => {
     let isMounted = true;
@@ -296,7 +316,7 @@ const DashboardContent = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '3rem', width: '100%' }}>
-        <div style={{ fontSize: '1.875rem', fontWeight: 700, flexShrink: 0, letterSpacing: '-0.02em' }}>Menu Pricing Health</div>
+        <div style={{ fontSize: '1.875rem', fontWeight: 700, flexShrink: 0, letterSpacing: '-0.02em', transform: 'translateY(45%)' }}>Dashboard</div>
       </div>
       
       {/* Floating AI Greeting */}

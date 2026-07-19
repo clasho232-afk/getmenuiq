@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
 const RestaurantProfileModal = ({ isOpen, onClose, restaurant }) => {
-  const [activeTab, setActiveTab] = useState('Menu');
+  const [activeTab, setActiveTab] = useState('Promos');
 
   if (!isOpen || !restaurant) return null;
 
@@ -99,8 +99,34 @@ const RestaurantProfileModal = ({ isOpen, onClose, restaurant }) => {
             </div>
           )}
           {activeTab === 'Promos' && (
-            <div style={{ color: '#6B7280', fontSize: '14px', fontWeight: 500, marginTop: '40px' }}>
-              Active Promo: <strong>{restaurant.promo}</strong>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%', padding: '0 8px' }}>
+              {(restaurant.promos || [restaurant]).map((promo) => (
+                <div 
+                  key={promo.id} 
+                  style={{ 
+                    background: '#FFFFFF', 
+                    border: '1px solid #E5E7EB', 
+                    borderRadius: '10px', padding: '12px 16px', display: 'flex', alignItems: 'center', 
+                    justifyContent: 'space-between', transition: 'all 0.2s',
+                    boxShadow: '0 1px 3px rgba(0,0,0,0.02)'
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <img src={promo.image} alt="Promo" style={{ width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '14px', color: '#111', fontWeight: 600 }}>{promo.promo}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <img src={`https://cdn.simpleicons.org/${promo.platform === 'ubereats' ? 'ubereats/06C167' : promo.platform === 'deliveroo' ? 'deliveroo/00CCBC' : 'justeat/FF8000'}`} alt={promo.platform} style={{ width: '14px', height: '14px' }} />
+                    <div style={{ width: '76px', display: 'flex', justifyContent: 'flex-end' }}>
+                      <span style={{ background: 'rgba(224, 80, 70, 0.08)', color: '#E05046', border: '1px solid rgba(224, 80, 70, 0.2)', fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px', whiteSpace: 'nowrap' }}>{promo.type}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
           {activeTab === 'Price Changes' && (

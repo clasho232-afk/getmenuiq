@@ -9,7 +9,6 @@ const Sidebar = ({ activeTab, setActiveTab }) => {
     { id: 'My Menu', label: 'My Menu', icon: UtensilsCrossed },
     { id: 'AI Strategy', label: 'AI Strategy', icon: Brain, hasNotif: true },
     { id: 'Market Niche', label: 'Market Niche', icon: Compass },
-    { id: 'Blind Spot', label: 'Blind Spot', icon: Eye },
     { id: 'Competitors', label: 'Competitors', icon: Radar },
     { id: 'Competitor Finder', label: 'Finder', icon: Search },
   ];

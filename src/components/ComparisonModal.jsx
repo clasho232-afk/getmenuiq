@@ -78,6 +78,7 @@ const ComparisonModal = ({ isOpen, onClose, ownerRestaurant: initialOwner, compe
         borderRadius: '24px',
         width: '100%',
         maxWidth: competitors.length <= 2 ? '700px' : competitors.length === 3 ? '950px' : '1200px',
+        minHeight: '95vh',
         maxHeight: '95vh',
         overflowY: 'auto',
         position: 'relative',
@@ -123,7 +124,7 @@ const ComparisonModal = ({ isOpen, onClose, ownerRestaurant: initialOwner, compe
                   }}
                   title={plat.label}
                 >
-                  {plat.icon && <img src={`https://cdn.simpleicons.org/${plat.icon}`} alt={plat.label} style={{ width: '12px', height: '12px', filter: platformView !== plat.id ? 'grayscale(100%) opacity(0.6)' : 'none' }} />}
+                  {plat.icon && <img src={`https://cdn.simpleicons.org/${plat.icon}`} alt={plat.label} style={{ width: '12px', height: '12px' }} />}
                   {/* Hide text for platforms if competitors <= 2 to save space, but keep 'Overall' */}
                   {(plat.id === 'all' || competitors.length > 2) && plat.label}
                 </button>
@@ -197,6 +198,37 @@ const ComparisonModal = ({ isOpen, onClose, ownerRestaurant: initialOwner, compe
              const platOffset = platformView === 'all' ? 0 : platformView === 'ubereats' ? -0.2 : platformView === 'deliveroo' ? 0.1 : -0.1;
              const rating = parseFloat(c.rating || (Math.random() * 1 + 4).toFixed(1)) + platOffset;
              return `${Math.max(1, Math.min(5, rating)).toFixed(1)} avg`;
+          })}
+          {renderRow('Search Visibility', (c, idx) => {
+             const visibility = c.search_visibility || Math.floor(Math.random() * 20 + 5);
+             return (
+               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', justifyContent: 'center' }}>
+                 <span style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase' }}>Top</span>
+                 <span style={{ fontSize: '14px', fontWeight: 800, color: '#111' }}>{visibility}%</span>
+               </div>
+             );
+          })}
+          {renderRow('Menu Overlap', (c, idx) => {
+            if (idx === 0) return <span style={{ fontSize: '13px', fontWeight: 600, color: '#9CA3AF' }}>-</span>;
+            const overlap = c.menu_overlap || Math.floor(Math.random() * 40 + 40);
+            return (
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', justifyContent: 'center' }}>
+                <span style={{ fontSize: '14px', fontWeight: 800, color: '#111' }}>{overlap}%</span>
+                <span style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280' }}>Match</span>
+              </div>
+            );
+          })}
+          {renderRow('Price Variance', (c, idx) => {
+            if (idx === 0) return <span style={{ fontSize: '13px', fontWeight: 600, color: '#9CA3AF' }}>Baseline</span>;
+            // Generate deterministic but pseudo-random variance based on id length
+            const strId = c.id ? String(c.id) : c.name;
+            const variance = ((strId.length * 7) % 15) + 1;
+            const isCheaper = strId.length % 2 === 0;
+            return (
+              <span style={{ fontSize: '14px', fontWeight: 700, color: isCheaper ? '#16A34A' : '#DC2626' }}>
+                {isCheaper ? '-' : '+'}{variance}%
+              </span>
+            );
           })}
           {renderRow('Delivery Platforms', c => {
              const plats = detectPlatforms(c);

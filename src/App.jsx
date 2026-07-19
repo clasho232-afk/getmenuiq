@@ -141,9 +141,9 @@ function App() {
             <main
               className="main-content"
               style={{
-                padding: activeTab === 'AI Strategy' || activeTab === 'Market Niche' ? '0' : '0 2rem 2rem 1rem',
-                overflowY: activeTab === 'AI Strategy' || activeTab === 'Market Niche' ? 'hidden' : 'auto',
-                overflow: activeTab === 'AI Strategy' || activeTab === 'Market Niche' ? 'hidden' : undefined,
+                padding: activeTab === 'AI Strategy' || activeTab === 'Market Niche' || activeTab === 'Competitors' ? '0' : '0 2rem 2rem 1rem',
+                overflowY: activeTab === 'AI Strategy' || activeTab === 'Market Niche' || activeTab === 'Competitors' ? 'hidden' : 'auto',
+                overflow: activeTab === 'AI Strategy' || activeTab === 'Market Niche' || activeTab === 'Competitors' ? 'hidden' : undefined,
                 flex: 1,
                 display: 'flex',
                 flexDirection: 'column',

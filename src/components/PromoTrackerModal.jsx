@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Target, MapPin, SlidersHorizontal, ChevronDown, X, Sparkles, Search, Tag, Copy, Truck, Banknote, Gift, Filter } from 'lucide-react';
+import { Target, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Sparkles, Search, Tag, Copy, Truck, Banknote, Gift, Filter } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, CircleMarker, ZoomControl, useMap, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import eastLondonAreas from './east_london_areas.json';
@@ -103,14 +103,21 @@ function getSinglePromoThreatScore(promo) {
   return Math.min(score, 100);
 }
 
-// Map Controller for Zooming/Panning
 const MapController = ({ center, zoom, selectedPromo }) => {
   const map = useMap();
   useEffect(() => {
     if (selectedPromo) {
-      map.flyTo([selectedPromo.lat, selectedPromo.lng], 16, { duration: 1.2 });
+      const current = map.getCenter();
+      const isAlreadyCentered = Math.abs(current.lat - selectedPromo.lat) < 0.0001 && Math.abs(current.lng - selectedPromo.lng) < 0.0001;
+      if (!isAlreadyCentered) {
+        map.flyTo([selectedPromo.lat, selectedPromo.lng], 16, { duration: 1.2 });
+      }
     } else if (center) {
-      map.flyTo(center, zoom, { duration: 1.2 });
+      const current = map.getCenter();
+      const isAlreadyCentered = Math.abs(current.lat - center[0]) < 0.0001 && Math.abs(current.lng - center[1]) < 0.0001;
+      if (!isAlreadyCentered) {
+        map.flyTo(center, zoom, { duration: 1.2 });
+      }
     }
   }, [center, zoom, selectedPromo, map]);
   return null;
@@ -129,6 +136,7 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
   const [selectedPromo, setSelectedPromo] = useState(null);
   const [profileModalPromo, setProfileModalPromo] = useState(null);
   const [showPlatformFilter, setShowPlatformFilter] = useState(false);
+  const [expandedRestaurants, setExpandedRestaurants] = useState({});
   const filterDropdownRef = useRef(null);
 
   useEffect(() => {
@@ -200,6 +208,15 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
       image: 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=600&q=90',
       platform: 'justeats', location: 'neighborhood', itemOverlapLevel: 'same_cuisine', overlapContext: 'Chicken',
     },
+    { id: 9, lat: 51.560, lng: 0.081, restaurant: "Domino's Ilford", promo: 'Free Garlic Bread', type: 'Free Item', active: 'Active', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=90', platform: 'ubereats', location: 'ilford', itemOverlapLevel: 'direct_match', overlapContext: 'Sides' },
+    { id: 10, lat: 51.560, lng: 0.081, restaurant: "Domino's Ilford", promo: 'Spend £30 get £10 off', type: 'Threshold', active: 'Active', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=90', platform: 'justeats', location: 'ilford', itemOverlapLevel: 'direct_match', overlapContext: 'Pizzas' },
+    { id: 11, lat: 51.560, lng: 0.081, restaurant: "Domino's Ilford", promo: 'Free Delivery over £15', type: 'Delivery', active: 'Active', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=90', platform: 'deliveroo', location: 'ilford', itemOverlapLevel: 'direct_match', overlapContext: 'All' },
+    { id: 12, lat: 51.560, lng: 0.081, restaurant: "Domino's Ilford", promo: 'Buy 1 Get 1 Free Large Pizza', type: 'BOGO', active: 'Active', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=90', platform: 'ubereats', location: 'ilford', itemOverlapLevel: 'direct_match', overlapContext: 'Pizzas' },
+    { id: 13, lat: 51.560, lng: 0.081, restaurant: "Domino's Ilford", promo: '15% off Pick-up', type: 'Discount', active: 'Active', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=90', platform: 'justeats', location: 'ilford', itemOverlapLevel: 'direct_match', overlapContext: 'All' },
+    { id: 14, lat: 51.560, lng: 0.081, restaurant: "Domino's Ilford", promo: 'Free drink with meal', type: 'Free Item', active: 'Active', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=90', platform: 'deliveroo', location: 'ilford', itemOverlapLevel: 'direct_match', overlapContext: 'Drinks' },
+    { id: 15, lat: 51.560, lng: 0.081, restaurant: "Domino's Ilford", promo: '£5 off your first order', type: 'Threshold', active: 'Active', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=90', platform: 'ubereats', location: 'ilford', itemOverlapLevel: 'direct_match', overlapContext: 'All' },
+    { id: 16, lat: 51.560, lng: 0.081, restaurant: "Domino's Ilford", promo: 'BOGO Medium Pizzas', type: 'BOGO', active: 'Active', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=90', platform: 'justeats', location: 'ilford', itemOverlapLevel: 'direct_match', overlapContext: 'Pizzas' },
+    { id: 17, lat: 51.560, lng: 0.081, restaurant: "Domino's Ilford", promo: '10% off Student Discount', type: 'Discount', active: 'Active', image: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=600&q=90', platform: 'deliveroo', location: 'ilford', itemOverlapLevel: 'direct_match', overlapContext: 'All' },
   ];
 
   const intelData = runIntel(staticPromos);
@@ -307,47 +324,70 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
             <ZoomControl position="bottomright" />
             <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
             
-            {displayFeed.map((promo) => {
-              const PLATFORM_COLORS = {
-                ubereats: '#06C167',
-                deliveroo: '#00CCBC',
-                justeats: '#F36D00',
-                justeat: '#F36D00'
-              };
-              const color = PLATFORM_COLORS[promo.platform.toLowerCase()] || '#E63946';
-              const isSelected = selectedPromo?.id === promo.id;
-              
-              return (
-                <CircleMarker 
-                  key={promo.id}
-                  center={[promo.lat, promo.lng]}
-                  radius={isSelected ? 10 : 8}
-                  pathOptions={{ color: color, fillColor: color, fillOpacity: 1, weight: isSelected ? 3 : 2, className: isSelected ? 'modal-pulse-marker-active' : 'modal-pulse-marker' }}
-                  eventHandlers={{
-                    click: () => {
-                      setSelectedPromo(promo);
-                    }
-                  }}
-                >
-                  {isSelected && (
-                    <Tooltip permanent interactive={true} direction="top" offset={[0, -12]} className="custom-map-tooltip">
-                      <div 
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setProfileModalPromo(promo);
-                        }}
-                        style={{ display: 'flex', flexDirection: 'column', width: '140px', overflow: 'hidden', borderRadius: '6px', cursor: 'pointer' }}
-                      >
-                        <img src={promo.image} style={{ width: '100%', height: '70px', objectFit: 'cover' }} alt={promo.restaurant} />
-                        <div style={{ padding: '8px 6px', textAlign: 'center', background: '#FFF' }}>
-                          <div style={{ fontWeight: 600, fontSize: '13px', color: '#111', fontFamily: "'Lufga', sans-serif", lineHeight: '1.3' }}>{promo.restaurant}</div>
+            {(() => {
+              const groupedMarkers = displayFeed.reduce((acc, promo) => {
+                if (!acc[promo.restaurant]) {
+                  acc[promo.restaurant] = {
+                    restaurant: promo.restaurant,
+                    lat: promo.lat,
+                    lng: promo.lng,
+                    image: promo.image,
+                    platform: promo.platform,
+                    promos: []
+                  };
+                }
+                acc[promo.restaurant].promos.push(promo);
+                return acc;
+              }, {});
+
+              return Object.values(groupedMarkers).map((group) => {
+                const PLATFORM_COLORS = {
+                  ubereats: '#06C167',
+                  deliveroo: '#00CCBC',
+                  justeats: '#F36D00',
+                  justeat: '#F36D00'
+                };
+                const color = PLATFORM_COLORS[group.platform.toLowerCase()] || '#E63946';
+                const isSelected = selectedPromo && group.promos.some(p => p.id === selectedPromo.id);
+                
+                return (
+                  <CircleMarker 
+                    key={group.restaurant}
+                    center={[group.lat, group.lng]}
+                    radius={isSelected ? 10 : 8}
+                    pathOptions={{ color: color, fillColor: color, fillOpacity: 1, weight: isSelected ? 3 : 2, className: isSelected ? 'modal-pulse-marker-active' : 'modal-pulse-marker' }}
+                    eventHandlers={{
+                      click: () => {
+                        setSelectedPromo(group.promos[0]);
+                        if (group.promos.length > 1) {
+                          setExpandedRestaurants(prev => ({ ...prev, [group.restaurant]: true }));
+                        }
+                      }
+                    }}
+                  >
+                    {isSelected && (
+                      <Tooltip permanent interactive={true} direction="top" offset={[0, -12]} className="custom-map-tooltip">
+                        <div 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setProfileModalPromo({ ...group.promos[0], promos: group.promos });
+                          }}
+                          style={{ display: 'flex', flexDirection: 'column', width: '140px', overflow: 'hidden', borderRadius: '6px', cursor: 'pointer' }}
+                        >
+                          <img src={group.image} style={{ width: '100%', height: '70px', objectFit: 'cover' }} alt={group.restaurant} />
+                          <div style={{ padding: '8px 6px', textAlign: 'center', background: '#FFF' }}>
+                            <div style={{ fontWeight: 600, fontSize: '13px', color: '#111', fontFamily: "'Lufga', sans-serif", lineHeight: '1.3' }}>{group.restaurant}</div>
+                            {group.promos.length > 1 && (
+                              <div style={{ fontSize: '10px', color: '#E05046', fontWeight: 600, marginTop: '2px' }}>{group.promos.length} Promos</div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </Tooltip>
-                  )}
-                </CircleMarker>
-              );
-            })}
+                      </Tooltip>
+                    )}
+                  </CircleMarker>
+                );
+              });
+            })()}
           </MapContainer>
 
           <div style={{ position: 'absolute', top: '24px', left: '24px', zIndex: 1000, pointerEvents: 'none' }}>
@@ -470,40 +510,106 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
 
           <div className="invisible-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '16px 24px', background: '#FAFAFA' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {displayFeed.map((promo) => {
-                const isSelected = selectedPromo?.id === promo.id;
-                
-                return (
-                  <div 
-                    key={promo.id} 
-                    onClick={() => {
-                      setSelectedPromo(promo);
-                    }}
-                    style={{ 
-                      background: isSelected ? '#F9FAFB' : '#FFFFFF', 
-                      border: isSelected ? '2px solid #111' : '1px solid #E5E7EB', 
-                      borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', 
-                      justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                      cursor: 'pointer', transition: 'all 0.2s',
-                      transform: isSelected ? 'translateY(-2px)' : 'none'
-                    }}
-                  >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                      <img src={promo.image} alt={promo.restaurant} style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <span style={{ fontSize: '14px', fontWeight: 600, color: '#111' }}>{promo.restaurant}</span>
-                          <img src={`https://cdn.simpleicons.org/${promo.platform === 'ubereats' ? 'ubereats/06C167' : promo.platform === 'deliveroo' ? 'deliveroo/00CCBC' : 'justeat/FF8000'}`} alt={promo.platform} style={{ width: '16px', height: '16px' }} />
+              {(() => {
+                const groupedFeed = displayFeed.reduce((acc, promo) => {
+                  if (!acc[promo.restaurant]) {
+                    acc[promo.restaurant] = {
+                      restaurant: promo.restaurant,
+                      image: promo.image,
+                      promos: []
+                    };
+                  }
+                  acc[promo.restaurant].promos.push(promo);
+                  return acc;
+                }, {});
+
+                return Object.values(groupedFeed).map((group) => {
+                  const isExpanded = expandedRestaurants[group.restaurant];
+                  const hasMultiple = group.promos.length > 1;
+
+                  return (
+                    <div key={group.restaurant} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      <div 
+                        onClick={() => {
+                          if (hasMultiple) {
+                            setExpandedRestaurants(prev => ({ ...prev, [group.restaurant]: !prev[group.restaurant] }));
+                          } else {
+                            setSelectedPromo(group.promos[0]);
+                          }
+                        }}
+                        style={{ 
+                          background: (!hasMultiple && selectedPromo?.id === group.promos[0].id) ? 'rgba(224, 80, 70, 0.05)' : '#FFFFFF', 
+                          border: (!hasMultiple && selectedPromo?.id === group.promos[0].id) ? '1px solid rgba(224, 80, 70, 0.3)' : '1px solid #E5E7EB', 
+                          borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', 
+                          justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
+                          cursor: 'pointer', transition: 'all 0.2s',
+                          transform: (!hasMultiple && selectedPromo?.id === group.promos[0].id) ? 'translateY(-2px)' : 'none'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <img src={group.image} alt={group.restaurant} style={{ width: '48px', height: '48px', borderRadius: '50%', objectFit: 'cover' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '14px', fontWeight: 600, color: '#111' }}>{group.restaurant}</span>
+                              {hasMultiple && (
+                                <span style={{ background: '#E05046', color: '#FFF', fontSize: '10px', fontWeight: 700, padding: '2px 6px', borderRadius: '99px' }}>{group.promos.length} Promos</span>
+                              )}
+                            </div>
+                            {!hasMultiple ? (
+                              <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 400 }}>{group.promos[0].promo}</span>
+                            ) : (
+                              <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 400 }}>Multiple active offers detected</span>
+                            )}
+                          </div>
                         </div>
-                        <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 400 }}>{promo.promo}</span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {!hasMultiple ? (
+                            <>
+                              <img src={`https://cdn.simpleicons.org/${group.promos[0].platform === 'ubereats' ? 'ubereats/06C167' : group.promos[0].platform === 'deliveroo' ? 'deliveroo/00CCBC' : 'justeat/FF8000'}`} alt={group.promos[0].platform} style={{ width: '16px', height: '16px' }} />
+                              <div style={{ width: '76px', display: 'flex', justifyContent: 'flex-end' }}>
+                                <span style={{ background: 'rgba(224, 80, 70, 0.08)', color: '#E05046', border: '1px solid rgba(224, 80, 70, 0.2)', fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px', whiteSpace: 'nowrap' }}>{group.promos[0].type}</span>
+                              </div>
+                            </>
+                          ) : (
+                            isExpanded ? <ChevronUp size={16} color="#6B7280" /> : <ChevronDown size={16} color="#6B7280" />
+                          )}
+                        </div>
                       </div>
+
+                      {hasMultiple && isExpanded && (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '4px', marginBottom: '8px' }}>
+                          {group.promos.map((promo) => {
+                            const isSelected = selectedPromo?.id === promo.id;
+                            return (
+                              <div 
+                                key={promo.id} 
+                                onClick={() => setSelectedPromo(promo)}
+                                style={{ 
+                                  background: isSelected ? 'rgba(224, 80, 70, 0.05)' : '#FFFFFF', 
+                                  border: isSelected ? '1px solid rgba(224, 80, 70, 0.3)' : '1px solid #E5E7EB', 
+                                  borderRadius: '10px', padding: '10px 14px', display: 'flex', alignItems: 'center', 
+                                  justifyContent: 'space-between', cursor: 'pointer', transition: 'all 0.2s',
+                                }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                  <img src={promo.image} alt="Promo" style={{ width: '28px', height: '28px', borderRadius: '6px', objectFit: 'cover' }} />
+                                  <span style={{ fontSize: '13px', color: '#111', fontWeight: 500 }}>{promo.promo}</span>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                  <img src={`https://cdn.simpleicons.org/${promo.platform === 'ubereats' ? 'ubereats/06C167' : promo.platform === 'deliveroo' ? 'deliveroo/00CCBC' : 'justeat/FF8000'}`} alt={promo.platform} style={{ width: '14px', height: '14px' }} />
+                                  <div style={{ width: '76px', display: 'flex', justifyContent: 'flex-end' }}>
+                                    <span style={{ background: 'rgba(224, 80, 70, 0.08)', color: '#E05046', border: '1px solid rgba(224, 80, 70, 0.2)', fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>{promo.type}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '6px' }}>
-                      <span style={{ background: 'rgba(224, 80, 70, 0.08)', color: '#E05046', border: '1px solid rgba(224, 80, 70, 0.2)', fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px' }}>{promo.type}</span>
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>

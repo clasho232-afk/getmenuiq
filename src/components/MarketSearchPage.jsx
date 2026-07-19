@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Search, MapPin, ChevronDown, Filter, Zap } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, MapPin, ChevronDown, Filter, Zap, Check, X } from 'lucide-react';
 import { supabase } from '../supabase';
 import CompetitorIntelDrawer from './CompetitorIntelDrawer';
 import RadiusMapModal from './RadiusMapModal';
@@ -23,8 +23,27 @@ const MarketSearchPage = ({
   const [radiusFilter, setRadiusFilter] = useState('Within 3 Miles');
   const [platform, setPlatform] = useState('All');
   const [promoOnly, setPromoOnly] = useState(false);
-  const [priceRange, setPriceRange] = useState(50);
+  const [priceRange, setPriceRange] = useState(100);
   const [isMapModalOpen, setIsMapModalOpen] = useState(false);
+
+  // Table Controls
+  const [priceSortOrder, setPriceSortOrder] = useState(null); // 'asc' | 'desc' | null
+  const [isPlatformMenuOpen, setIsPlatformMenuOpen] = useState(false);
+  const platformDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (platformDropdownRef.current && !platformDropdownRef.current.contains(event.target)) {
+        setIsPlatformMenuOpen(false);
+      }
+    };
+    if (isPlatformMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isPlatformMenuOpen]);
 
   // State: Drawer
   const [intelDrawerOpen, setIntelDrawerOpen] = useState(false);
@@ -33,6 +52,7 @@ const MarketSearchPage = ({
   const [isAIOverlayOpen, setIsAIOverlayOpen] = useState(false);
   const [compareList, setCompareList] = useState([]);
   const [toastMessage, setToastMessage] = useState('');
+  const [hoveredCardId, setHoveredCardId] = useState(null);
 
   const toggleCompetitorSelection = (e, restaurant) => {
     e.stopPropagation();
@@ -41,15 +61,15 @@ const MarketSearchPage = ({
       if (isSelected) {
         return prev.filter(c => c.id !== restaurant.id);
       } else {
-        if (prev.length >= 3) {
-          setToastMessage('Maximum 3 competitors allowed for comparison.');
-          setTimeout(() => setToastMessage(''), 3000);
-          return prev;
-        }
         return [...prev, restaurant];
       }
     });
   };
+
+  // Clear selection when category changes
+  useEffect(() => {
+    setCompareList([]);
+  }, [activeCategory]);
 
   // Fetch Logic
   useEffect(() => {
@@ -83,7 +103,10 @@ const MarketSearchPage = ({
             
             if (activeCategory === 'Menu Items' && d.price > priceRange) return false;
             
-            if (platform === 'Uber Eats' && !d.restaurants?.ubereats_url) return false;
+            if (platform !== 'All') {
+              const mockPlatforms = getMockPlatforms(d.restaurant_id || d.id.toString());
+              if (!mockPlatforms.includes(platform)) return false;
+            }
             
             return true;
           });
@@ -104,7 +127,8 @@ const MarketSearchPage = ({
   };
 
   // Mock Generators
-  const getMockDistance = (idStr) => {
+  const getMockDistance = (id) => {
+    const idStr = String(id);
     let hash = 0;
     for (let i = 0; i < idStr.length; i++) hash = idStr.charCodeAt(i) + ((hash << 5) - hash);
     return ((Math.abs(hash) % 48) / 10 + 0.1).toFixed(1);
@@ -116,7 +140,8 @@ const MarketSearchPage = ({
   };
 
   // Platform Mock Helpers
-  const getMockPlatforms = (idStr) => {
+  const getMockPlatforms = (id) => {
+    const idStr = String(id);
     let hash = 0;
     for (let i = 0; i < idStr.length; i++) hash = idStr.charCodeAt(i) + ((hash << 5) - hash);
     const num = Math.abs(hash);
@@ -133,28 +158,20 @@ const MarketSearchPage = ({
     switch(platform) {
       case 'Deliveroo':
         return (
-          <div key="dl" style={{ width: '22px', height: '22px', borderRadius: '6px', backgroundColor: '#00CDBC', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="#FFF">
-              <path d="M12 2L2 22h20L12 2zm0 6l5 10H7l5-10z" />
-            </svg>
+          <div key="dl" style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <img src="https://cdn.simpleicons.org/deliveroo/00CCBC" alt="Deliveroo" style={{ width: '16px', height: '16px' }} />
           </div>
         );
       case 'Uber Eats':
         return (
-          <div key="ue" style={{ width: '22px', height: '22px', borderRadius: '6px', backgroundColor: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, textAlign: 'left', fontSize: '0.4rem', fontWeight: 800, color: '#FFF' }}>
-              <span>Uber</span>
-              <span>Eats</span>
-            </div>
+          <div key="ue" style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <img src="https://cdn.simpleicons.org/ubereats/06C167" alt="UberEats" style={{ width: '16px', height: '16px' }} />
           </div>
         );
       case 'Just Eat':
         return (
-          <div key="je" style={{ width: '22px', height: '22px', borderRadius: '6px', backgroundColor: '#FE5000', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#FFF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
-              <polyline points="9 22 9 12 15 12 15 22"></polyline>
-            </svg>
+          <div key="je" style={{ width: '24px', height: '24px', borderRadius: '50%', backgroundColor: '#FFF', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 4px rgba(0,0,0,0.1)', overflow: 'hidden' }}>
+            <img src="https://cdn.simpleicons.org/justeat/FF8000" alt="Just Eat" style={{ width: '16px', height: '16px' }} />
           </div>
         );
       default: return null;
@@ -177,8 +194,9 @@ const MarketSearchPage = ({
         
         <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'end', justifyContent: 'space-between', width: '100%', marginBottom: '1rem' }}>
           <h1 style={{ 
-            fontSize: '1.5rem', // Shrunk title
-            fontWeight: 800, 
+            fontSize: '1.5rem',
+            fontFamily: "'Lufga', sans-serif",
+            fontWeight: 700, 
             textAlign: 'left', 
             margin: 0,
             color: '#111',
@@ -262,86 +280,6 @@ const MarketSearchPage = ({
           </div>
 
         </div>
-
-        {/* Advanced Filters Panel (Menu Items Mode) */}
-        {activeCategory === 'Menu Items' && (
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '2rem', // gap-8
-            marginTop: '1rem', // mt-4
-            padding: '1rem 1.5rem', // px-6 py-4
-            backgroundColor: '#FFF', // bg-white
-            borderRadius: '0.75rem', // rounded-xl
-            border: '1px solid #F3F4F6', // border-gray-100
-            boxShadow: '0 1px 2px 0 rgba(0, 0, 0, 0.05)' // shadow-sm
-          }}>
-            {/* Price Slider */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ fontSize: '0.85rem', fontWeight: 500, color: '#374151' }}>Max Price: £{priceRange}</span>
-              <style>{`
-                .custom-range-slider {
-                  -webkit-appearance: none;
-                  width: 120px;
-                  height: 4px;
-                  background: #E5E7EB;
-                  border-radius: 4px;
-                  outline: none;
-                }
-                .custom-range-slider::-webkit-slider-thumb {
-                  -webkit-appearance: none;
-                  appearance: none;
-                  width: 16px;
-                  height: 16px;
-                  border-radius: 50%;
-                  background: #FFF;
-                  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-                  cursor: pointer;
-                  border: 1px solid #E5E7EB;
-                }
-              `}</style>
-              <input 
-                type="range" min="0" max="100" value={priceRange} 
-                onChange={(e) => setPriceRange(Number(e.target.value))}
-                className="custom-range-slider"
-                style={{ background: `linear-gradient(to right, #00CDBC ${(priceRange / 100) * 100}%, #E5E7EB ${(priceRange / 100) * 100}%)` }}
-              />
-            </div>
-
-            {/* Platform Selector */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <Filter size={16} color="#9CA3AF" />
-              <select 
-                value={platform} onChange={(e) => setPlatform(e.target.value)}
-                style={{ border: 'none', background: 'transparent', fontWeight: 500, color: '#374151', fontFamily: 'inherit', outline: 'none', cursor: 'pointer', fontSize: '0.9rem' }}
-              >
-                <option>All Platforms</option>
-                <option>Uber Eats</option>
-                <option>Deliveroo</option>
-                <option>Just Eat</option>
-              </select>
-            </div>
-
-            {/* Promo Only Toggle */}
-            <label style={{ 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: '0.5rem', 
-              cursor: 'pointer', 
-              fontWeight: promoOnly ? 600 : 500, 
-              fontSize: '0.9rem', 
-              color: promoOnly ? '#E86A58' : '#374151',
-              transition: 'color 0.2s ease'
-            }}>
-              <Zap size={16} fill={promoOnly ? "#E86A58" : "none"} color={promoOnly ? "#E86A58" : "#9CA3AF"} />
-              Promo Only
-              <input 
-                type="checkbox" checked={promoOnly} onChange={(e) => setPromoOnly(e.target.checked)} 
-                style={{ display: 'none' }}
-              />
-            </label>
-          </div>
-        )}
       </div>
 
       {/* Dynamic Results Ledger */}
@@ -372,7 +310,12 @@ const MarketSearchPage = ({
               if (healthScore >= 80) scoreColor = '#10B981'; // Green
               else if (healthScore >= 50) scoreColor = '#F59E0B'; // Orange
               
-              const healthColor = '#FE5000'; // Orange/Red combination for overlap
+              let healthColor = '#10B981';
+              if (overlapScore >= 60) healthColor = '#EF4444';
+              else if (overlapScore >= 40) healthColor = '#F59E0B';
+
+              const isSelected = compareList.some(c => c.id === restaurant.id);
+              const isHovered = hoveredCardId === restaurant.id;
 
               return (
                 <div 
@@ -382,16 +325,51 @@ const MarketSearchPage = ({
                     backgroundColor: '#FFF',
                     borderRadius: '12px',
                     overflow: 'hidden',
-                    border: '1px solid #E5E7EB',
-                    boxShadow: '0 2px 8px -2px rgba(0,0,0,0.05)',
+                    border: isSelected ? '2px solid #E86A58' : '1px solid #E5E7EB',
+                    boxShadow: isSelected ? '0 4px 12px rgba(232, 106, 88, 0.2)' : '0 2px 8px -2px rgba(0,0,0,0.05)',
                     cursor: 'pointer',
-                    transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                    transition: 'transform 0.2s ease, box-shadow 0.2s ease, border 0.2s ease',
                     display: 'flex',
-                    flexDirection: 'column'
+                    flexDirection: 'column',
+                    position: 'relative'
                   }}
-                  onMouseEnter={(e) => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 8px 16px -4px rgba(0,0,0,0.08)'; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px -2px rgba(0,0,0,0.05)'; }}
+                  onMouseEnter={(e) => { 
+                    setHoveredCardId(restaurant.id);
+                    e.currentTarget.style.transform = 'translateY(-2px)'; 
+                    e.currentTarget.style.boxShadow = isSelected ? '0 8px 16px rgba(232, 106, 88, 0.25)' : '0 8px 16px -4px rgba(0,0,0,0.08)'; 
+                  }}
+                  onMouseLeave={(e) => { 
+                    setHoveredCardId(null);
+                    e.currentTarget.style.transform = 'translateY(0)'; 
+                    e.currentTarget.style.boxShadow = isSelected ? '0 4px 12px rgba(232, 106, 88, 0.2)' : '0 2px 8px -2px rgba(0,0,0,0.05)'; 
+                  }}
                 >
+                  {/* CHECKBOX OVERLAY */}
+                  {(isSelected || isHovered) && (
+                    <div 
+                      onClick={(e) => toggleCompetitorSelection(e, restaurant)}
+                      style={{
+                        position: 'absolute',
+                        top: '12px',
+                        left: '12px',
+                        width: '24px',
+                        height: '24px',
+                        borderRadius: '50%',
+                        backgroundColor: isSelected ? '#E86A58' : 'rgba(255,255,255,0.9)',
+                        border: isSelected ? '2px solid #E86A58' : '2px solid #E5E7EB',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        zIndex: 10,
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
+                        transition: 'all 0.2s ease',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      {isSelected && <Check size={14} color="#FFF" strokeWidth={3} />}
+                    </div>
+                  )}
+
                   <div style={{ height: '140px', width: '100%', overflow: 'hidden', backgroundColor: '#F3F1EC' }}>
                     {restaurant.hero_image_url ? (
                       <img src={restaurant.hero_image_url} alt={restaurant.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -455,28 +433,6 @@ const MarketSearchPage = ({
                         {pList.map(p => getSmallPlatformLogo(p))}
                       </div>
                     </div>
-                    <button
-                      onClick={(e) => toggleCompetitorSelection(e, restaurant)}
-                      style={{
-                        marginTop: '0.75rem',
-                        padding: '0.5rem',
-                        width: '100%',
-                        borderRadius: '6px',
-                        border: compareList.some(c => c.id === restaurant.id) ? '1px solid #E86A58' : '1px solid #E5E7EB',
-                        backgroundColor: compareList.some(c => c.id === restaurant.id) ? '#FFF0EE' : '#F9FAFB',
-                        color: compareList.some(c => c.id === restaurant.id) ? '#E86A58' : '#6B7280',
-                        fontWeight: 600,
-                        fontSize: '0.75rem',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: '0.4rem',
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <span style={{ fontSize: '1.2em' }}>⇄</span> {compareList.some(c => c.id === restaurant.id) ? 'Selected' : 'Compare'}
-                    </button>
                   </div>
                 </div>
               );
@@ -486,35 +442,108 @@ const MarketSearchPage = ({
           </div>
         ) : (
           /* DATA TABLE LEDGER (Menu Items & Promos Mode) */
-          <div style={{ 
-            backgroundColor: '#FFF', 
-            borderRadius: '12px', 
-            boxShadow: '0 4px 15px -5px rgba(0,0,0,0.05)',
-            border: '1px solid #E5E7EB',
-            overflow: 'hidden'
-          }}>
-            {dishes.length > 0 ? (
-              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                <thead>
-                  <tr style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
-                    {['Restaurant', activeCategory === 'Promos' ? 'Promo Target' : 'Dish Name', 'Platform', activeCategory === 'Promos' ? 'Offer' : 'Price'].map((header, i) => (
-                      <th key={header} style={{ 
-                        padding: '0.8rem 1.25rem', 
-                        textAlign: i === 3 ? 'right' : 'left', 
-                        fontSize: '11px', 
-                        fontWeight: 600, 
-                        color: '#8A92A6', 
-                        fontFamily: "'Inter', sans-serif",
-                        textTransform: 'uppercase', 
-                        letterSpacing: '0.05em' 
-                      }}>
-                        {header}
+          <div style={{ width: '100%' }}>
+            {/* Metadata & Action Row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '1rem' }}>
+              <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 500 }}>
+                Showing {dishes.length} items
+              </span>
+            </div>
+
+            <div style={{ 
+              backgroundColor: '#FFF', 
+              borderRadius: '12px', 
+              boxShadow: '0 4px 15px -5px rgba(0,0,0,0.05)',
+              border: '1px solid #E5E7EB',
+              overflow: 'visible'
+            }}>
+              {dishes.length > 0 ? (
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ backgroundColor: '#F9FAFB', borderBottom: '1px solid #E5E7EB' }}>
+                      <th style={{ padding: '0.8rem 1.25rem', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#8A92A6', fontFamily: "'Inter', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        Restaurant
                       </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {dishes.map((dish, idx) => {
+                      <th style={{ padding: '0.8rem 1.25rem', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#8A92A6', fontFamily: "'Inter', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                        {activeCategory === 'Promos' ? 'Promo Target' : 'Dish Name'}
+                      </th>
+                      <th 
+                        ref={platformDropdownRef}
+                        style={{ padding: '0.8rem 1.25rem', textAlign: 'left', fontSize: '11px', fontWeight: 600, color: '#8A92A6', fontFamily: "'Inter', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer', position: 'relative' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        onClick={() => setIsPlatformMenuOpen(!isPlatformMenuOpen)}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                          PLATFORM <Filter size={12} color="#8A92A6" />
+                        </div>
+                        {isPlatformMenuOpen && (
+                          <div style={{
+                            position: 'absolute',
+                            top: '100%',
+                            left: 0,
+                            marginTop: '4px',
+                            backgroundColor: '#FFF',
+                            border: '1px solid #E5E7EB',
+                            borderRadius: '8px',
+                            boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                            padding: '0.5rem',
+                            zIndex: 100,
+                            minWidth: '140px',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: '0.25rem',
+                            textTransform: 'none',
+                            letterSpacing: 'normal'
+                          }}
+                          onClick={(e) => e.stopPropagation()}
+                          >
+                            <button onClick={() => { setPlatform('All'); setIsPlatformMenuOpen(false); }} style={{ padding: '8px 12px', borderRadius: '8px', background: platform === 'All' ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 500, color: '#111' }}>All Platforms</span>
+                            </button>
+                            <button onClick={() => { setPlatform('Uber Eats'); setIsPlatformMenuOpen(false); }} style={{ padding: '8px 12px', borderRadius: '8px', background: platform === 'Uber Eats' ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                              <img src="https://cdn.simpleicons.org/ubereats/06C167" alt="UberEats" style={{ width: '16px', height: '16px' }} />
+                              <span style={{ fontSize: '13px', fontWeight: 500, color: '#111' }}>UberEats</span>
+                            </button>
+                            <button onClick={() => { setPlatform('Deliveroo'); setIsPlatformMenuOpen(false); }} style={{ padding: '8px 12px', borderRadius: '8px', background: platform === 'Deliveroo' ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                              <img src="https://cdn.simpleicons.org/deliveroo/00CCBC" alt="Deliveroo" style={{ width: '16px', height: '16px' }} />
+                              <span style={{ fontSize: '13px', fontWeight: 500, color: '#111' }}>Deliveroo</span>
+                            </button>
+                            <button onClick={() => { setPlatform('Just Eat'); setIsPlatformMenuOpen(false); }} style={{ padding: '8px 12px', borderRadius: '8px', background: platform === 'Just Eat' ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}>
+                              <img src="https://cdn.simpleicons.org/justeat/FF8000" alt="Just Eat" style={{ width: '16px', height: '16px' }} />
+                              <span style={{ fontSize: '13px', fontWeight: 500, color: '#111' }}>Just Eat</span>
+                            </button>
+                          </div>
+                        )}
+                      </th>
+                      <th 
+                        style={{ padding: '0.8rem 1.25rem', textAlign: 'right', fontSize: '11px', fontWeight: 600, color: '#8A92A6', fontFamily: "'Inter', sans-serif", textTransform: 'uppercase', letterSpacing: '0.05em', cursor: 'pointer' }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F3F4F6'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                        onClick={() => {
+                          setPriceSortOrder(prev => {
+                            if (!prev) return 'asc';
+                            if (prev === 'asc') return 'desc';
+                            return null;
+                          });
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                          {activeCategory === 'Promos' ? 'Offer' : 'Price'} 
+                          <span style={{ fontSize: '13px', fontWeight: 800 }}>{priceSortOrder === 'asc' ? '↑' : priceSortOrder === 'desc' ? '↓' : '↕'}</span>
+                        </div>
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(() => {
+                      const displayDishes = [...dishes].sort((a, b) => {
+                        if (!priceSortOrder) return 0;
+                        const aPrice = Number(a.price) || 0;
+                        const bPrice = Number(b.price) || 0;
+                        return priceSortOrder === 'asc' ? aPrice - bPrice : bPrice - aPrice;
+                      });
+                      return displayDishes.map((dish, idx) => {
                     const isPromo = dish.id % 3 === 0;
                     const originalPrice = (dish.price * 1.25).toFixed(2);
                     const distance = getMockDistance(dish.restaurant_id || dish.id.toString());
@@ -527,9 +556,10 @@ const MarketSearchPage = ({
                         style={{ 
                           borderBottom: idx !== dishes.length - 1 ? '1px solid #F3F4F6' : 'none',
                           cursor: 'pointer',
+                          fontFamily: "'Inter', sans-serif",
                           transition: 'background-color 0.2s ease'
                         }}
-                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#F9FAFB'}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#FAFAF9'}
                         onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                       >
                         {/* Restaurant */}
@@ -540,56 +570,53 @@ const MarketSearchPage = ({
                                 <img src={dish.restaurants.hero_image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                               ) : null}
                             </div>
-                            <span style={{ fontWeight: 700, color: '#111', fontSize: '0.85rem' }}>
+                            <span style={{ fontWeight: 700, color: '#111', fontSize: '13px' }}>
                               {dish.restaurants?.name || 'Unknown'}
                             </span>
                           </div>
                         </td>
 
                         {/* Dish Name */}
-                        <td style={{ padding: '0.8rem 1.25rem', fontWeight: 600, color: '#374151', fontSize: '0.85rem' }}>
+                        <td style={{ padding: '0.8rem 1.25rem', fontWeight: 500, color: '#374151', fontSize: '13px' }}>
                           {dish.name}
                         </td>
 
                         {/* Platform */}
                         <td style={{ padding: '0.8rem 1.25rem' }}>
-                          {dish.restaurants?.ubereats_url ? (
-                            <span style={{ padding: '0.2rem 0.4rem', backgroundColor: '#ECFDF5', color: '#059669', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800 }}>
-                              UberEats
-                            </span>
-                          ) : (
-                            <span style={{ padding: '0.2rem 0.4rem', backgroundColor: '#F3F4F6', color: '#4B5563', borderRadius: '4px', fontSize: '0.7rem', fontWeight: 800 }}>
-                              Platform
-                            </span>
-                          )}
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            {getMockPlatforms(dish.restaurant_id || dish.id.toString())
+                              .filter(p => platform === 'All' || p === platform)
+                              .map(p => getSmallPlatformLogo(p))}
+                          </div>
                         </td>
 
                         {/* Price / Offer */}
                         <td style={{ padding: '0.8rem 1.25rem', textAlign: 'right' }}>
                           {activeCategory === 'Promos' ? (
-                            <span style={{ color: '#EF4444', fontWeight: 800, fontSize: '0.85rem', backgroundColor: '#FEF2F2', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
+                            <span style={{ color: '#EF4444', fontWeight: 700, fontSize: '13px', backgroundColor: '#FEF2F2', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
                               {getMockDeal(dish.id)}
                             </span>
                           ) : isPromo ? (
                             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.5rem' }}>
-                              <span style={{ textDecoration: 'line-through', color: '#D1D5DB', fontSize: '12px', fontWeight: 500 }}>£{originalPrice}</span>
-                              <span style={{ color: '#EF4444', fontWeight: 700, fontSize: '0.9rem' }}>£{Number(dish.price).toFixed(2)}</span>
+                              <span style={{ textDecoration: 'line-through', color: '#9CA3AF', fontSize: '12px', fontWeight: 500, paddingRight: '0.25rem' }}>£{originalPrice}</span>
+                              <span style={{ color: '#EF4444', fontWeight: 700, fontSize: '13px' }}>£{Number(dish.price).toFixed(2)}</span>
                             </div>
                           ) : (
-                            <span style={{ color: '#111', fontWeight: 800, fontSize: '0.9rem' }}>£{Number(dish.price).toFixed(2)}</span>
+                            <span style={{ color: '#111', fontWeight: 700, fontSize: '13px' }}>£{Number(dish.price).toFixed(2)}</span>
                           )}
                         </td>
                       </tr>
                     );
-                  })}
+                  })})()}
                 </tbody>
               </table>
             ) : (
               <div style={{ padding: '4rem', textAlign: 'center', color: '#6B7280' }}>No tactical data matches your criteria.</div>
             )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
+    </div>
 
       <CompetitorIntelDrawer 
         isOpen={intelDrawerOpen} 
@@ -649,33 +676,87 @@ const MarketSearchPage = ({
           zIndex: 1000,
           animation: 'slideUp 0.3s ease-out'
         }}>
-          <span style={{ color: '#FFF', fontWeight: 600, fontSize: '0.85rem', fontFamily: "'Lufga', sans-serif" }}>
+          {/* TOP-RIGHT CLOSE BUTTON */}
+          <button 
+            onClick={() => setCompareList([])}
+            style={{
+              position: 'absolute',
+              top: '-8px',
+              right: '-8px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              width: '24px',
+              height: '24px',
+              borderRadius: '50%',
+              backgroundColor: '#4B5563',
+              border: '2px solid #111',
+              color: '#FFF',
+              cursor: 'pointer',
+              padding: 0,
+              transition: 'background-color 0.2s ease, transform 0.2s ease',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = '#EF4444'; e.currentTarget.style.transform = 'scale(1.1)'; }}
+            onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = '#4B5563'; e.currentTarget.style.transform = 'scale(1)'; }}
+          >
+            <X size={14} strokeWidth={3} />
+          </button>
+
+          <span style={{ color: '#FFF', fontWeight: 600, fontSize: '0.85rem', fontFamily: "'Lufga', sans-serif", paddingLeft: '0.5rem' }}>
             <span style={{ color: '#E86A58' }}>{compareList.length}</span> Restaurants selected for comparison.
           </span>
-          <button
-            onClick={() => {
-              // Dispatch event with the entire compareList
-              window.dispatchEvent(new CustomEvent('open-comparison-modal', { detail: { competitorsList: compareList } }));
-            }}
-            style={{
-              backgroundColor: '#E86A58',
-              color: '#FFF',
-              border: 'none',
-              borderRadius: '999px',
-              padding: '0.5rem 1rem',
-              fontWeight: 800,
-              fontSize: '0.75rem',
-              cursor: 'pointer',
-              textTransform: 'uppercase',
-              letterSpacing: '0.05em',
-              transition: 'transform 0.2s ease',
-              fontFamily: "'Lufga', sans-serif"
-            }}
-            onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-            onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-          >
-            Run Matrix
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              onClick={() => {
+                setToastMessage('Added to Watchlist');
+                setTimeout(() => setToastMessage(''), 3000);
+              }}
+              style={{
+                backgroundColor: '#E86A58',
+                color: '#FFF',
+                border: 'none',
+                borderRadius: '999px',
+                padding: '0.5rem 1rem',
+                fontWeight: 800,
+                fontSize: '0.75rem',
+                cursor: 'pointer',
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                transition: 'transform 0.2s ease',
+                fontFamily: "'Lufga', sans-serif"
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.05)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              + Add to Watchlist
+            </button>
+            <button
+              disabled={compareList.length > 3}
+              onClick={() => {
+                window.dispatchEvent(new CustomEvent('open-comparison-modal', { detail: { competitorsList: compareList } }));
+              }}
+              style={{
+                backgroundColor: '#E86A58',
+                color: '#FFF',
+                border: 'none',
+                borderRadius: '999px',
+                padding: '0.5rem 1rem',
+                fontWeight: 800,
+                fontSize: '0.75rem',
+                cursor: compareList.length > 3 ? 'not-allowed' : 'pointer',
+                opacity: compareList.length > 3 ? 0.5 : 1,
+                textTransform: 'uppercase',
+                letterSpacing: '0.05em',
+                transition: 'transform 0.2s ease',
+                fontFamily: "'Lufga', sans-serif"
+              }}
+              onMouseEnter={(e) => { if (compareList.length <= 3) e.currentTarget.style.transform = 'scale(1.05)'; }}
+              onMouseLeave={(e) => { if (compareList.length <= 3) e.currentTarget.style.transform = 'scale(1)'; }}
+            >
+              ⇄ Run Comparison
+            </button>
+          </div>
         </div>
       )}
     </div>
