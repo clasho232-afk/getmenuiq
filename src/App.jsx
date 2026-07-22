@@ -91,11 +91,19 @@ function App() {
     return <LandingPage onLaunchDashboard={() => setShowLanding(false)} />;
   }
 
+  const handleLoginRequest = () => {
+    if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'file:') {
+      alert('Dashboard access is currently restricted to local development only.');
+      return;
+    }
+    setLoggedIn(true);
+  };
+
   if (!loggedIn) {
     return (
       <MenuIQLogin
-        onLogin={() => setLoggedIn(true)}
-        onGoogleLogin={() => setLoggedIn(true)}
+        onLogin={handleLoginRequest}
+        onGoogleLogin={handleLoginRequest}
         onSignUp={() => alert('Sign up coming soon')}
         onForgotPassword={() => alert('Password reset coming soon')}
       />
