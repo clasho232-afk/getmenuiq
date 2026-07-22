@@ -3,27 +3,9 @@ import { X, Clock, Megaphone, BadgePercent, Image as ImageIcon, AlertTriangle, C
 
 const VisibilityEngineModal = ({ isOpen, onClose, initialPlatform, restaurantData }) => {
   const [selectedPlatform, setSelectedPlatform] = useState(initialPlatform && initialPlatform !== 'All' ? initialPlatform : 'Deliveroo');
-  const [expandedRow, setExpandedRow] = useState(null);
-  
-  // Manual Fix states
-  const [manualChecks, setManualChecks] = useState({
-    photos: false,
-    descriptions: false,
-    cancellations: false,
-    prepTime: false,
-    hours: true,
-    reviews: false
-  });
   
   if (!isOpen) return null;
 
-  const toggleRow = (row) => {
-    setExpandedRow(prev => prev === row ? null : row);
-  };
-  
-  const handleCheck = (key) => {
-    setManualChecks(prev => ({...prev, [key]: !prev[key]}));
-  };
 
   const platforms = [
     { id: 'Deliveroo', label: 'Deliveroo', icon: (
@@ -109,29 +91,6 @@ const VisibilityEngineModal = ({ isOpen, onClose, initialPlatform, restaurantDat
   else if (autoScore >= 60) scoreColor = '#f59e0b';
   else if (autoScore >= 40) scoreColor = '#f97316';
 
-  // Define per-platform manual checks logic
-  const getManualMetrics = (platform) => {
-    let metrics = [];
-    if (platform === 'Deliveroo') {
-      metrics = [
-        { id: 'prepTime', title: 'Preparation Time', research: 'Orders accepted in under 90 seconds rank higher. Consistent ETAs build trust.', icon: <Clock size={16}/> },
-        { id: 'cancellations', title: 'Order Cancellations', research: 'Every rejected order directly reduces your Value Score.', icon: <Ban size={16}/> }
-      ];
-    } else if (platform === 'Uber Eats') {
-      metrics = [
-        { id: 'cancellations', title: 'Cancellation Rate', research: 'Keep below 3%. Each rejected order suppresses your ranking.', icon: <Ban size={16}/> },
-        { id: 'prepTime', title: 'Preparation Time', research: 'Consistent, accurate ETAs improve experience and ranking.', icon: <Clock size={16}/> },
-      ];
-    } else if (platform === 'Just Eat') {
-      metrics = [
-        { id: 'cancellations', title: 'Cancellation Rate', research: 'Keep below 1.3%. This is the strictest factor on Just Eat.', icon: <Ban size={16}/> },
-        { id: 'hours', title: 'Opening Hours Accuracy', research: 'Being listed as open when you\'re closed triggers a penalty.', icon: <Clock size={16}/> }
-      ];
-    }
-    return metrics;
-  };
-
-  const manualMetrics = getManualMetrics(selectedPlatform);
 
   const renderScoreBar = (platformId, score) => {
     let numColor = '#ef4444';
@@ -171,7 +130,7 @@ const VisibilityEngineModal = ({ isOpen, onClose, initialPlatform, restaurantDat
     <div style={{ position: 'fixed', top: 0, right: 0, bottom: 0, left: 0, zIndex: 9999, backgroundColor: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
       
       {/* Modal Container */}
-      <div style={{ backgroundColor: '#ffffff', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ backgroundColor: '#FCFAF6', borderRadius: '16px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.15)', width: '100%', maxWidth: '800px', maxHeight: '90vh', overflowY: 'auto', position: 'relative', border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column' }}>
         
         {/* Close Button */}
         <button onClick={onClose} style={{ position: 'absolute', top: '1.5rem', right: '1.5rem', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '50%', backgroundColor: 'transparent', color: '#94a3b8', border: 'none', cursor: 'pointer', transition: 'color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.color = '#0f172a'} onMouseLeave={(e) => e.currentTarget.style.color = '#94a3b8'}>
@@ -196,7 +155,7 @@ const VisibilityEngineModal = ({ isOpen, onClose, initialPlatform, restaurantDat
         <div style={{ padding: '0 2.5rem 2.5rem', flex: 1 }}>
           
           {/* Platform Score Bars */}
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2.5rem', backgroundColor: '#ffffff', border: '1px solid #e2e8f0', borderRadius: '12px', padding: '1.5rem 0' }}>
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '2.5rem', backgroundColor: '#ffffff', border: 'none', boxShadow: '0 1px 3px rgba(0,0,0,0.05)', borderRadius: '12px', padding: '1.5rem 0' }}>
             {renderScoreBar('Uber Eats', getPlatformScore('Uber Eats', data))}
             <div style={{ width: '1px', height: '40px', backgroundColor: '#e2e8f0' }} />
             {renderScoreBar('Deliveroo', getPlatformScore('Deliveroo', data))}
@@ -285,221 +244,6 @@ const VisibilityEngineModal = ({ isOpen, onClose, initialPlatform, restaurantDat
                 </button>
               );
             })}
-          </div>
-
-          {/* New Sections */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
-            
-            {/* Auto-Tracked Section */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                <h4 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.05em' }}>⚡ Auto-Tracked Metrics</h4>
-                <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
-              </div>
-              <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>These are calculated directly from your live menu data on the platform.</p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {/* Rating */}
-                <div style={{ borderBottom: '1px solid #f1f5f9', padding: '1rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ width: '32px', height: '32px', borderRadius: '50%', backgroundColor: '#fef3c7', color: '#f59e0b', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Star size={16} fill="currentColor" />
-                    </div>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>Star Rating</h3>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>{data.rating} / 5.0</p>
-                    </div>
-                  </div>
-                  <div style={{ backgroundColor: data.rating >= 4.5 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: data.rating >= 4.5 ? '#10b981' : '#f59e0b', padding: '4px 10px', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {data.rating >= 4.5 ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-                    {data.rating >= 4.5 ? 'EXCELLENT' : 'NEEDS ACTION'}
-                  </div>
-                </div>
-
-                {/* Promotions */}
-                <div style={{ borderBottom: '1px solid #f1f5f9', padding: '1rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <BadgePercent size={36} fill="#dc2626" color="white" strokeWidth={1.5} />
-                    </div>
-                    <div>
-                      <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>Active Promotions</h3>
-                      <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>{data.hasPromotion ? data.promotionText : 'No active campaigns'}</p>
-                    </div>
-                  </div>
-                  <div style={{ backgroundColor: data.hasPromotion ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: data.hasPromotion ? '#10b981' : '#ef4444', padding: '4px 10px', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                    {data.hasPromotion ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-                    {data.hasPromotion ? 'OPTIMAL' : 'CRITICAL'}
-                  </div>
-                </div>
-
-                {/* Menu Photos */}
-                <div>
-                  <div onClick={() => toggleRow('photos')} style={{ cursor: 'pointer', borderBottom: expandedRow === 'photos' ? 'none' : '1px solid #f1f5f9', padding: '1rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <img src="/menu_photos_icon.png" alt="Menu Photos" style={{ width: '36px', height: '36px', objectFit: 'contain' }} />
-                      </div>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>Menu Photos</h3>
-                        <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>{data.photoCoverage}% coverage</p>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ backgroundColor: data.photoCoverage >= 80 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: data.photoCoverage >= 80 ? '#10b981' : '#f59e0b', padding: '4px 10px', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {data.photoCoverage >= 80 ? <CheckCircle2 size={14} /> : <Info size={14} />}
-                        {data.photoCoverage >= 80 ? 'OPTIMAL' : 'NEEDS ACTION'}
-                      </div>
-                      <ChevronDown size={16} color="#94a3b8" style={{ transform: expandedRow === 'photos' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
-                    </div>
-                  </div>
-                  {expandedRow === 'photos' && data.badPhotos && data.badPhotos.length > 0 && (
-                    <div style={{ padding: '0 0 1rem 3rem', borderBottom: '1px solid #f1f5f9' }}>
-                      <div style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '1rem' }}>
-                        <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Items Needing Photos ({data.badPhotos.length})</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          {data.badPhotos.map(item => (
-                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />
-                                <div>
-                                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>{item.name}</div>
-                                  <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '2px' }}>{item.issue}</div>
-                                </div>
-                              </div>
-                              <button style={{ backgroundColor: '#0f172a', color: 'white', border: 'none', borderRadius: '6px', padding: '0.4rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#334155'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}>
-                                <ImageIcon size={14} /> Generate Image
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Item Descriptions */}
-                <div>
-                  <div onClick={() => toggleRow('descriptions')} style={{ cursor: 'pointer', padding: '1rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ 
-                        width: '36px', height: '36px', borderRadius: '50%', 
-                        background: 'radial-gradient(circle at 30% 30%, #ffe600, #ffb300)', 
-                        boxShadow: 'inset -2px -2px 6px rgba(0,0,0,0.1), inset 2px 2px 6px rgba(255,255,255,0.7), 0 2px 4px rgba(0,0,0,0.1)',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center' 
-                      }}>
-                        <img src="/item_descriptions_icon.png" alt="Item Descriptions" style={{ width: '20px', height: '20px', objectFit: 'contain' }} />
-                      </div>
-                      <div>
-                        <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>Item Descriptions</h3>
-                        <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>{data.descriptionCoverage}% coverage</p>
-                      </div>
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                      <div style={{ backgroundColor: data.descriptionCoverage >= 71 ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)', color: data.descriptionCoverage >= 71 ? '#10b981' : '#f59e0b', padding: '4px 10px', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        {data.descriptionCoverage >= 71 ? <CheckCircle2 size={14} /> : <Info size={14} />}
-                        {data.descriptionCoverage >= 71 ? 'OPTIMAL' : 'NEEDS ACTION'}
-                      </div>
-                      <ChevronDown size={16} color="#94a3b8" style={{ transform: expandedRow === 'descriptions' ? 'rotate(180deg)' : 'rotate(0deg)', transition: 'transform 0.2s' }} />
-                    </div>
-                  </div>
-                  {expandedRow === 'descriptions' && data.badDescriptions && data.badDescriptions.length > 0 && (
-                    <div style={{ padding: '0 0 1rem 3rem' }}>
-                      <div style={{ backgroundColor: '#f8fafc', borderRadius: '8px', padding: '1rem' }}>
-                        <h4 style={{ margin: '0 0 0.75rem 0', fontSize: '0.8rem', fontWeight: 700, color: '#475569' }}>Items Needing Descriptions ({data.badDescriptions.length})</h4>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-                          {data.badDescriptions.map(item => (
-                            <div key={item.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', backgroundColor: 'white', padding: '0.75rem', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <img src={item.image} alt={item.name} style={{ width: '40px', height: '40px', borderRadius: '4px', objectFit: 'cover' }} />
-                                <div>
-                                  <div style={{ fontSize: '0.85rem', fontWeight: 600, color: '#1e293b' }}>{item.name}</div>
-                                  <div style={{ fontSize: '0.75rem', color: '#ef4444', marginTop: '2px' }}>{item.issue}</div>
-                                </div>
-                              </div>
-                              <button style={{ backgroundColor: '#0f172a', color: 'white', border: 'none', borderRadius: '6px', padding: '0.4rem 0.75rem', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', transition: 'background-color 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#334155'} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#0f172a'}>
-                                <FileText size={14} /> Generate Description
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Manual Fix Section */}
-            <div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '1rem' }}>
-                <h4 style={{ margin: 0, fontSize: '0.75rem', fontWeight: 700, color: '#C85A17', textTransform: 'uppercase', letterSpacing: '0.05em' }}>✋ Requires Your Action</h4>
-                <div style={{ flex: 1, height: '1px', backgroundColor: '#e2e8f0' }}></div>
-              </div>
-              <p style={{ fontSize: '0.8rem', color: '#64748b', marginBottom: '1rem' }}>We can't access these metrics automatically. Check your partner hub and mark them off.</p>
-              
-              <div style={{ display: 'flex', flexDirection: 'column' }}>
-                {manualMetrics.map((metric, idx) => {
-                  const isChecked = manualChecks[metric.id];
-                  const isExpanded = expandedRow === metric.id;
-                  
-                  return (
-                    <div key={metric.id} style={{ borderBottom: idx < manualMetrics.length - 1 ? '1px solid #f1f5f9' : 'none', display: 'flex', flexDirection: 'column' }}>
-                      <div 
-                        style={{ padding: '1rem 0', display: 'flex', justifyContent: 'space-between', alignItems: 'center', cursor: 'pointer' }}
-                        onClick={() => toggleRow(metric.id)}
-                      >
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <div style={{ 
-                            width: '36px', height: '36px', borderRadius: '50%', 
-                            background: 'radial-gradient(circle at 30% 30%, #ffe600, #ffb300)', 
-                            boxShadow: 'inset -2px -2px 6px rgba(0,0,0,0.1), inset 2px 2px 6px rgba(255,255,255,0.7), 0 2px 4px rgba(0,0,0,0.1)',
-                            display: 'flex', alignItems: 'center', justifyContent: 'center' 
-                          }}>
-                            {React.cloneElement(metric.icon, { color: '#000', size: 18 })}
-                          </div>
-                          <h3 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 700, color: '#1e293b' }}>{metric.title}</h3>
-                        </div>
-                        
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-                          <div style={{ backgroundColor: isChecked ? 'rgba(16, 185, 129, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: isChecked ? '#10b981' : '#ef4444', padding: '4px 10px', borderRadius: '9999px', fontSize: '0.7rem', fontWeight: 700, textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            {isChecked ? <CheckCircle2 size={14} /> : <AlertTriangle size={14} />}
-                            {isChecked ? 'DONE' : 'NEEDS ACTION'}
-                          </div>
-                          <span style={{ color: '#94a3b8', display: 'flex', alignItems: 'center' }}>
-                            <ChevronDown size={18} style={{ transition: 'transform 0.2s', transform: isExpanded ? 'rotate(180deg)' : 'rotate(0deg)' }} />
-                          </span>
-                        </div>
-                      </div>
-                      
-                      {isExpanded && (
-                        <div style={{ padding: '0 0 1.5rem 0', paddingLeft: '3rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-                          <div style={{ fontSize: '0.875rem', color: '#64748b', padding: '0.75rem', backgroundColor: '#f8fafc', borderRadius: '8px', borderLeft: '3px solid #C85A17' }}>
-                            <strong style={{ color: '#0f172a' }}>Why it matters:</strong> {metric.research}
-                          </div>
-                          
-                          <label style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', cursor: 'pointer' }}>
-                            <input 
-                              type="checkbox" 
-                              checked={isChecked}
-                              onChange={(e) => {
-                                e.stopPropagation();
-                                handleCheck(metric.id);
-                              }}
-                              style={{ width: '18px', height: '18px', accentColor: '#10b981', cursor: 'pointer' }}
-                            />
-                            <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e293b' }}>
-                              I have optimized this in my {selectedPlatform} Partner Hub.
-                            </span>
-                          </label>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
           </div>
         </div>
       </div>

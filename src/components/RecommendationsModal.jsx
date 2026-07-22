@@ -45,7 +45,7 @@ const RecommendationsModal = ({ onClose }) => {
   const modalContent = (
     <div className="fixed inset-0 flex flex-col items-center bg-black/40 backdrop-blur-sm p-4 md:p-8 overflow-y-auto" style={{ zIndex: 99999 }} onClick={onClose}>
       <div 
-        className="bg-[#FDFBF7] rounded-3xl shadow-2xl overflow-hidden flex border border-white my-auto shrink-0 h-[700px]"
+        className="bg-[#FEFDF9] rounded-3xl shadow-2xl overflow-hidden flex border border-white my-auto shrink-0 h-[700px]"
         style={{ width: '1024px', maxWidth: '95vw' }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -136,7 +136,7 @@ const RecommendationsModal = ({ onClose }) => {
                   </div>
                 </div>
                 
-                <div className="flex flex-col justify-between gap-4 bg-[#FAF8F4] p-6 rounded-xl border border-[rgba(0,0,0,0.05)] mt-auto">
+                <div className="flex flex-col justify-between gap-4 bg-[#FCFAF6] p-6 rounded-xl border border-[rgba(0,0,0,0.05)] mt-auto">
                   <div>
                     <div className="text-lg font-bold mb-1" style={{ color: getPlatformColor(selectedItem.platform) }}>
                       {selectedItem.platform}: <span className="text-[#E86A58] ml-2">({selectedItem.status})</span>
@@ -157,7 +157,7 @@ const RecommendationsModal = ({ onClose }) => {
                   </div>
                 </div>
                 
-                <div className="flex flex-col justify-between gap-4 bg-[#FAF8F4] p-6 rounded-xl border border-[rgba(0,0,0,0.05)] mt-auto">
+                <div className="flex flex-col justify-between gap-4 bg-[#FCFAF6] p-6 rounded-xl border border-[rgba(0,0,0,0.05)] mt-auto">
                   <p className="text-sm text-gray-800 leading-relaxed m-0">
                     <span className="font-bold">{selectedItem.competitor}</span> within your delivery radius just launched a <span className="font-bold text-[#E86A58]">{selectedItem.promo}</span> promotion, threatening your current local search rank position.
                   </p>
@@ -189,7 +189,7 @@ const RecommendationsModal = ({ onClose }) => {
                   </div>
                 </div>
                 
-                <div className="flex flex-col gap-4 bg-[#FAF8F4] p-6 rounded-xl border border-[rgba(0,0,0,0.05)] mt-auto">
+                <div className="flex flex-col gap-4 bg-[#FCFAF6] p-6 rounded-xl border border-[rgba(0,0,0,0.05)] mt-auto">
                    <p className="text-gray-700 m-0 leading-relaxed font-medium text-sm">
                      This insight was generated in real-time by analyzing local competitor data, pricing models, and current demand patterns within your immediate delivery radius.
                    </p>

@@ -24,7 +24,7 @@ const CompetitorPriceModal = ({ isOpen, onClose, competitor, priceChanges }) => 
 
   return (
     <div className="modal-overlay" style={{ position: 'fixed', top: 0, left: 0, width: '100vw', height: '100vh', zIndex: 100, background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <div className="glass-panel modal-content" style={{ width: '850px', maxWidth: '95%', maxHeight: '90vh', background: '#FAF8F4', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid #E5E0D8', boxShadow: '0 24px 48px rgba(0,0,0,0.06)' }}>
+      <div className="glass-panel modal-content" style={{ width: '850px', maxWidth: '95%', maxHeight: '90vh', background: '#FCFAF6', borderRadius: '24px', overflow: 'hidden', display: 'flex', flexDirection: 'column', border: '1px solid #E5E0D8', boxShadow: '0 24px 48px rgba(0,0,0,0.06)' }}>
         
         {/* Header Hero */}
         <div style={{ position: 'relative', height: '220px', backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.8) 0%, rgba(0,0,0,0.2) 60%, transparent 100%), url(${competitor.image || 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?auto=format&fit=crop&w=800&q=80'})`, backgroundSize: 'cover', backgroundPosition: 'center', display: 'flex', alignItems: 'flex-end', padding: '2rem' }}>

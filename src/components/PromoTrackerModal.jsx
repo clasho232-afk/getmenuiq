@@ -308,7 +308,7 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
     >
       <div style={{ 
         width: '1100px', maxWidth: '95vw', height: '700px', maxHeight: '90vh', 
-        background: '#FAFAFA', borderRadius: '24px', boxShadow: '0 24px 48px rgba(0,0,0,0.15)', 
+        background: '#FCFAF6', borderRadius: '24px', boxShadow: '0 24px 48px rgba(0,0,0,0.15)', 
         display: 'flex', flexDirection: 'row', overflow: 'hidden', position: 'relative' 
       }}>
         
@@ -508,7 +508,7 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
             </div>
           </div>
 
-          <div className="invisible-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '16px 24px', background: '#FAFAFA' }}>
+          <div className="invisible-scrollbar" style={{ flex: 1, overflowY: 'auto', padding: '16px 24px', background: '#FCFAF6' }}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {(() => {
                 const groupedFeed = displayFeed.reduce((acc, promo) => {
@@ -539,7 +539,8 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
                         }}
                         style={{ 
                           background: (!hasMultiple && selectedPromo?.id === group.promos[0].id) ? 'rgba(224, 80, 70, 0.05)' : '#FFFFFF', 
-                          border: (!hasMultiple && selectedPromo?.id === group.promos[0].id) ? '1px solid rgba(224, 80, 70, 0.3)' : '1px solid #E5E7EB', 
+                          border: (!hasMultiple && selectedPromo?.id === group.promos[0].id) ? '1px solid rgba(224, 80, 70, 0.3)' : 'none', 
+                          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                           borderRadius: '12px', padding: '16px', display: 'flex', alignItems: 'center', 
                           justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
                           cursor: 'pointer', transition: 'all 0.2s',
@@ -586,7 +587,8 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
                                 onClick={() => setSelectedPromo(promo)}
                                 style={{ 
                                   background: isSelected ? 'rgba(224, 80, 70, 0.05)' : '#FFFFFF', 
-                                  border: isSelected ? '1px solid rgba(224, 80, 70, 0.3)' : '1px solid #E5E7EB', 
+                                  border: isSelected ? '1px solid rgba(224, 80, 70, 0.3)' : 'none', 
+                                  boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
                                   borderRadius: '10px', padding: '10px 14px', display: 'flex', alignItems: 'center', 
                                   justifyContent: 'space-between', cursor: 'pointer', transition: 'all 0.2s',
                                 }}

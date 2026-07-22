@@ -29,7 +29,7 @@ const TerritoryAlertCard = ({ onClick, activeSession }) => {
   return (
     <button 
       onClick={onClick}
-      className="glass-panel rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)] bg-[#FAF8F4] flex flex-row"
+      className="glass-panel rounded-2xl shadow-sm border border-[rgba(0,0,0,0.05)] bg-[#FCFAF6] flex flex-row"
       style={{
         padding: '2rem 0 2rem 2rem',
         alignItems: 'stretch',

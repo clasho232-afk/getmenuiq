@@ -231,6 +231,14 @@ button {
   background: #94A3B8;
 }
 
+.hide-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
 /* Leaflet Custom Styles */
 .leaflet-tooltip.custom-tooltip {
   background: transparent !important;
@@ -343,7 +351,7 @@ button {
 .shadow-sm { box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important; }
 .border { border-width: 1px !important; border-style: solid !important; }
 .border-\[rgba\(0\,0\,0\,0\.05\)\] { border-color: rgba(0,0,0,0.05) !important; }
-.bg-\[\#FAF8F4\] { background-color: #FAF8F4 !important; }
+.bg-\[\#FCFAF6\] { background-color: #FCFAF6 !important; }
 
 /* Tailwind Polyfills for Grid Layout */
 .w-full { width: 100% !important; }
@@ -395,7 +403,7 @@ button {
 .bg-black\/40 { background-color: rgba(0, 0, 0, 0.4) !important; }
 .backdrop-blur-sm { backdrop-filter: blur(4px) !important; -webkit-backdrop-filter: blur(4px) !important; }
 .p-4 { padding: 1rem !important; }
-.bg-\[\#FDFBF7\] { background-color: #FDFBF7 !important; }
+.bg-\[\#FEFDF9\] { background-color: #FEFDF9 !important; }
 .rounded-3xl { border-radius: 1.5rem !important; }
 .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; }
 .max-w-4xl { max-width: 56rem !important; }
@@ -590,7 +598,7 @@ button {
 .bg-black\/40 { background-color: rgba(0, 0, 0, 0.4) !important; }
 .backdrop-blur-sm { backdrop-filter: blur(4px) !important; -webkit-backdrop-filter: blur(4px) !important; }
 .p-4 { padding: 1rem !important; }
-.bg-\[\#FDFBF7\] { background-color: #FDFBF7 !important; }
+.bg-\[\#FEFDF9\] { background-color: #FEFDF9 !important; }
 .rounded-3xl { border-radius: 1.5rem !important; }
 .shadow-2xl { box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important; }
 .max-w-4xl { max-width: 56rem !important; }

@@ -18,7 +18,7 @@ const insights = [...insightsData, ...insightsData.map(item => ({ ...item, id: i
 const RecommendationsSimulationWidget = ({ onClick }) => {
   return (
     <div 
-      className="bg-[#FAF8F4] h-full w-full rounded-2xl p-5 shadow-sm border border-[rgba(0,0,0,0.05)] flex flex-col cursor-pointer transition-all"
+      className="bg-[#FCFAF6] h-full w-full rounded-2xl p-5 shadow-sm border border-[rgba(0,0,0,0.05)] flex flex-col cursor-pointer transition-all"
       onClick={onClick}
     >
       {/* Header */}

@@ -55,7 +55,7 @@ const AICommandOverlay = ({ isOpen, onClose }) => {
         flexDirection: 'column',
         alignItems: 'center',
         padding: '2.5rem 3rem', // generous padding
-        background: '#FDFBF7', // completely solid background
+        background: '#FEFDF9', // completely solid background
         borderRadius: '24px',
         boxShadow: '0 20px 50px rgba(0, 0, 0, 0.1)', // high-quality diffuse drop shadow
         animation: 'aiOverlayFadeIn 0.3s ease forwards',
