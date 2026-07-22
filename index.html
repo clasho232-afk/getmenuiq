@@ -5,6 +5,12 @@
     <link rel="icon" type="image/svg+xml" href="/menuiq-logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>- Intelligence Tool</title>
+    <script>
+      if (window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1' && window.location.protocol !== 'file:') {
+        document.documentElement.innerHTML = '<body style="background:#111;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;"><h1>Access Restricted: Dashboard is currently in local development mode only.</h1></body>';
+        window.stop();
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>
