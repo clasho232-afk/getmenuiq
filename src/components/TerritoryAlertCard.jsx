@@ -86,7 +86,7 @@ const TerritoryAlertCard = ({ onClick, activeSession }) => {
               style={{ width: '100%', height: '100%' }}
               key={currentBoroughName} // Force React to remount map layer when location swaps
             >
-              <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+              <TileLayer url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png" />
               <Polygon 
                 positions={primarySector.bounds}
                 pathOptions={{ 

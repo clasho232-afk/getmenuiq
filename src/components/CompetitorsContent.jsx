@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Star, Search, X, ShieldAlert, Shield, Layers,
-  TrendingUp, MapPin, Wifi, BarChart2, Maximize, Minimize, GitCompare
+  TrendingUp, MapPin, Wifi, BarChart2, Maximize, Minimize, GitCompare, ArrowUp, ArrowDown
 } from 'lucide-react';
 import { MapContainer, TileLayer, Circle, Marker, Tooltip, Popup, useMap, useMapEvents, ZoomControl } from 'react-leaflet';
 import MarkerClusterGroup from 'react-leaflet-cluster';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import RestaurantProfilePage from './RestaurantProfilePage';
+import { ErrorBoundary } from './ErrorBoundary';
 import { supabase } from '../supabase';
 import {
   getRankedCompetitors,
@@ -29,34 +30,22 @@ const makeCustomPin = (restaurant, score) => {
   const cacheKey = `${restaurant.id}-${score}`;
   if (customPinCache.has(cacheKey)) return customPinCache.get(cacheKey);
 
-  const threatColor = score >= 70 ? '#E86A58' : score >= 40 ? '#D97706' : '#10B981';
-  const avatar = restaurant.hero_image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80';
-  // Dynamic font size logic based on string length
-  const nameLength = restaurant.name ? restaurant.name.length : 0;
-  let dynamicFontSize = '11px';
-  if (nameLength > 20) {
-    dynamicFontSize = '9px';
-  } else if (nameLength > 15) {
-    dynamicFontSize = '10px';
-  }
+  const imgUrl = restaurant.hero_image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80';
+  const promoCount = restaurant.promo_count || 0;
+  const badgeHTML = promoCount > 0 ? `<div style="position:absolute; top:-4px; right:-4px; background:#E05046; color:#fff; font-size:9px; font-weight:800; padding:2px 5px; border-radius:10px; border:1.5px solid #fff; box-shadow:0 2px 4px rgba(0,0,0,0.2); z-index:10; line-height:1;">${promoCount}</div>` : '';
 
   const icon = L.divIcon({
-    className: 'custom-profile-pin',
-    html: `
-      <div style="display: flex; flex-direction: column; align-items: center; transform: translateY(-100%) scale(0.6); transform-origin: bottom center; padding-bottom: 4px;">
-        <!-- Profile Card -->
-        <div style="background: #FFF; border-radius: 6px; box-shadow: 0 4px 10px rgba(0,0,0,0.15); max-width: 110px; overflow: hidden; display: flex; flex-direction: column; margin-bottom: 4px; font-family: 'Inter', sans-serif;">
-          <img src="${avatar}" style="width: 100%; height: 42px; object-fit: cover; display: block;" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80'" />
-          <div style="padding: 6px 8px; text-align: center; width: 100%; box-sizing: border-box;">
-            <div style="font-weight: 500; font-size: 12px; color: #1F2937; line-height: 1.2; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">${restaurant.name}</div>
-          </div>
-        </div>
-        <!-- Status Dot -->
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: ${threatColor}; box-shadow: 0 0 0 2px #FFF, 0 2px 4px rgba(0,0,0,0.2);"></div>
-      </div>
-    `,
-    iconSize: [0, 0],
-    iconAnchor: [0, 0]
+    className: 'custom-leaflet-icon',
+    html: `<div style="display:flex; flex-direction:column; align-items:center; gap:3px;">
+             <div style="position:relative; width:36px;height:36px;border-radius:50%;background-color:#fff;border:1.5px solid #E86A58;display:flex;align-items:center;justify-content:center;box-shadow:0 3px 8px rgba(0,0,0,0.15);">
+               ${badgeHTML}
+               <img src="${imgUrl}" style="position:absolute; top:0; left:0; width:100%; height:100%; object-fit:cover; border-radius:50%;" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80'" />
+             </div>
+             <div style="background:rgba(255,255,255,0.65); backdrop-filter:blur(8px); -webkit-backdrop-filter:blur(8px); padding:4px 10px; border-radius:999px; font-family:'Inter', system-ui, sans-serif; font-size:11.5px; font-weight:600; letter-spacing:-0.3px; color:#1E293B; white-space:nowrap; box-shadow:0 4px 16px rgba(0,0,0,0.12), 0 1px 3px rgba(0,0,0,0.08); border:1px solid rgba(255,255,255,0.5); max-width:110px; overflow:hidden; text-overflow:ellipsis; margin-top:2px;">${restaurant.name}</div>
+           </div>`,
+    iconSize: [120, 66],
+    iconAnchor: [60, 66],
+    popupAnchor: [0, -56]
   });
   
   customPinCache.set(cacheKey, icon);
@@ -95,28 +84,35 @@ const makeOwnerPin = (ownerRestaurant) => {
   const cacheKey = ownerRestaurant?.id || 'owner';
   if (ownerPinCache.has(cacheKey)) return ownerPinCache.get(cacheKey);
 
-  const avatar = ownerRestaurant?.hero_image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80';
+  const imgUrl = ownerRestaurant?.hero_image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80';
   const name = ownerRestaurant?.name || 'Your Shop';
+
   const icon = L.divIcon({
-    className: 'custom-owner-profile-pin',
-    html: `
-      <div style="display: flex; flex-direction: column; align-items: center; transform: translateY(-100%); padding-bottom: 4px; z-index: 9999; position: relative;">
-        <!-- Profile Card -->
-        <div style="background: #FFF; border-radius: 6px; border: 2px solid #DC2626; box-shadow: 0 4px 10px rgba(0,0,0,0.15); max-width: 110px; overflow: hidden; display: flex; flex-direction: column; margin-bottom: 4px; font-family: 'Inter', sans-serif;">
-          <img src="${avatar}" style="width: 100%; height: 42px; object-fit: cover; display: block;" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80'" />
-          <div style="padding: 6px 8px; text-align: center; width: 100%; box-sizing: border-box;">
-            <div style="font-weight: 600; font-size: 12px; color: #1F2937; line-height: 1.2; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%;">${name}</div>
-          </div>
-        </div>
-        <!-- Status Dot (Pulse effect) -->
-        <div style="width: 12px; height: 12px; border-radius: 50%; background: #DC2626; box-shadow: 0 0 0 2px #FFF, 0 0 0 5px rgba(220, 38, 38, 0.25), 0 2px 6px rgba(0,0,0,0.2);"></div>
-      </div>
-    `,
-    iconSize: [0, 0],
-    iconAnchor: [0, 0]
+    className: 'my-restaurant-icon',
+    html: `<div style="display:flex; flex-direction:column; align-items:center; gap:6px; z-index:9999; position:relative;">
+             <div style="background:linear-gradient(135deg, #E86A58 0%, #D45544 100%); padding:5px 12px; border-radius:999px; font-family:'Inter', system-ui, sans-serif; font-size:12px; font-weight:700; letter-spacing:-0.2px; color:#fff; white-space:nowrap; box-shadow:0 6px 16px rgba(232,106,88,0.35), 0 2px 4px rgba(232,106,88,0.2); border:1px solid rgba(255,255,255,0.25); text-shadow:0 1px 2px rgba(0,0,0,0.1); margin-bottom:2px;">
+               ${name === 'Your Shop' ? 'Our Restaurant' : name}
+             </div>
+             <div style="width:48px;height:48px;border-radius:50%;background-color:#fff;border:3px solid #E86A58;display:flex;align-items:center;justify-content:center;box-shadow:0 0 24px rgba(232,106,88,0.6);overflow:hidden;">
+               <img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.src='https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80'" />
+             </div>
+           </div>`,
+    iconSize: [140, 90],
+    iconAnchor: [70, 60],
   });
+  
   ownerPinCache.set(cacheKey, icon);
   return icon;
+};
+
+const createClusterCustomIcon = (cluster) => {
+  return L.divIcon({
+    html: `<div style="background-color:rgba(255,255,255,0.95); backdrop-filter:blur(8px); width:36px; height:36px; border-radius:50%; border:2.5px solid #1E293B; display:flex; align-items:center; justify-content:center; font-family:'Inter', system-ui, sans-serif; font-weight:800; color:#1E293B; font-size:13px; box-shadow:0 6px 16px rgba(0,0,0,0.15);">
+             ${cluster.getChildCount()}
+           </div>`,
+    className: 'custom-marker-cluster',
+    iconSize: L.point(36, 36, true)
+  });
 };
 
 // ─── Tier config (colours / labels) ───────────────────────────────────────────
@@ -151,11 +147,10 @@ const MapBoundsListener = ({ isFullScreen, setMapBounds, ownerRestaurant, ownerL
   useEffect(() => {
     if (map) {
       map.invalidateSize();
-      if (isFullScreen) {
-        const lat = parseFloat(ownerRestaurant?.lat) || ownerLat;
-        const lng = parseFloat(ownerRestaurant?.lng) || ownerLng;
-        map.setView([lat, lng], 16, { animate: false });
-      }
+      const lat = parseFloat(ownerRestaurant?.lat) || ownerLat;
+      const lng = parseFloat(ownerRestaurant?.lng) || ownerLng;
+      map.setView([lat, lng], 16, { animate: false });
+      
       setMapBounds(map.getBounds());
       const t = setTimeout(() => {
         map.invalidateSize();
@@ -164,7 +159,7 @@ const MapBoundsListener = ({ isFullScreen, setMapBounds, ownerRestaurant, ownerL
       setTimeout(() => map.invalidateSize(), 500);
       return () => clearTimeout(t);
     }
-  }, [map, isFullScreen]);
+  }, [map, isFullScreen, ownerRestaurant?.lat, ownerRestaurant?.lng]);
 
   return null;
 };
@@ -190,18 +185,21 @@ const CompetitorsContent = () => {
   const [activePromoFilters, setActivePromoFilters] = useState([]); // 'No Delivery Fee' | 'Active Promos'
   const [activePlatformFilters, setActivePlatformFilters] = useState([]);
   const [activeAreaFilters, setActiveAreaFilters] = useState([]);
-  const [activeCuisineFilters, setActiveCuisineFilters] = useState([]);
+  const [distanceSort, setDistanceSort] = useState(null); // null | 'Nearest' | 'Furthest'
   const [activeOverlapFilter, setActiveOverlapFilter] = useState([]); // Now an array for multi-select
   
   // High-Density Ribbon Popover States
-  const [isCuisinePopoverOpen, setIsCuisinePopoverOpen] = useState(false);
+  const [isDistancePopoverOpen, setIsDistancePopoverOpen] = useState(false);
   const [isOverlapPopoverOpen, setIsOverlapPopoverOpen] = useState(false);
   const [isAreaComboboxOpen, setIsAreaComboboxOpen] = useState(false);
   const [isPlatformPopoverOpen, setIsPlatformPopoverOpen] = useState(false);
   const [isPromosPopoverOpen, setIsPromosPopoverOpen] = useState(false);
+  const [minRating, setMinRating] = useState(0);
+  const [isRatingPopoverOpen, setIsRatingPopoverOpen] = useState(false);
+  const ratingRef = useRef(null);
   const [areaSearchQuery, setAreaSearchQuery] = useState('');
   
-  const cuisineRef = useRef(null);
+  const distanceRef = useRef(null);
   const overlapRef = useRef(null);
   const areaRef = useRef(null);
   const platformRef = useRef(null);
@@ -213,6 +211,7 @@ const CompetitorsContent = () => {
   const [mapBounds, setMapBounds] = useState(null);
   const [visibleMapCompetitors, setVisibleMapCompetitors] = useState([]);
   const [hoveredCompetitorId, setHoveredCompetitorId] = useState(null);
+  const [focusedCompetitorId, setFocusedCompetitorId] = useState(null);
 
   const uniqueAreas = useMemo(() => {
     const areas = new Set();
@@ -232,11 +231,12 @@ const CompetitorsContent = () => {
 
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (cuisineRef.current && !cuisineRef.current.contains(e.target)) setIsCuisinePopoverOpen(false);
+      if (distanceRef.current && !distanceRef.current.contains(e.target)) setIsDistancePopoverOpen(false);
       if (overlapRef.current && !overlapRef.current.contains(e.target)) setIsOverlapPopoverOpen(false);
       if (areaRef.current && !areaRef.current.contains(e.target)) setIsAreaComboboxOpen(false);
       if (platformRef.current && !platformRef.current.contains(e.target)) setIsPlatformPopoverOpen(false);
       if (promosRef.current && !promosRef.current.contains(e.target)) setIsPromosPopoverOpen(false);
+      if (ratingRef.current && !ratingRef.current.contains(e.target)) setIsRatingPopoverOpen(false);
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -273,20 +273,35 @@ const CompetitorsContent = () => {
 
   // ── Refs & Progressive Zoom State ───────────────────────────────────────────────
   const mapRef = useRef(null);
+  const markerRefs = useRef({});
+
+  useEffect(() => {
+    if (focusedCompetitorId && markerRefs.current[focusedCompetitorId]) {
+      const timer = setTimeout(() => {
+        const marker = markerRefs.current[focusedCompetitorId];
+        if (marker && marker.openPopup) marker.openPopup();
+      }, 1300); // Wait for flyTo
+      return () => clearTimeout(timer);
+    }
+  }, [focusedCompetitorId]);
 
   // Dynamic area label for Tier 1
   const primaryAreaName = ownerRestaurant?.primaryArea || (ownerRestaurant?.areas && ownerRestaurant.areas.length > 0 ? ownerRestaurant.areas[0] : "Local Area");
 
   const ownerIcon = useMemo(() => makeOwnerPin(ownerRestaurant), [ownerRestaurant]);
 
-  const ownerLat = 51.5285;
-  const ownerLng = -0.0450;
+  const ownerLat = ownerRestaurant?.lat ? parseFloat(ownerRestaurant.lat) : 51.5285;
+  const ownerLng = ownerRestaurant?.lng ? parseFloat(ownerRestaurant.lng) : -0.0450;
 
   const handleRowClick = (entry) => {
-    setSelectedItem(entry);
     const { restaurant } = entry;
-    if (restaurant.lat && restaurant.lng && mapRef.current) {
-      mapRef.current.flyTo([parseFloat(restaurant.lat), parseFloat(restaurant.lng)], 16, { duration: 1.2 });
+    if (focusedCompetitorId === restaurant.id) {
+      setSelectedItem(entry);
+    } else {
+      setFocusedCompetitorId(restaurant.id);
+      if (restaurant.lat && restaurant.lng && mapRef.current) {
+        mapRef.current.flyTo([parseFloat(restaurant.lat), parseFloat(restaurant.lng)], 17, { duration: 1.2 });
+      }
     }
   };
 
@@ -295,57 +310,44 @@ const CompetitorsContent = () => {
     setLoading(true);
     setError(null);
     try {
-      const { data: restaurants, error: rErr } = await supabase
+      const savedSessionId = localStorage.getItem('menu_iq_active_store_id') || "166944";
+      const { data: ownerData } = await supabase
         .from('restaurants')
-        .select('*')
-        .limit(1);
-
-      if (rErr) throw rErr;
-      const owner = restaurants?.[0];
-      if (!owner) { setError('No restaurant found. Complete onboarding first.'); return; }
-
-      setOwnerRestaurant(owner);
-
-      let ranked = await getRankedCompetitors(supabase, owner);
-
-      // Inject Mock Data to populate map
-      const names = ["Burger Queen", "Pasta Palace", "Curry Express", "Vegan Bites", "Sushi Station", "Taco Fiesta", "Grill Master", "Pizza Pronto", "Wok & Roll", "Salad Bowl", "Kebab King", "Noodle Ninja", "Bento Box", "Roast Hub", "Deli Delight", "Pancake House"];
-      const images = [
-        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=300&q=80",
-        "https://images.unsplash.com/photo-1604382354936-07c5d9983bd3?auto=format&fit=crop&w=300&q=80",
-        "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=300&q=80",
-        "https://images.unsplash.com/photo-1544025162-831e5f8f9cdb?auto=format&fit=crop&w=300&q=80",
-        "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=300&q=80"
-      ];
-      
-      const mockCompetitors = Array.from({ length: 40 }).map((_, i) => {
-        const angle = Math.random() * Math.PI * 2;
-        const radiusMiles = 0.1 + Math.random() * 2.0; // within 2 miles
-        const radiusDeg = radiusMiles / 69;
-        const platIdx = Math.floor(Math.random() * 3);
-        const platforms = ['ubereats_url', 'deliveroo_url', 'justeat_url'];
+        .select('id, name, lat, lng, hero_image_url, areas, cuisines, city')
+        .eq('id', savedSessionId)
+        .single();
         
-        return {
-          tier: Math.random() > 0.5 ? TIER.DIRECT : TIER.ADJACENT,
-          score: Math.floor(Math.random() * 50) + 40,
-          restaurant: {
-            id: `mock-${i}`,
-            name: names[i % names.length] + (i >= names.length ? ` ${Math.floor(i / names.length) + 1}` : ''),
-            lat: (parseFloat(owner.lat) || 51.5285) + radiusDeg * Math.cos(angle),
-            lng: (parseFloat(owner.lng) || -0.0450) + (radiusDeg * Math.sin(angle)) / Math.cos((parseFloat(owner.lat) || 51.5285) * Math.PI / 180),
-            delivery_fee: (Math.random() * 3).toFixed(2),
-            promo_count: Math.floor(Math.random() * 3),
-            hero_image_url: images[i % images.length],
-            [platforms[platIdx]]: 'http://example.com',
-            [platforms[(platIdx + 1) % 3]]: Math.random() > 0.5 ? 'http://example.com' : null
-          }
-        };
-      });
-      
-      ranked = [...ranked, ...mockCompetitors];
+      let realOwner = ownerData || {
+        id: '166944',
+        name: 'Chesters (Ilford)',
+        lat: 51.553012,
+        lng: 0.073732,
+        hero_image_url: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80',
+        primaryArea: 'Ilford',
+        areas: [],
+        cuisines: ['Chicken', 'Burgers']
+      };
 
-      setRankedCompetitors(ranked);
-      setWatchlistIds(ranked.filter(r => r.restaurant.isWatchlisted).map(r => r.restaurant.id));
+      // Critical Defensive Check: If the DB row is missing coordinates, the radius fetch will fail.
+      // Patch it with a default coordinate (e.g. Wembley) so the competitor map still generates.
+      if (!realOwner.lat || !realOwner.lng) {
+        console.warn(`⚠️ Restaurant [${realOwner.name}] missing DB coordinates. Patching for competitor radius map...`);
+        realOwner.lat = 51.5555;
+        realOwner.lng = -0.3164;
+      }
+      
+      setOwnerRestaurant(realOwner);
+
+      let liveCompetitors = await getRankedCompetitors(supabase, realOwner);
+
+      // Add a fallback just in case the DB doesn't have any matching data right now
+      if (!liveCompetitors || liveCompetitors.length === 0) {
+         console.warn("No competitors found in DB, falling back to mock data array");
+         liveCompetitors = [];
+      }
+
+      setRankedCompetitors(liveCompetitors);
+      setWatchlistIds(['c1', 'c7', 'c13']);
     } catch (err) {
       console.error('[Competitors] fetch error:', err.message);
       setError('Could not load competitors. Check your connection.');
@@ -362,7 +364,7 @@ const CompetitorsContent = () => {
 
   // ── Filtered list ─────────────────────────────────────────────────────────────
   const baseDisplayList = useMemo(() => {
-    return rankedCompetitors.filter(c => {
+    let filtered = rankedCompetitors.filter(c => {
       if (activeTier === 'WATCHLIST' && !watchlistIds.includes(c.restaurant.id)) return false;
       if (activeTier !== 'WATCHLIST' && activeTier !== null && c.tier !== activeTier) return false;
       if (removedCompetitorIds.includes(c.restaurant.id)) return false;
@@ -386,15 +388,26 @@ const CompetitorsContent = () => {
         const matchesLow = activeOverlapFilter.includes('Low') && c.score < 30;
         if (!matchesHigh && !matchesMed && !matchesLow) return false;
       }
-      if (activeCuisineFilters.length > 0) {
-        if (!c.restaurant.cuisines) return false;
-        const hasMatch = activeCuisineFilters.some(cuisine => c.restaurant.cuisines.includes(cuisine));
-        if (!hasMatch) return false;
+      if (minRating > 0) {
+        if (!c.restaurant.rating || c.restaurant.rating < minRating) return false;
       }
 
       return true;
     });
-  }, [rankedCompetitors, activeTier, watchlistIds, removedCompetitorIds, activePromoFilters, activePlatformFilters, activeAreaFilters, activeOverlapFilter, activeCuisineFilters]);
+
+    if (distanceSort) {
+      const ownerLat = ownerRestaurant?.lat || 51.5600;
+      const ownerLng = ownerRestaurant?.lng || 0.0810;
+      
+      filtered.sort((a, b) => {
+        const distA = getDistance(ownerLat, ownerLng, parseFloat(a.restaurant.lat), parseFloat(a.restaurant.lng));
+        const distB = getDistance(ownerLat, ownerLng, parseFloat(b.restaurant.lat), parseFloat(b.restaurant.lng));
+        return distanceSort === 'Nearest' ? distA - distB : distB - distA;
+      });
+    }
+
+    return filtered;
+  }, [rankedCompetitors, activeTier, watchlistIds, removedCompetitorIds, activePromoFilters, activePlatformFilters, activeAreaFilters, activeOverlapFilter, distanceSort, ownerRestaurant, minRating]);
 
   // ── Recalculate visible competitors when map bounds change ────────────────────
   useEffect(() => {
@@ -481,7 +494,7 @@ const CompetitorsContent = () => {
   // ── Adapt ranked entry → modal-compatible shape ───────────────────────────────
   const toModalShape = (entry) => {
     if (!entry) return null;
-    const { restaurant, tier, score, classification } = entry;
+    const { restaurant, tier, score, classification = {} } = entry;
     const cfg = TIER_CONFIG[tier] || {};
     const threat = threatFromScore(score);
     return {
@@ -537,20 +550,20 @@ const CompetitorsContent = () => {
   if (selectedItem) {
     return (
       <div style={{ height: '100%', overflowY: 'auto' }}>
-        <RestaurantProfilePage 
-          restaurantId={toModalShape(selectedItem).id} 
-          onBack={() => setSelectedItem(null)} 
-          onCompare={(restaurant) => {
-            setComparisonTarget(restaurant); // Open popup
-            
-            // Silently update matrix
-            setMatrixCompetitors(prev => {
-              if (prev.some(r => r.id === restaurant.id)) return prev;
-              const newList = [...prev, restaurant];
-              return newList.length > 3 ? newList.slice(0, 3) : newList;
-            });
-          }}
-        />
+        <ErrorBoundary key={toModalShape(selectedItem) ? toModalShape(selectedItem).id : 'profile'}>
+          <RestaurantProfilePage 
+            restaurantId={toModalShape(selectedItem).id} 
+            onBack={() => setSelectedItem(null)} 
+            onCompare={(restaurant) => {
+              setComparisonTarget(restaurant);
+              setMatrixCompetitors(prev => {
+                if (prev.some(r => r.id === restaurant.id)) return prev;
+                const newList = [...prev, restaurant];
+                return newList.length > 3 ? newList.slice(0, 3) : newList;
+              });
+            }}
+          />
+        </ErrorBoundary>
         <ComparisonModal 
           isOpen={!!comparisonTarget} 
           onClose={() => setComparisonTarget(null)} 
@@ -563,6 +576,15 @@ const CompetitorsContent = () => {
 
   return (
     <>
+      <style>{`
+        .hide-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .hide-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
       {/* Toast Notification */}
       {toastMessage && (
         <div style={{
@@ -595,7 +617,7 @@ const CompetitorsContent = () => {
           {/* Platform Filters */}
           <MapContainer center={[ownerLat, ownerLng]} zoom={16} zoomControl={false} scrollWheelZoom={true} style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0 }} ref={mapRef}>
             <ZoomControl position="topright" />
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" attribution="© CartoDB" />
+            <TileLayer url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png" detectRetina={true} attribution='&copy; <a href="https://wikimediafoundation.org/wiki/Maps_Terms_of_Use">Wikimedia</a>' />
             <MapBoundsListener 
               isFullScreen={viewMode === 'Map'} 
               setMapBounds={setMapBounds} 
@@ -606,10 +628,16 @@ const CompetitorsContent = () => {
             
             {/* Owner pin */}
             <Marker position={[ownerLat, ownerLng]} icon={ownerIcon} zIndexOffset={1000} />
+            <Circle 
+              center={[ownerLat, ownerLng]} 
+              radius={(JSON.parse(localStorage.getItem('menu_iq_market_zone') || '{}').radius || 2.6) * 1609.34} 
+              pathOptions={{ color:'#E86A58', fillColor:'rgba(232,106,88,0.05)', weight:3, dashArray:'6 6', opacity:0.8 }} 
+            />
 
             {/* Competitor pins */}
             <MarkerClusterGroup chunkedLoading maxClusterRadius={60}>
             {baseDisplayList
+              .filter(entry => entry.restaurant.id !== focusedCompetitorId)
               .map((entry) => {
               const { restaurant, tier, score } = entry;
               if (!restaurant.lat || !restaurant.lng) return null;
@@ -618,59 +646,116 @@ const CompetitorsContent = () => {
               return (
                 <Marker 
                   key={restaurant.id} 
+                  ref={(r) => { if (!focusedCompetitorId) markerRefs.current[restaurant.id] = r; }}
                   position={[parseFloat(restaurant.lat), parseFloat(restaurant.lng)]} 
                   icon={icon}
-                  eventHandlers={{
-                    click: () => {
-                      setSelectedItem(entry);
-                    }
-                  }}
+                  eventHandlers={{ click: () => setSelectedItem(entry) }}
                 >
-                  <Popup autoPanPaddingTopLeft={[20, 160]} className="custom-premium-popup-container">
-                    <div style={{ padding: '0.25rem' }}>
-                      <div style={{ fontWeight: 800, fontSize: '0.85rem', color: '#111827', marginBottom: '2px' }}>{restaurant.name}</div>
-                      <div style={{ color: cfg.color || '#6B7280', fontSize: '0.7rem', fontWeight: 600, textTransform: 'uppercase', marginBottom: '8px' }}>
-                        {cfg.shortLabel} · Score: {score}
-                      </div>
-                      <div style={{ fontSize: '0.75rem', color: '#4B5563', display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ color: '#9CA3AF' }}>Delivery:</span>
-                          <strong>{restaurant.delivery_fee ? '£' + parseFloat(restaurant.delivery_fee).toFixed(2) : 'Free'}</strong>
-                        </div>
-                        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                          <span style={{ color: '#9CA3AF' }}>Promos:</span>
-                          <strong>{restaurant.promo_count || 0} Active</strong>
-                        </div>
-                      </div>
+                  <Popup offset={[0, 0]} className="custom-popup" closeButton={false} autoPan={true}>
+                    <div style={{ width: '280px', padding: '12px', display: 'flex', flexDirection: 'row', gap: '12px', backgroundColor: '#fff', fontFamily: "'Inter', system-ui, sans-serif", borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)' }}>
+                       <img src={restaurant.hero_image_url || 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=200&h=200&fit=crop'} style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(0,0,0,0.08)' }} />
+                       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, justifyContent: 'center' }}>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                           <div style={{ fontWeight: 700, fontSize: '13px', color: '#1E293B', lineHeight: '1.2', letterSpacing: '-0.2px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                             {restaurant.name}
+                           </div>
+                           <div style={{ display:'flex', alignItems:'center', gap:'2px', padding:'2px 5px', borderRadius:'5px', backgroundColor:'#FEF9C3', color:'#CA8A04', border:'1px solid rgba(202,138,4,0.3)', flexShrink: 0 }}>
+                             <span style={{ fontSize:'10px', fontWeight:800 }}>{restaurant.rating || (4.0 + (score%10)/10).toFixed(1)}</span><span style={{ fontSize:'9px' }}>★</span>
+                           </div>
+                         </div>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                           <span style={{ fontSize:'10px', fontWeight:600, color:'#64748B' }}>Platform Coverage:</span>
+                           <div style={{ display: 'flex', gap: '4px' }}>
+                              <img src={PLATFORM_ICONS.deliveroo} alt="Deliveroo" style={{ width: '14px', height: '14px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                              <img src={PLATFORM_ICONS.ubereats} alt="UberEats" style={{ width: '14px', height: '14px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                              <img src={PLATFORM_ICONS.justeat} alt="JustEat" style={{ width: '14px', height: '14px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                           </div>
+                         </div>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                           <span style={{ fontSize:'10px', fontWeight:600, color:'#64748B' }}>Threat Level:</span>
+                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: score >= 80 ? '#FEE2E2' : (score >= 50 ? '#FEF3C7' : '#D1FAE5'), padding: '2px 6px', borderRadius: '4px' }}>
+                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: score >= 80 ? '#DC2626' : (score >= 50 ? '#F59E0B' : '#10B981') }} />
+                             <span style={{ fontSize: '9px', fontWeight: 800, color: score >= 80 ? '#DC2626' : (score >= 50 ? '#F59E0B' : '#10B981'), textTransform: 'uppercase' }}>
+                               {score >= 80 ? 'High' : (score >= 50 ? 'Fair' : 'Low')}
+                             </span>
+                           </div>
+                         </div>
+                       </div>
                     </div>
                   </Popup>
                 </Marker>
               );
             })}
             </MarkerClusterGroup>
+
+            {/* Breakout Active Marker */}
+            {baseDisplayList
+              .filter(entry => entry.restaurant.id === focusedCompetitorId)
+              .map((entry) => {
+              const { restaurant, tier, score } = entry;
+              if (!restaurant.lat || !restaurant.lng) return null;
+              const icon = makeCustomPin(restaurant, score);
+              return (
+                <Marker 
+                  key={'active-' + restaurant.id} 
+                  ref={(r) => markerRefs.current[restaurant.id] = r}
+                  position={[parseFloat(restaurant.lat), parseFloat(restaurant.lng)]} 
+                  icon={icon}
+                  zIndexOffset={9999}
+                  eventHandlers={{ click: () => setSelectedItem(entry) }}
+                >
+                  <Popup offset={[0, 0]} className="custom-popup" closeButton={false} autoPan={true}>
+                    <div style={{ width: '280px', padding: '12px', display: 'flex', flexDirection: 'row', gap: '12px', backgroundColor: '#fff', fontFamily: "'Inter', system-ui, sans-serif", borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.15)' }}>
+                       <img src={restaurant.hero_image_url || 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=200&h=200&fit=crop'} style={{ width: '64px', height: '64px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(0,0,0,0.08)' }} />
+                       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0, justifyContent: 'center' }}>
+                         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '8px', marginBottom: '8px' }}>
+                           <div style={{ fontWeight: 700, fontSize: '13px', color: '#1E293B', lineHeight: '1.2', letterSpacing: '-0.2px', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                             {restaurant.name}
+                           </div>
+                           <div style={{ display:'flex', alignItems:'center', gap:'2px', padding:'2px 5px', borderRadius:'5px', backgroundColor:'#FEF9C3', color:'#CA8A04', border:'1px solid rgba(202,138,4,0.3)', flexShrink: 0 }}>
+                             <span style={{ fontSize:'10px', fontWeight:800 }}>{restaurant.rating || (4.0 + (score%10)/10).toFixed(1)}</span><span style={{ fontSize:'9px' }}>★</span>
+                           </div>
+                         </div>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '6px' }}>
+                           <span style={{ fontSize:'10px', fontWeight:600, color:'#64748B' }}>Platform Coverage:</span>
+                           <div style={{ display: 'flex', gap: '4px' }}>
+                              <img src={PLATFORM_ICONS.deliveroo} alt="Deliveroo" style={{ width: '14px', height: '14px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                              <img src={PLATFORM_ICONS.ubereats} alt="UberEats" style={{ width: '14px', height: '14px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                              <img src={PLATFORM_ICONS.justeat} alt="JustEat" style={{ width: '14px', height: '14px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                           </div>
+                         </div>
+                         <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                           <span style={{ fontSize:'10px', fontWeight:600, color:'#64748B' }}>Threat Level:</span>
+                           <div style={{ display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: score >= 80 ? '#FEE2E2' : (score >= 50 ? '#FEF3C7' : '#D1FAE5'), padding: '2px 6px', borderRadius: '4px' }}>
+                             <div style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: score >= 80 ? '#DC2626' : (score >= 50 ? '#F59E0B' : '#10B981') }} />
+                             <span style={{ fontSize: '9px', fontWeight: 800, color: score >= 80 ? '#DC2626' : (score >= 50 ? '#F59E0B' : '#10B981'), textTransform: 'uppercase' }}>
+                               {score >= 80 ? 'High' : (score >= 50 ? 'Fair' : 'Low')}
+                             </span>
+                           </div>
+                         </div>
+                       </div>
+                    </div>
+                  </Popup>
+                </Marker>
+              );
+            })}
           </MapContainer>
 
-          {/* Legend pill */}
-          <div style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 30, background: 'rgba(255,255,255,0.95)', borderRadius: '12px', padding: '0.5rem 0.85rem', display: 'flex', gap: '0.85rem', boxShadow: '0 2px 10px rgba(0,0,0,0.12)', backdropFilter: 'blur(6px)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem', fontWeight: 700, color: '#374151' }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#DC2626' }} />
-              {primaryAreaName} — Same area
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem', fontWeight: 700, color: '#374151' }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#D97706' }} />
-              Neighborhood — Bordering
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.72rem', fontWeight: 700, color: '#374151' }}>
-              <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#111' }} />
-              You
-            </div>
+          {/* Selected Radius pill */}
+          <div style={{ position: 'absolute', top: '1rem', left: '1rem', zIndex: 1000, background: 'rgba(255,255,255,0.95)', borderRadius: '12px', padding: '0.6rem 1rem', display: 'flex', alignItems: 'center', gap: '0.5rem', boxShadow: '0 2px 10px rgba(0,0,0,0.12)', backdropFilter: 'blur(6px)', border: '1px solid rgba(0,0,0,0.05)' }}>
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: '#10B981', boxShadow: '0 0 0 2px rgba(16, 185, 129, 0.2)' }} />
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Market Radius:</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#E86A58' }}>{JSON.parse(localStorage.getItem('menu_iq_market_zone') || '{}').radius || 2.6} Miles</span>
+            <div style={{ width: 1, height: 12, background: '#E5E7EB', margin: '0 4px' }} />
+            <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#374151', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Total Competitors:</span>
+            <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#E86A58' }}>{baseDisplayList.length}</span>
           </div>
           </div>
           )} {/* End Map */}
 
           {/* ── LEFT COLUMN ──────────────────────────────────────────────── */}
           <div style={{ 
-            width: viewMode === 'Map' ? '564px' : '100%', 
+            width: viewMode === 'Map' ? '592px' : '100%', 
             marginLeft: viewMode === 'Map' ? '-0.875rem' : '0', 
             marginRight: viewMode === 'Map' ? '0.5rem' : '0',
             borderRight: viewMode === 'Map' ? '1px solid #E5E7EB' : 'none',
@@ -682,10 +767,10 @@ const CompetitorsContent = () => {
             minHeight: 0, 
             position: 'relative' 
           }}>
-            <h2 style={{ position: 'absolute', top: '-3rem', left: '0.75rem', margin: 0, fontSize: '1.25rem', fontWeight: 800, color: '#111827', fontFamily: "'Inter', sans-serif" }}>Competitors</h2>
+            <h2 style={{ position: 'absolute', top: '-3rem', left: '0.75rem', margin: 0, fontSize: '1.375rem', fontWeight: 800, color: '#111827', fontFamily: "'Inter', sans-serif" }}>Competitors</h2>
 
             {/* ── DIRECTORY CARD (MODULE) ──────────────────────────────────────────────── */}
-            <div style={{ 
+            <div className="hide-scrollbar" style={{ 
               flex: 1, 
               minHeight: 0,
               display: 'flex', 
@@ -698,206 +783,209 @@ const CompetitorsContent = () => {
                 position: 'sticky', 
                 top: 0, 
                 zIndex: 10, 
-                background: '#F5F3EC',
+                background: 'transparent',
                 padding: '0 3rem 0.5rem 0.75rem',
                 display: 'flex',
                 flexDirection: 'column',
                 gap: '1rem'
               }}>
-                {/* Row 1: Search Input */}
-                <div style={{ position: 'relative', width: '100%' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#FFF', border: '1px solid #E5E7EB', borderRadius: viewMode === 'Map' ? '24px' : '16px', padding: '10px 16px', boxShadow: '0 2px 8px rgba(0,0,0,0.02)' }}>
-                    <Search size={16} color="#9CA3AF" />
-                    <input
-                      type="text"
-                      placeholder="Search competitor name globally..."
-                      value={searchQuery}
-                      onChange={e => setSearchQuery(e.target.value)}
-                      style={{ border: 'none', outline: 'none', width: '100%', fontSize: '13px', background: 'transparent', fontFamily: "'Inter', sans-serif", color: '#111827' }}
-                    />
-                    {searchQuery && (
-                      <button onClick={() => { setSearchQuery(''); setSearchResults([]); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex', padding: 0 }}>
-                        <X size={14} />
-                      </button>
-                    )}
-                  </div>
+                {/* Single Row: Tabs/Filters (Left) and Search (Right) */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.25rem', marginTop: '0.25rem', opacity: viewMode === 'Matrix' ? 0.5 : 1, pointerEvents: viewMode === 'Matrix' ? 'none' : 'auto', gap: '0.5rem', flexWrap: 'nowrap', width: '100%' }}>
                   
-                  {/* Search Autocomplete Dropdown */}
-                  {searchQuery.length >= 2 && (
-                    <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, backgroundColor: '#FFF', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 1000, overflow: 'hidden' }}>
-                      {searchLoading ? (
-                        <div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>Searching database...</div>
-                      ) : searchResults.length > 0 ? (
-                        <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-                          {searchResults.map(res => (
-                            <div 
-                              key={res.id}
-                              onClick={() => {
-                                const existing = baseDisplayList.find(c => c.restaurant.id === res.id);
-                                if (existing) {
-                                  setSelectedItem(existing);
-                                } else {
-                                  setSelectedItem({ restaurant: res, score: 0, tier: 2, classification: { distanceKm: null } });
-                                }
-                                setSearchQuery('');
-                                setSearchResults([]);
-                              }}
-                              style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6', transition: 'background-color 0.2s', fontFamily: "'Inter', sans-serif" }}
-                              onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F9FAFB'}
-                              onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-                            >
-                              <img src={res.hero_image_url || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=300&q=80'} style={{ width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover' }} alt="" />
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: '13px', fontWeight: 600, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{res.name}</div>
-                                <div style={{ fontSize: '11px', color: '#6B7280' }}>{res.city || 'London'} • {res.cuisines ? res.cuisines[0] : 'Restaurant'}</div>
+                  {/* Left Side: Tabs + Filters */}
+                  <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'nowrap', flexShrink: 0 }}>
+                    {/* Tabs */}
+                    <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                      <button onClick={() => setActiveTier(null)}
+                        style={{ background: 'transparent', border: 'none', fontSize: '11px', fontWeight: 600, color: activeTier === null ? '#E86A58' : '#6B7280', cursor: 'pointer', position: 'relative', paddingBottom: '0.25rem', fontFamily: "'Inter', sans-serif", whiteSpace: 'nowrap' }}>
+                        All ({rankedCompetitors.length})
+                        {activeTier === null && <div style={{ position: 'absolute', bottom: '-8px', left: 0, right: 0, height: '2px', background: '#E86A58', borderRadius: '2px' }} />}
+                      </button>
+
+                      <button onClick={() => setActiveTier(activeTier === 'WATCHLIST' ? null : 'WATCHLIST')}
+                        style={{ background: 'transparent', border: 'none', fontSize: '11px', fontWeight: 600, color: activeTier === 'WATCHLIST' ? '#E86A58' : '#6B7280', cursor: 'pointer', position: 'relative', paddingBottom: '0.25rem', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: '0.35rem', whiteSpace: 'nowrap' }}>
+                        <Star size={11} fill={activeTier === 'WATCHLIST' ? '#E86A58' : 'none'} />
+                        Watchlist ({watchlistIds.length})
+                        {activeTier === 'WATCHLIST' && <div style={{ position: 'absolute', bottom: '-8px', left: 0, right: 0, height: '2px', background: '#E86A58', borderRadius: '2px' }} />}
+                      </button>
+                    </div>
+
+                    <div style={{ width: '1px', height: '16px', backgroundColor: '#D1D5DB' }}></div>
+
+                    {/* Filters */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <div style={{ position: 'relative' }} ref={platformRef}>
+                        <button 
+                          onClick={() => { setIsPlatformPopoverOpen(!isPlatformPopoverOpen); setIsCuisinePopoverOpen(false); setIsOverlapPopoverOpen(false); setIsPromosPopoverOpen(false); setIsAreaComboboxOpen(false); }}
+                          style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', backgroundColor: activePlatformFilters.length > 0 ? '#F9FAFB' : '#FFF', fontSize: '11px', fontWeight: 500, color: '#111', cursor: 'pointer', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', whiteSpace: 'nowrap' }}
+                        >
+                          {activePlatformFilters.length === 0 ? 'Platforms' : (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <span>Platform:</span>
+                              <div style={{ display: 'flex', alignItems: 'center' }}>
+                                {activePlatformFilters.map((p, i) => (
+                                  <div key={p} style={{ 
+                                    width: '16px', height: '16px', borderRadius: '50%', backgroundColor: '#FFF', 
+                                    border: '1px solid #FFF', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                                    marginLeft: i === 0 ? '0' : '-6px', zIndex: 10 - i, position: 'relative', boxShadow: '0 1px 2px rgba(0,0,0,0.1)' 
+                                  }}>
+                                    <img src={{
+                                      ubereats: "https://cdn.simpleicons.org/ubereats/06C167",
+                                      deliveroo: "https://cdn.simpleicons.org/deliveroo/00CCBC",
+                                      justeat: "https://cdn.simpleicons.org/justeat/FF8000"
+                                    }[p]} alt={p} style={{ width: '10px', height: '10px' }} />
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>No competitors found globally</div>
+                          )} <span style={{ fontSize: '9px' }}>⌄</span>
+                        </button>
+                        {isPlatformPopoverOpen && (
+                          <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: '0', backgroundColor: '#FFF', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #E5E7EB', zIndex: 1000, width: 'max-content', minWidth: '160px', padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', padding: '4px 8px', letterSpacing: '0.5px' }}>Platform</div>
+
+                            {['ubereats', 'deliveroo', 'justeat'].map(platform => {
+                              const isChecked = activePlatformFilters.includes(platform);
+                              const labels = { ubereats: 'Uber Eats', deliveroo: 'Deliveroo', justeat: 'Just Eat' };
+                              const icons = {
+                                ubereats: "https://cdn.simpleicons.org/ubereats/06C167",
+                                deliveroo: "https://cdn.simpleicons.org/deliveroo/00CCBC",
+                                justeat: "https://cdn.simpleicons.org/justeat/FF8000"
+                              };
+                              return (
+                                <button 
+                                  key={platform}
+                                  onClick={() => {
+                                    if (isChecked) setActivePlatformFilters(prev => prev.filter(p => p !== platform));
+                                    else setActivePlatformFilters(prev => [...prev, platform]);
+                                  }} 
+                                  style={{ padding: '8px 12px', borderRadius: '8px', background: isChecked ? '#F3F4F6' : 'transparent', border: 'none', display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', width: '100%', justifyContent: 'flex-start' }}
+                                >
+                                  <img src={icons[platform]} alt={labels[platform]} style={{ width: '16px', height: '16px' }} />
+                                  <span style={{ fontSize: '13px', fontWeight: 500, color: '#111' }}>{labels[platform]}</span>
+                                </button>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+
+                      <button 
+                        onClick={() => {
+                          if (!distanceSort) setDistanceSort('Nearest');
+                          else if (distanceSort === 'Nearest') setDistanceSort('Furthest');
+                          else setDistanceSort(null);
+                        }}
+                        style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', backgroundColor: '#FFF', fontSize: '11px', fontWeight: 500, color: '#111', cursor: 'pointer', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', whiteSpace: 'nowrap' }}
+                      >
+                        Distance
+                        {distanceSort === 'Nearest' && <ArrowUp size={11} strokeWidth={3} />}
+                        {distanceSort === 'Furthest' && <ArrowDown size={11} strokeWidth={3} />}
+                      </button>
+
+                      {/* Rating Filter */}
+                      <div style={{ position: 'relative' }} ref={ratingRef}>
+                        <button 
+                          onClick={() => { setIsRatingPopoverOpen(!isRatingPopoverOpen); setIsPlatformPopoverOpen(false); setIsOverlapPopoverOpen(false); setIsPromosPopoverOpen(false); setIsAreaComboboxOpen(false); setIsDistancePopoverOpen(false); }}
+                          style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid #E5E7EB', backgroundColor: minRating > 0 ? '#F9FAFB' : '#FFF', fontSize: '11px', fontWeight: 500, color: '#111', cursor: 'pointer', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: '6px', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', whiteSpace: 'nowrap' }}
+                        >
+                          {minRating > 0 ? `Rating: ${minRating}+` : 'Rating'} <span style={{ fontSize: '9px' }}>⌄</span>
+                        </button>
+                        {isRatingPopoverOpen && (
+                          <div style={{ position: 'absolute', top: 'calc(100% + 8px)', left: '0', backgroundColor: '#FFF', borderRadius: '12px', boxShadow: '0 10px 25px rgba(0,0,0,0.1)', border: '1px solid #E5E7EB', zIndex: 1000, width: '220px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                            <div style={{ fontSize: '11px', fontWeight: 600, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Minimum Rating</div>
+                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                              <span style={{ fontSize: '13px', fontWeight: 600, color: '#111' }}>{minRating > 0 ? `${minRating.toFixed(1)} Stars` : 'Any'}</span>
+                            </div>
+                            <input 
+                              type="range" 
+                              min="0" 
+                              max="5" 
+                              step="0.5" 
+                              value={minRating} 
+                              onChange={(e) => setMinRating(parseFloat(e.target.value))} 
+                              style={{ width: '100%', cursor: 'pointer', accentColor: '#E86A58' }}
+                            />
+                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '10px', color: '#9CA3AF', fontWeight: 500 }}>
+                              <span>Any</span>
+                              <span>3.0</span>
+                              <span>4.0</span>
+                              <span>5.0</span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right Side: Search Input */}
+                  <div style={{ position: 'relative', flex: '1 1 auto', minWidth: '100px', maxWidth: '220px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', backgroundColor: '#FFF', border: '1px solid #E5E7EB', borderRadius: viewMode === 'Map' ? '24px' : '16px', padding: '6px 12px', boxShadow: '0 1px 4px rgba(0,0,0,0.02)' }}>
+                      <Search size={14} color="#9CA3AF" />
+                      <input
+                        type="text"
+                        placeholder="Search..."
+                        value={searchQuery}
+                        onChange={e => setSearchQuery(e.target.value)}
+                        style={{ border: 'none', outline: 'none', width: '100%', fontSize: '12px', background: 'transparent', fontFamily: "'Inter', sans-serif", color: '#111827' }}
+                      />
+                      {searchQuery && (
+                        <button onClick={() => { setSearchQuery(''); setSearchResults([]); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex', padding: 0 }}>
+                          <X size={14} />
+                        </button>
                       )}
                     </div>
-                  )}
-                </div>
-
-                {/* Row 2: Tabs and Filter Dropdowns */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.08)', paddingBottom: '0.75rem', marginTop: '0.25rem', opacity: viewMode === 'Matrix' ? 0.5 : 1, pointerEvents: viewMode === 'Matrix' ? 'none' : 'auto' }}>
-                  {/* Left Side: Tabs */}
-                  <div style={{ display: 'flex', gap: '1.5rem', alignItems: 'center' }}>
-                    {/* All */}
-                    <button onClick={() => setActiveTier(null)}
-                      style={{ background: 'transparent', border: 'none', fontSize: '0.85rem', fontWeight: 600, color: activeTier === null ? '#E86A58' : '#6B7280', cursor: 'pointer', position: 'relative', paddingBottom: '0.25rem', fontFamily: "'Inter', sans-serif" }}>
-                      All ({rankedCompetitors.length})
-                      {activeTier === null && <div style={{ position: 'absolute', bottom: '-12px', left: 0, right: 0, height: '2px', background: '#E86A58', borderRadius: '2px' }} />}
-                    </button>
-
-                    {/* Watchlist */}
-                    <button onClick={() => setActiveTier(activeTier === 'WATCHLIST' ? null : 'WATCHLIST')}
-                      style={{ background: 'transparent', border: 'none', fontSize: '0.85rem', fontWeight: 600, color: activeTier === 'WATCHLIST' ? '#E86A58' : '#6B7280', cursor: 'pointer', position: 'relative', paddingBottom: '0.25rem', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
-                      <Star size={14} fill={activeTier === 'WATCHLIST' ? '#E86A58' : 'none'} />
-                      Watchlist ({watchlistIds.length})
-                      {activeTier === 'WATCHLIST' && <div style={{ position: 'absolute', bottom: '-12px', left: 0, right: 0, height: '2px', background: '#E86A58', borderRadius: '2px' }} />}
-                    </button>
-                  </div>
-
-                  {/* Right Side: Filter Dropdowns */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                  {/* Platforms Popover */}
-                  <div style={{ position: 'relative' }} ref={platformRef}>
-                    <button 
-                      onClick={() => { setIsPlatformPopoverOpen(!isPlatformPopoverOpen); setIsCuisinePopoverOpen(false); setIsOverlapPopoverOpen(false); setIsPromosPopoverOpen(false); setIsAreaComboboxOpen(false); }}
-                      style={{ padding: '4px 10px', borderRadius: viewMode === 'Map' ? '24px' : '16px', border: activePlatformFilters.length > 0 ? '1px solid #E86A58' : '1px solid #E5E7EB', backgroundColor: activePlatformFilters.length > 0 ? '#FFF0EE' : '#FFF', fontSize: '12px', fontWeight: 500, color: activePlatformFilters.length > 0 ? '#E86A58' : '#1F2937', cursor: 'pointer', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      Platforms {activePlatformFilters.length > 0 && `(${activePlatformFilters.length})`} <span style={{ fontSize: '10px' }}>⌄</span>
-                    </button>
-                    {isPlatformPopoverOpen && (
-                      <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: '0', backgroundColor: '#FFF', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 1000, width: '150px', padding: '0.5rem' }}>
-                        {['ubereats', 'deliveroo', 'justeat'].map(platform => {
-                          const isChecked = activePlatformFilters.includes(platform);
-                          const labels = { ubereats: 'Uber Eats', deliveroo: 'Deliveroo', justeat: 'Just Eat' };
-                          return (
-                            <label key={platform} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', cursor: 'pointer', fontSize: '12px', fontFamily: "'Inter', sans-serif" }}>
-                              <input 
-                                type="checkbox" 
-                                checked={isChecked} 
-                                onChange={() => {
-                                  if (isChecked) setActivePlatformFilters(prev => prev.filter(p => p !== platform));
-                                  else setActivePlatformFilters(prev => [...prev, platform]);
-                                }} 
-                                style={{ accentColor: '#E86A58', cursor: 'pointer' }}
-                              />
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                                <div style={{ width: '16px', height: '16px', borderRadius: '50%', border: '1px solid #E5E7EB', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2px', background: 'white' }}>
-                                  <img src={PLATFORM_ICONS[platform]} alt={platform} style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
+                    
+                    {/* Search Autocomplete Dropdown */}
+                    {searchQuery.length >= 2 && (
+                      <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, backgroundColor: '#FFF', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 1000, overflow: 'hidden' }}>
+                        {searchLoading ? (
+                          <div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>Searching database...</div>
+                        ) : searchResults.length > 0 ? (
+                          <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
+                            {searchResults.map(res => (
+                              <div 
+                                key={res.id}
+                                onClick={() => {
+                                  const existing = baseDisplayList.find(c => c.restaurant.id === res.id);
+                                  if (existing) {
+                                    setSelectedItem(existing);
+                                  } else {
+                                    setSelectedItem({ restaurant: res, score: 0, tier: 2, classification: { distanceKm: null } });
+                                  }
+                                  setSearchQuery('');
+                                  setSearchResults([]);
+                                }}
+                                style={{ padding: '8px 12px', display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', borderBottom: '1px solid #F3F4F6', transition: 'background-color 0.2s', fontFamily: "'Inter', sans-serif" }}
+                                onMouseEnter={e => e.currentTarget.style.backgroundColor = '#F9FAFB'}
+                                onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                              >
+                                <img src={res.hero_image_url || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=300&q=80'} style={{ width: '32px', height: '32px', borderRadius: '6px', objectFit: 'cover' }} alt="" />
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: '13px', fontWeight: 600, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{res.name}</div>
+                                  <div style={{ fontSize: '11px', color: '#6B7280' }}>{res.city || 'London'} • {res.cuisines ? res.cuisines[0] : 'Restaurant'}</div>
                                 </div>
-                                {labels[platform]}
                               </div>
-                            </label>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Cuisine Popover */}
-                  <div style={{ position: 'relative' }} ref={cuisineRef}>
-                    <button 
-                      onClick={() => { setIsCuisinePopoverOpen(!isCuisinePopoverOpen); setIsPlatformPopoverOpen(false); setIsOverlapPopoverOpen(false); setIsPromosPopoverOpen(false); setIsAreaComboboxOpen(false); }}
-                      style={{ padding: '4px 10px', borderRadius: viewMode === 'Map' ? '24px' : '16px', border: activeCuisineFilters.length > 0 ? '1px solid #E86A58' : '1px solid #E5E7EB', backgroundColor: activeCuisineFilters.length > 0 ? '#FFF0EE' : '#FFF', fontSize: '12px', fontWeight: 500, color: activeCuisineFilters.length > 0 ? '#E86A58' : '#1F2937', cursor: 'pointer', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      Cuisine {activeCuisineFilters.length > 0 && `(${activeCuisineFilters.length})`} <span style={{ fontSize: '10px' }}>⌄</span>
-                    </button>
-                    {isCuisinePopoverOpen && (
-                      <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: '0', backgroundColor: '#FFF', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 1000, width: '180px', maxHeight: '200px', overflowY: 'auto', padding: '0.5rem' }}>
-                        {uniqueCuisines.map(cuisine => {
-                          const isChecked = activeCuisineFilters.includes(cuisine);
-                          return (
-                            <label key={cuisine} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', cursor: 'pointer', fontSize: '12px', fontFamily: "'Inter', sans-serif" }}>
-                              <input 
-                                type="checkbox" 
-                                checked={isChecked} 
-                                onChange={() => {
-                                  if (isChecked) setActiveCuisineFilters(prev => prev.filter(c => c !== cuisine));
-                                  else setActiveCuisineFilters(prev => [...prev, cuisine]);
-                                }} 
-                                style={{ accentColor: '#E86A58', cursor: 'pointer' }}
-                              />
-                              {cuisine}
-                            </label>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Promos Popover */}
-                  <div style={{ position: 'relative' }} ref={promosRef}>
-                    <button 
-                      onClick={() => { setIsPromosPopoverOpen(!isPromosPopoverOpen); setIsPlatformPopoverOpen(false); setIsCuisinePopoverOpen(false); setIsOverlapPopoverOpen(false); setIsAreaComboboxOpen(false); }}
-                      style={{ padding: '4px 10px', borderRadius: viewMode === 'Map' ? '24px' : '16px', border: activePromoFilters.length > 0 ? '1px solid #E86A58' : '1px solid #E5E7EB', backgroundColor: activePromoFilters.length > 0 ? '#FFF0EE' : '#FFF', fontSize: '12px', fontWeight: 500, color: activePromoFilters.length > 0 ? '#E86A58' : '#1F2937', cursor: 'pointer', fontFamily: "'Inter', sans-serif", display: 'flex', alignItems: 'center', gap: '4px' }}
-                    >
-                      Promos {activePromoFilters.length > 0 && `(${activePromoFilters.length})`} <span style={{ fontSize: '10px' }}>⌄</span>
-                    </button>
-                    {isPromosPopoverOpen && (
-                      <div style={{ position: 'absolute', top: 'calc(100% + 4px)', left: '0', backgroundColor: '#FFF', borderRadius: '8px', boxShadow: '0 4px 20px rgba(0,0,0,0.15)', border: '1px solid #E5E7EB', zIndex: 1000, width: '160px', padding: '0.5rem' }}>
-                        {['Active Promos', 'No Delivery Fee'].map(promo => {
-                          const isChecked = activePromoFilters.includes(promo);
-                          return (
-                            <label key={promo} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '4px', cursor: 'pointer', fontSize: '12px', fontFamily: "'Inter', sans-serif" }}>
-                              <input 
-                                type="checkbox" 
-                                checked={isChecked} 
-                                onChange={() => {
-                                  if (isChecked) setActivePromoFilters(prev => prev.filter(p => p !== promo));
-                                  else setActivePromoFilters(prev => [...prev, promo]);
-                                }} 
-                                style={{ accentColor: '#E86A58', cursor: 'pointer' }}
-                              />
-                              {promo}
-                            </label>
-                          )
-                        })}
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: '#6B7280', fontFamily: "'Inter', sans-serif" }}>No competitors found globally</div>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
-              </div>
 
                 {/* Active filter context label */}
-                {activeTier !== null && (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1rem', borderRadius: '10px', background: activeTier === TIER.DIRECT ? '#FEF2F2' : activeTier === 'WATCHLIST' ? '#FEFCE8' : '#FFFBEB', border: `1px solid ${activeTier === TIER.DIRECT ? '#FECACA' : activeTier === 'WATCHLIST' ? '#FEF08A' : '#FDE68A'}`, fontFamily: "'Inter', sans-serif", marginTop: '0.5rem' }}>
+                {activeTier !== null && activeTier !== 'WATCHLIST' && (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.65rem 1rem', borderRadius: '10px', background: activeTier === TIER.DIRECT ? '#FEF2F2' : '#FFFBEB', border: `1px solid ${activeTier === TIER.DIRECT ? '#FECACA' : '#FDE68A'}`, fontFamily: "'Inter', sans-serif", marginTop: '0.5rem' }}>
                     {activeTier === TIER.DIRECT
                       ? <ShieldAlert size={14} color="#DC2626" />
-                      : activeTier === 'WATCHLIST'
-                        ? <Star size={14} color="#EAB308" />
-                        : <Shield size={14} color="#D97706" />}
-                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: activeTier === TIER.DIRECT ? '#991B1B' : activeTier === 'WATCHLIST' ? '#854D0E' : '#78350F' }}>
+                      : <Shield size={14} color="#D97706" />}
+                    <span style={{ fontSize: '0.78rem', fontWeight: 600, color: activeTier === TIER.DIRECT ? '#991B1B' : '#78350F' }}>
                       {activeTier === TIER.DIRECT
                         ? `Showing ${tier1Count} direct competitors — restaurants serving the same areas as ${ownerRestaurant?.name || 'you'}`
-                        : activeTier === 'WATCHLIST'
-                          ? `Showing ${watchlistIds.length} curated watchlist targets`
-                          : `Showing ${tier2Count} adjacent competitors — restaurants in bordering areas`}
+                        : `Showing ${tier2Count} adjacent competitors — restaurants in bordering areas`}
                     </span>
                     <button onClick={() => setActiveTier(null)} style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', color: '#9CA3AF', display: 'flex' }}>
                       <X size={14} />
@@ -1064,7 +1152,7 @@ const CompetitorsContent = () => {
                           <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{locationString}</span>
                         </div>
                         <div style={{ fontSize: '0.75rem', fontWeight: 700, color: '#111', flexShrink: 0 }}>
-                           {restaurant.delivery_fee ? `£${parseFloat(restaurant.delivery_fee).toFixed(2)}` : 'Free'}
+                           {(getDistance(ownerRestaurant?.lat || ownerLat, ownerRestaurant?.lng || ownerLng, parseFloat(restaurant.lat), parseFloat(restaurant.lng))).toFixed(1)} km
                         </div>
                       </div>
                     </div>
@@ -1074,18 +1162,44 @@ const CompetitorsContent = () => {
             </div>
           )}
           {!loading && !error && viewMode === 'Map' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', minHeight: 0, paddingBottom: '6rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', overflowY: 'auto', minHeight: 0, paddingBottom: '6rem', padding: '0.5rem', margin: '-0.5rem', marginTop: '0.5rem' }}>
               {displayList.map((entry) => {
                 const { restaurant, score } = entry;
+                
+                // --- Dynamic Price Gap Logic (Simulated) ---
+                const platforms = detectPlatforms(restaurant);
+                let ueGap = score > 60 ? -12 : 5;
+                let delGap = score > 50 ? -8 : 0;
+                let jeGap = score > 80 ? -15 : 2;
+
+                if (!platforms.includes('ubereats')) ueGap = null;
+                if (!platforms.includes('deliveroo')) delGap = null;
+                if (!platforms.includes('justeat')) jeGap = null;
+
+                const selectedPlatforms = activePlatformFilters.length > 0 ? activePlatformFilters : platforms;
+                let gaps = [];
+                if (selectedPlatforms.includes('ubereats') && ueGap !== null) gaps.push(ueGap);
+                if (selectedPlatforms.includes('deliveroo') && delGap !== null) gaps.push(delGap);
+                if (selectedPlatforms.includes('justeat') && jeGap !== null) gaps.push(jeGap);
+
+                let displayedGap = 0;
+                if (gaps.length > 0) {
+                  displayedGap = Math.min(...gaps); // Worst case scenario
+                }
+
+                let gapText = displayedGap < 0 ? `${Math.abs(displayedGap)}% Cheaper` : displayedGap > 0 ? `+${displayedGap}% Cost` : 'Parity';
+                let gapColor = displayedGap < 0 ? '#EF4444' : displayedGap > 0 ? '#10B981' : '#64748B';
+                // -------------------------------------------
+
                 return (
                 <div 
                   key={restaurant.id} 
-                  onClick={() => setSelectedItem(entry)}
+                  onClick={() => handleRowClick(entry)}
                   style={{ 
                     display: 'flex', flexDirection: 'column', gap: '0.65rem', 
-                    padding: '1rem', borderRadius: '16px', cursor: 'pointer', 
-                    transition: 'all 0.2s ease', backgroundColor: '#FCFBF8',
-                    border: '1px solid rgba(0,0,0,0.15)',
+                    padding: '1.15rem 1rem', borderRadius: '16px', cursor: 'pointer', 
+                    transition: 'all 0.2s ease', backgroundColor: focusedCompetitorId === restaurant.id ? '#FEF2F2' : '#FCFBF8',
+                    border: focusedCompetitorId === restaurant.id ? '2px solid #EF4444' : '1px solid rgba(0,0,0,0.15)',
                     boxShadow: '0 4px 15px rgba(0,0,0,0.05)'
                   }} 
                   onMouseEnter={e => {
@@ -1105,7 +1219,7 @@ const CompetitorsContent = () => {
                     {/* Hide Button */}
                     <div 
                       onClick={(e) => { e.stopPropagation(); setRemovedCompetitorIds(prev => [...prev, restaurant.id]); }}
-                      style={{ position: 'absolute', top: '-4px', right: '-4px', color: '#9CA3AF', cursor: 'pointer', padding: '4px', borderRadius: '50%', transition: 'all 0.2s' }}
+                      style={{ position: 'absolute', top: '-4px', right: '0', color: '#9CA3AF', cursor: 'pointer', padding: '4px', borderRadius: '50%', transition: 'all 0.2s' }}
                       onMouseEnter={e => { e.currentTarget.style.color = '#EF4444'; e.currentTarget.style.backgroundColor = '#FEF2F2'; }}
                       onMouseLeave={e => { e.currentTarget.style.color = '#9CA3AF'; e.currentTarget.style.backgroundColor = 'transparent'; }}
                       title="Remove from list"
@@ -1114,47 +1228,100 @@ const CompetitorsContent = () => {
                     </div>
 
                     <img src={restaurant.hero_image_url || 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=300&q=80'} alt="" style={{ width: '52px', height: '52px', borderRadius: '8px', objectFit: 'cover' }} />
-                    <div style={{ flex: 1, minWidth: 0, paddingRight: '20px' }}>
+                    <div style={{ flex: 1, minWidth: 0, paddingRight: '0' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                         <div style={{ fontSize: '0.9rem', fontWeight: 800, color: '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '200px' }}>
                           {restaurant.name}
                         </div>
                       </div>
-                      <div style={{ fontSize: '0.65rem', color: '#6B7280', marginTop: '4px' }}>
-                        Category: {restaurant.cuisines?.length > 0 ? restaurant.cuisines.join(', ') : 'Pizza and Turkish'}
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '6px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                          <span style={{ fontSize: '0.6rem', color: '#6B7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.02em' }}>Platform Coverage:</span>
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <img src={PLATFORM_ICONS.deliveroo} alt="Deliveroo" style={{ width: '14px', height: '14px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                            <img src={PLATFORM_ICONS.ubereats} alt="UberEats" style={{ width: '14px', height: '14px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                            <img src={PLATFORM_ICONS.justeat} alt="JustEat" style={{ width: '14px', height: '14px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB' }} />
+                          </div>
+                        </div>
+                        {/* Compare + Watchlist Group */}
+                        <div style={{ position: 'absolute', bottom: '-4px', right: '0', display: 'flex', alignItems: 'center', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', borderRadius: '6px' }}>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setComparisonTarget(restaurant); }}
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: '#E86A58', color: '#FFF', border: '1px solid #E86A58',
+                              padding: '2px 8px', borderRadius: '6px 0 0 6px', fontSize: '0.55rem',
+                              fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s', height: '20px'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#D95A48'; e.currentTarget.style.borderColor = '#D95A48'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#E86A58'; e.currentTarget.style.borderColor = '#E86A58'; }}
+                          >
+                            Compare
+                          </button>
+                          
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (watchlistIds.includes(restaurant.id)) {
+                                setWatchlistIds(prev => prev.filter(id => id !== restaurant.id));
+                              } else {
+                                setWatchlistIds(prev => [...prev, restaurant.id]);
+                              }
+                            }}
+                            style={{
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              background: '#FFF', color: watchlistIds.includes(restaurant.id) ? '#F59E0B' : '#9CA3AF', 
+                              border: '1px solid #F3F4F6', borderLeft: 'none',
+                              width: '22px', height: '20px', borderRadius: '0 6px 6px 0', cursor: 'pointer', transition: 'all 0.2s'
+                            }}
+                            onMouseEnter={e => { e.currentTarget.style.background = '#FEF3C7'; }}
+                            onMouseLeave={e => { e.currentTarget.style.background = '#FFF'; }}
+                            title={watchlistIds.includes(restaurant.id) ? "Remove from Watchlist" : "Add to Watchlist"}
+                          >
+                            <Star size={11} fill={watchlistIds.includes(restaurant.id) ? '#F59E0B' : 'none'} color={watchlistIds.includes(restaurant.id) ? '#F59E0B' : '#9CA3AF'} />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
 
                   {/* Bottom Stats Row */}
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F3F4F6', paddingTop: '0.65rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderTop: '1px solid #F3F4F6', paddingTop: '0.75rem', marginTop: '-0.1rem' }}>
                     
-                    {/* Delivery */}
+                    {/* Distance */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '70px' }}>
-                      <span style={{ fontSize: '0.55rem', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase' }}>Delivery</span>
-                      <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#111', marginTop: '2px' }}>{restaurant.delivery_fee && parseFloat(restaurant.delivery_fee) > 0 ? '£'+parseFloat(restaurant.delivery_fee).toFixed(2) : 'Free Delivery'}</span>
+                      <span style={{ fontSize: '0.6rem', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase' }}>Distance</span>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#111', marginTop: '2px' }}>{(getDistance(ownerRestaurant?.lat || ownerLat, ownerRestaurant?.lng || ownerLng, parseFloat(restaurant.lat), parseFloat(restaurant.lng))).toFixed(1)} km</span>
                     </div>
 
                     <div style={{ width: '1px', height: '24px', backgroundColor: '#E5E7EB' }}></div>
 
                     {/* Promotions */}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '60px' }}>
-                      <span style={{ fontSize: '0.55rem', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase' }}>Promotions</span>
-                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#EF4444', marginTop: '2px' }}>{restaurant.promo_count || 1} Active</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '55px' }}>
+                      <span style={{ fontSize: '0.6rem', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase' }}>Promos</span>
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#111827', marginTop: '2px' }}>{restaurant.promo_count || 1} Active</span>
+                    </div>
+
+                    <div style={{ width: '1px', height: '24px', backgroundColor: '#E5E7EB' }}></div>
+
+                    {/* Price Gap */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '65px' }}>
+                      <span style={{ fontSize: '0.6rem', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Price Gap</span>
+                      <span style={{ fontSize: '0.7rem', fontWeight: 800, color: gapColor, marginTop: '2px', whiteSpace: 'nowrap' }}>{gapText}</span>
                     </div>
 
                     <div style={{ width: '1px', height: '24px', backgroundColor: '#E5E7EB' }}></div>
 
                     {/* Overlap */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', width: '80px', justifyContent: 'center' }}>
-                      <span style={{ fontSize: '0.5rem', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Overlap Level</span>
+                      <span style={{ fontSize: '0.55rem', color: '#9CA3AF', fontWeight: 700, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>Overlap Level</span>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '4px', width: '100%', marginTop: '3px' }}>
                         <div style={{ flex: 1, height: '4px', backgroundColor: '#FEE2E2', borderRadius: '2px', overflow: 'hidden', display: 'flex', alignItems: 'center' }}>
                           <div style={{ width: score + '%', height: '100%', backgroundColor: '#EF4444' }}></div>
                         </div>
-                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#EF4444', lineHeight: 1 }}>{score}%</span>
+                        <span style={{ fontSize: '0.7rem', fontWeight: 800, color: '#EF4444', lineHeight: 1 }}>{score}%</span>
                       </div>
-                      <span style={{ fontSize: '0.45rem', fontWeight: 800, color: '#6B7280', marginTop: '3px', textAlign: 'right', width: '100%', whiteSpace: 'nowrap' }}>{score >= 70 ? 'HIGH' : score >= 40 ? 'MED' : 'LOW'} OVERLAP</span>
+                      <span style={{ fontSize: '0.5rem', fontWeight: 800, color: '#6B7280', marginTop: '3px', textAlign: 'right', width: '100%', whiteSpace: 'nowrap' }}>{score >= 70 ? 'HIGH' : score >= 40 ? 'MED' : 'LOW'} OVERLAP</span>
                     </div>
 
                   </div>
@@ -1165,7 +1332,7 @@ const CompetitorsContent = () => {
           )}
 
           {!loading && !error && viewMode === 'List' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', padding: '0.5rem', margin: '-0.5rem', marginTop: '0.75rem' }}>
               {displayList.map(({ restaurant, tier, score, classification, threat }) => {
                 const cfg       = TIER_CONFIG[tier] || {};
                 const platforms = detectPlatforms(restaurant);
@@ -1176,7 +1343,7 @@ const CompetitorsContent = () => {
                   <div
                     key={restaurant.id}
                     onClick={() => handleRowClick({ restaurant, tier, score, classification, threat })}
-                    style={{ backgroundColor: '#fff', borderRadius: '16px', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', cursor: 'pointer', border: `1px solid ${cfg.border || '#F3F4F6'}`, transition: 'all 0.18s', position: 'relative', overflow: 'hidden' }}
+                    style={{ backgroundColor: focusedCompetitorId === restaurant.id ? '#FEF2F2' : '#fff', borderRadius: '16px', padding: '1rem 1.25rem', display: 'flex', alignItems: 'center', gap: '1.25rem', boxShadow: '0 2px 8px rgba(0,0,0,0.04)', cursor: 'pointer', border: focusedCompetitorId === restaurant.id ? '2px solid #EF4444' : `1px solid ${cfg.border || '#F3F4F6'}`, transition: 'all 0.18s', position: 'relative', overflow: 'hidden' }}
                     onMouseOver={e  => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(0,0,0,0.08)'; }}
                     onMouseOut={e   => { e.currentTarget.style.transform = 'translateY(0)';    e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.04)'; }}
                   >

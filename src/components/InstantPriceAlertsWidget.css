@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800;900&display=swap');
+
 /* ========================================================
    TANGERINE ANALYTICS MODULE (GLASSMORPHIC)
    ======================================================== */
@@ -121,6 +123,8 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  padding: 24px;
+  box-sizing: border-box;
   visibility: hidden; /* Controlled smoothly by JS toggle actions */
   transition: visibility 0.25s ease;
 }
@@ -134,8 +138,8 @@
   position: absolute;
   width: 100%;
   height: 100%;
-  background: rgba(28, 28, 30, 0.15);
-  backdrop-filter: blur(8px); /* Premium, modern editorial frosted look */
+  background: rgba(15, 23, 42, 0.5); /* Standard dark overlay */
+  backdrop-filter: blur(2px); /* Subtle blur instead of heavy glass */
   opacity: 0;
   transition: opacity 0.25s ease;
 }
@@ -146,21 +150,24 @@
 /* Centered Windows Content Box Layout Base */
 .modal-window-frame {
   position: relative;
-  width: 580px;
-  max-width: 90vw;
+  width: 920px;
+  max-width: 94vw;
   height: 680px; /* Fixed height */
-  max-height: 85vh;
+  max-height: min(680px, calc(100vh - 48px));
   background: #FCFAF6;
+  border: 1px solid #E5E7EB;
   border-radius: 20px;
   box-shadow: 0 20px 50px rgba(0, 0, 0, 0.08);
-  padding: 32px;
+  padding: 0;
   box-sizing: border-box;
   z-index: 2;
   transform: scale(0.95);
   opacity: 0;
   transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
+  overflow: hidden; /* Fixes content spilling/cropping */
+  font-family: 'Outfit', system-ui, sans-serif;
 }
 .alerts-center-modal-overlay.active .modal-window-frame {
   transform: scale(1);
@@ -170,14 +177,35 @@
 .modal-interior-scroll-wrapper {
   flex: 1;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   overflow: hidden;
+  height: 100%;
 }
 
 .modal-rows-vertical-stack {
   flex: 1;
-  overflow-y: auto;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  padding-top: 4px;
   padding-right: 8px; /* Give the scrollbar some breathing room */
+  padding-bottom: 24px; /* Ensures the bottom card and its border are never cropped */
+  box-sizing: border-box;
+  mask-image: linear-gradient(to bottom, transparent 0px, black 12px, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent 0px, black 12px, black 100%);
+}
+
+.modal-rows-vertical-stack::-webkit-scrollbar {
+  width: 6px;
+}
+.modal-rows-vertical-stack::-webkit-scrollbar-track {
+  background: transparent;
+}
+.modal-rows-vertical-stack::-webkit-scrollbar-thumb {
+  background: #E2E8F0;
+  border-radius: 4px;
+}
+.modal-rows-vertical-stack::-webkit-scrollbar-thumb:hover {
+  background: #CBD5E1;
 }
 
 /* Close Window Trigger Mechanics styling options */
@@ -200,7 +228,7 @@
 .modal-window-close-btn:hover { background: #e5e5ea; color: #1c1c1e; }
 
 /* Typographic Alignment Layout Parameter */
-.modal-title-header-block h3 { font-size: 20px; font-weight: 800; color: #1c1c1e; margin: 0 0 4px 0; letter-spacing: -0.01em; }
+.modal-title-header-block h3 { font-size: 17px; font-weight: 800; color: #1c1c1e; margin: 0 0 24px 0; letter-spacing: -0.01em; }
 .modal-subtitle-text { font-size: 13px; color: #8e8e93; font-weight: 500; margin: 0 0 24px 0; }
 
 /* ========================================================
@@ -291,17 +319,18 @@
   display: flex;
   align-items: center; /* Vertically aligns image, text, and pricing */
   gap: 12px;
-  border: none;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid #F1F5F9;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   border-radius: 12px;
   padding: 14px 16px;
   margin-bottom: 10px;
   background: #ffffff;
-  transition: box-shadow 0.15s ease, transform 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
 }
 
 .alert-capsule-row:hover {
-  border-color: #c7c7cc;
+  border-color: #CBD5E1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
   transform: translateY(-1px);
 }
 
@@ -363,3 +392,12 @@
 }
 .price-delta { font-size: 14px; font-weight: 800; }
 .price-was-now { font-size: 9px; color: #8e8e93; margin-top: 2px; }
+
+/* Carousel Animation */
+@keyframes softFadeIn {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.animate-soft-fade {
+  animation: softFadeIn 0.8s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}

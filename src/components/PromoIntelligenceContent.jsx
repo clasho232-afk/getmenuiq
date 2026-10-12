@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { Target, MapPin, SlidersHorizontal, ChevronDown, Activity, Zap, Shield, Scale } from 'lucide-react';
+import React, { useState } from 'react';
+import { Target, Zap, Info, ChevronDown, ChevronUp, MapPin, Layers, Search, Star, Sparkles } from 'lucide-react';
 import { mockLondonEcosystem } from '../data/mockLondonEcosystem';
+
+const PLATFORM_ICONS = {
+  ubereats: 'https://www.google.com/s2/favicons?domain=ubereats.com&sz=128',
+  deliveroo: 'https://www.google.com/s2/favicons?domain=deliveroo.co.uk&sz=128',
+  justeats: 'https://www.google.com/s2/favicons?domain=just-eat.co.uk&sz=128',
+};
 
 // ================================================================
 // PROMO INTELLIGENCE ENGINE — PURE LOGIC
@@ -8,23 +14,19 @@ import { mockLondonEcosystem } from '../data/mockLondonEcosystem';
 
 function getTimeVariable() {
   const now = new Date();
-  const day = now.getDay();
+  const day = now.getDay(); 
   const hour = now.getHours();
-  const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-  const dayName = dayNames[day];
-  const isTuesday = day === 2;
 
   const isAfterMidnight = hour < 2;
   const effectiveDay = isAfterMidnight ? (day === 0 ? 6 : day - 1) : day;
   const isEvening = hour >= 18 || isAfterMidnight;
 
-  let state = 'OFF';
-  if (day >= 1 && day <= 5 && hour >= 12 && hour < 18) state = 'QUIET';
-  else if (isEvening) {
-    if (effectiveDay >= 1 && effectiveDay <= 4) state = 'BUSY';
-    if (effectiveDay === 5 || effectiveDay === 6 || effectiveDay === 0) state = 'HYPER';
+  if (day >= 1 && day <= 5 && hour >= 12 && hour < 18) return 'QUIET';
+  if (isEvening) {
+    if (effectiveDay >= 1 && effectiveDay <= 4) return 'BUSY'; 
+    if (effectiveDay === 5 || effectiveDay === 6 || effectiveDay === 0) return 'HYPER';
   }
-  return { state, dayName, hour, isTuesday };
+  return 'OFF';
 }
 
 const AG_SCORES = {
@@ -38,7 +40,7 @@ const AG_SCORES = {
 const OL_SCORES = { same_cuisine: 15, direct_match: 30, direct_match_promo: 45 };
 
 function getThreatData(promos, platform) {
-  const pp = promos.filter(p => p.platform === platform);
+  const pp = promos.filter(p => p.platformKey === platform || platform === 'all');
   const volumeScore = pp.length === 0 ? 0 : pp.length <= 2 ? 8 : pp.length <= 5 ? 14 : 20;
 
   let topPromo = null;
@@ -53,944 +55,1234 @@ function getThreatData(promos, platform) {
     : 0;
 
   const total = Math.min(volumeScore + aggressivenessScore + itemOverlapScore, 100);
-  let level = 'Low';
-  if (total > 25 && total <= 50) level = 'Moderate';
-  if (total > 50 && total <= 75) level = 'High';
-  if (total > 75) level = 'Extreme';
+  const level = total <= 25 ? 'LOW' : total <= 60 ? 'MEDIUM' : 'HIGH';
 
-  const directMatches = pp.filter(p => p.itemOverlapLevel === 'direct_match_promo' || p.itemOverlapLevel === 'direct_match' || p.itemOverlapLevel === 'same_cuisine');
-  
-  let description = '';
-  if (pp.length === 0) {
-     description = `No competitor activity detected on ${platform.toUpperCase()} right now.`;
+  return { total, level, volumeScore, aggressivenessScore, itemOverlapScore, count: pp.length, topPromo };
+}
+
+function getStrategyStack(platformKey, time, threat, strategyMode) {
+  const isGrowth = strategyMode === 'growth';
+  const IMG_STORE = 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=64&h=64&fit=crop';
+  const IMG_PIZZA = 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=64&h=64&fit=crop';
+  const IMG_MEAL  = 'https://images.unsplash.com/photo-1594212885974-297eb0d36cda?w=64&h=64&fit=crop';
+
+  if (platformKey === 'ubereats') {
+    if (isGrowth) {
+      return {
+        action: 'AGGRESSIVE STACK',
+        primary: {
+          type: '25% Off Storewide', desc: 'Min spend £20. Get into the primary deals carousel.', img: IMG_STORE,
+          detail: {
+            verdict: 'strong',
+            verdictLabel: 'Strong Match',
+            profile: 'Blending In',
+            profileNote: '4 nearby competitors are in the Deals carousel at 20%. You need to beat them.',
+            reasons: ['4 of 7 nearby competitors at 20% — you need ≥20% to appear in the Deals carousel at all', 'Running 25% leapfrogs them in carousel ranking with a visually larger badge', 'Friday evening is peak — this is the highest ROI window of the week for chicken/burger shops'],
+            risks: ['At 25% off + 35% Uber commission, net margin drops ~8–10% per order. Set a £20 min spend.', 'Running more than 3 weeks consecutively trains customers to wait for discounts — rotate after 2 weeks.'],
+            pairWith: { label: 'BOGO on Hero Item', note: 'Gives you a second badge on your listing tile, standing out from competitors who only show the % off badge.' },
+            timing: "Thu–Sun only. Peak window: Fri 18:00–21:00.",
+            howItWorks: "UberEats surfaces restaurants running ≥20% off in its \"Deals\" carousel — a dedicated high-traffic zone sitting above organic search. A 25% threshold beats the typical 20% market baseline, pushing you to the top of that carousel with a visually larger badge.",
+            uplift: { orders: '+35–55%', newCustomers: '~60% of clicks are new users', visibility: 'Top 3 carousel position likely' },
+            tactics: "Pair with a £20 min spend. Exclude lowest-margin add-ons from the discount if possible.",
+            competitorContext: "4 of your 7 nearby competitors are at 20% off. Your 25% will leapfrog them in carousel ranking."
+          }
+        },
+        hook: {
+          type: 'BOGO on Hero Item', desc: 'Convert scrollers instantly. Stacks with storewide.', img: IMG_PIZZA,
+          detail: {
+            verdict: 'caution',
+            verdictLabel: 'Proceed with Caution',
+            profile: 'Blending In',
+            profileNote: '2 nearby competitors already running BOGO. You need to differentiate on item choice.',
+            reasons: ['BOGO creates a second badge on your listing tile — customers see you twice in the feed', 'Deal-hunters specifically filter for BOGO on UberEats — high intent traffic', 'Pairs with your 25% storewide promo for maximum discovery surface coverage'],
+            risks: ['Food cost doubles on the BOGO item. Only use items with ≥65% gross margin (e.g. wings, sides).', 'If UberEats stacks both your promos, a customer could get 25% off AND a free item — model this before launching.'],
+            pairWith: { label: '25% Off Storewide', note: 'Run alongside the % off promo for dual-badge visibility on your listing tile.' },
+            timing: "Lunch 12:00–14:00 and early evening 17:00–19:00.",
+            howItWorks: "Buy One Get One on your best-selling item creates irresistible perceived value. On UberEats, BOGO is listed as a separate promo badge — you get two visual touchpoints on your listing tile simultaneously.",
+            uplift: { orders: '+25–40% on that item', newCustomers: 'High — BOGO is a top search filter used by deal-hunters', visibility: 'Dual badge on listing tile' },
+            tactics: "Choose a hero item priced £8–£12 with high margin. Wings and sides work best for takeaways.",
+            competitorContext: "2 direct competitors are running BOGO this week. You need this to stay competitive in the deals-filter results."
+          }
+        },
+        bundle: {
+          type: 'Mega Family Bundle', desc: 'Increase AOV without extra commission hit.', img: IMG_MEAL,
+          detail: {
+            verdict: 'strong',
+            verdictLabel: 'Strong Match',
+            profile: 'Winning',
+            profileNote: '5 nearby competitors run bundles silently. Making yours visible gives you an edge.',
+            reasons: ['5 competitors run unlabelled bundles — yours will be the only visible deal in this category', 'Families and groups order in peak Fri–Sun windows — bundles match their intent perfectly', 'Commission applies to bundle price, not individual items — you protect margin better than % off'],
+            risks: ['If a bundle component sells out mid-service, the whole deal breaks — have backup items ready.', 'Poorly priced bundles feel like a trick. The saving must be obvious and real.'],
+            pairWith: { label: '25% Off Storewide', note: 'The bundle drives AOV for group orders; the % off drives volume from solo customers — they target different segments.' },
+            timing: "Fri–Sun only, 17:00–21:00.",
+            howItWorks: "A bundled deal groups items at a set price that feels cheaper than buying individually — but you control the math. Commission applies to the bundle price, not the individual item prices, protecting your margin.",
+            uplift: { orders: 'AOV +£6–12', newCustomers: 'Moderate — targets families', visibility: 'Featured in Deals + Popular' },
+            tactics: "Name it evocatively: 'The Friday Night Box' outperforms 'Family Meal Deal'. Feature a photo of the full spread.",
+            competitorContext: "5 local competitors are running unlabelled bundles not showing as platform promos. They're winning basket size silently."
+          }
+        },
+        reason: "UberEats allows promo stacking. Overwhelming the competition with a multi-layered attack maximises presence across two discovery surfaces: the Deals carousel and the BOGO filter. Combined with a margin-safe bundle, you drive volume without cannibalising profitability."
+      };
+    } else {
+      return {
+        action: 'DEFENSIVE STACK',
+        primary: {
+          type: '20% Off Storewide', desc: 'Min spend £20. Matches current market baseline.', img: IMG_STORE,
+          detail: {
+            verdict: 'caution',
+            verdictLabel: 'Proceed with Caution',
+            profile: 'Invisible',
+            profileNote: '6 nearby competitors are in the Deals carousel. You are currently not visible there.',
+            reasons: ['Without ≥20% storewide you do not appear in the UberEats Deals carousel — the primary Friday night discovery surface', '6 nearby competitors are already there — every minute you are absent costs you orders', 'At exactly 20% you match the baseline without over-discounting beyond the market norm'],
+            risks: ['At 20% off + 35% Uber commission, net margin drops to ~45% of normal. A £20 min spend is essential.', 'You will not be differentiated from 6 identical 20% off listings — your photos and rating decide who wins.'],
+            pairWith: { label: 'Combo Meal Bundle', note: 'Running a visible bundle alongside gives you a second badge and a reason to choose you over the other 5 restaurants at identical 20% off.' },
+            timing: "Thu–Sun only. Peak window: Fri–Sat 17:00–22:00.",
+            howItWorks: "UberEats explicitly boosts restaurants running ≥20% off into the Deals carousel — the highest-traffic discovery section. At exactly 20% you meet the threshold without over-discounting beyond the market norm.",
+            uplift: { orders: '+20–30%', newCustomers: '~45% carousel clicks', visibility: 'Deals carousel guaranteed' },
+            tactics: "Set a £20 minimum spend. Exclude your lowest-margin items from the discount.",
+            competitorContext: "6 nearby competitors are at 20% off. Without this promo you are algorithmically invisible in the Deals section."
+          }
+        },
+        hook: null,
+        bundle: {
+          type: 'Combo Meal', desc: 'Protect margin while increasing AOV.', img: IMG_MEAL,
+          detail: {
+            verdict: 'strong',
+            verdictLabel: 'Strong Match',
+            profile: 'Winning',
+            profileNote: 'Competitors compete on % off. A combo positions you as higher value, not just cheaper.',
+            reasons: ['Competitors focus on % off — a visible combo deal is a point of differentiation in the same feed', 'Combos are set at menu level, not as a platform promo — commission applies to the bundle price, protecting margin', 'Increases AOV by £4–8 per converted order without giving away blanket discounts'],
+            risks: ['Pricing must feel like a real saving — target 10–15% cheaper than buying items separately.', 'A poor combo photo kills conversion. One clear, well-lit shot of the full spread is non-negotiable.'],
+            pairWith: { label: '20% Off Storewide', note: 'The 20% gets you into the Deals carousel. The combo gives customers a reason to pick you over the other 6 restaurants also at 20%.' },
+            timing: "All week, peaks Mon–Fri 12:00–14:00 (lunch) and Fri–Sat 17:00–22:00 (dinner).",
+            howItWorks: "A combo groups your most popular main with sides/drinks at a bundled price. Unlike platform % discounts, combos are set at menu level — commission applies to the bundle price rather than individual items, giving you direct margin control.",
+            uplift: { orders: 'AOV +£4–8', newCustomers: 'Low — drives repeat value', visibility: 'Popular tag in menu' },
+            tactics: "Name it specifically: 'The Barking Lunch Box' beats 'Combo Meal A'. Show the crossed-out individual price vs. combo price in your menu photo.",
+            competitorContext: "Your competitors are primarily competing on % off. A well-photographed combo at a fair price positions you as higher-value — not just cheap."
+          }
+        },
+        reason: "With the market at 20% off, you need to match to stay visible in the UberEats Deals carousel — but going further burns margin unnecessarily. The combo meal compensates by increasing AOV from customers who convert, protecting profitability even at the discounted rate."
+      };
+    }
+  } else if (platformKey === 'deliveroo') {
+    if (isGrowth) {
+      return {
+        action: 'HEAVY COUNTER',
+        primary: {
+          type: 'BOGO on Hero Item', desc: 'Highest conversion rate promo on Deliveroo.', img: IMG_PIZZA,
+          detail: {
+            howItWorks: "Deliveroo prohibits stacking multiple platform-level promos simultaneously — unlike UberEats, you can only run one active platform promo at a time. BOGO is the single highest-converting individual promo type on Deliveroo, historically outperforming % off by 15–25% in click-to-order rate.",
+            uplift: { orders: '+30–45%', newCustomers: '~55% from new users who filter for BOGO', visibility: '#1 performing promo badge type on Deliveroo listings' },
+            timing: "BOGO is strongest at lunch (12:00–14:00) and early evening (17:00–20:00). Deliveroo skews toward working professionals — these windows align with group and office ordering.",
+            risks: ["Food cost doubles on the BOGO item. Ensure your hero item has ≥65% gross margin.", "Deliveroo charges commission on the stated menu price before the BOGO discount — effective commission per-transaction is higher than on % off promos."],
+            tactics: "Choose a hero item priced £9–£14. Don't pick your cheapest item — the free item must feel like a genuine get. Run for 2 weeks max, then rotate to Spend & Save to avoid training customers to only order on BOGO weeks.",
+            competitorContext: "Shoreditch Grind is running BOGO on Flat White this week. You need a food-category BOGO to counter before they cement the BOGO badge in your area's customer memory."
+          }
+        },
+        hook: null,
+        bundle: {
+          type: 'Premium Meal Deal', desc: 'AOV driver alongside the BOGO.', img: IMG_MEAL,
+          detail: {
+            howItWorks: "On Deliveroo, a Meal Deal is set at menu level — not as a platform promo — meaning it runs independently alongside your active platform BOGO. This two-pronged approach means: customers using the BOGO filter find you via platform discovery, while customers browsing your menu organically see the meal deal upsell.",
+            uplift: { orders: 'AOV increase of +£8–14 on orders that take the meal deal', newCustomers: 'Low — effective for repeat customer upsell', visibility: "Visible in the menu's own Deals section tile" },
+            timing: "Premium meal deals over-index on Friday and Saturday evenings when customers are in a treat mindset and willing to spend more.",
+            risks: ["Premium implies quality — if your photos or packaging don't match the premium price point, expect cart abandonment.", "Deliveroo's 'Premium' label is self-declared — ensure your restaurant rating is above 4.5⭐ before using premium positioning."],
+            tactics: "Price at a believable saving — £27.99 for items worth £35 individually. Include a soft drink (Deliveroo doesn't charge extra commission on included drinks vs. alcohol). Use 'Limited Time' language in the description.",
+            competitorContext: "No competitors in your 2mi Deliveroo zone are currently running a premium meal deal — this is a clear blue-ocean positioning opportunity."
+          }
+        },
+        reason: "Deliveroo blocks promo stacking — you have one platform promo shot. BOGO is statistically your strongest single weapon on this platform. The premium meal deal runs at menu-level alongside it, ensuring customers who discover you via BOGO still have a high-AOV option."
+      };
+    } else {
+      return {
+        action: 'SMART COUNTER',
+        primary: {
+          type: 'Spend & Save', desc: '£5 off £25. Better margin than % off.', img: IMG_STORE,
+          detail: {
+            howItWorks: "Spend & Save (Threshold Discount) gives customers a fixed amount off when they hit a minimum spend. Unlike % off promos, the saving is capped — making it dramatically better for your margin on high-AOV orders. A £5 off £25 gives 20% effective discount only at exactly £25 — orders above that benefit you more.",
+            uplift: { orders: '+15–25%', newCustomers: 'Moderate — threshold promos are less discoverable than BOGO but more profitable', visibility: 'Listed in Deals section with a smaller badge than BOGO' },
+            timing: "Works best for dinner orders (18:00–21:00) where customers are already planning higher-spend group meals. Avoid pure lunch targeting — office orders often stay below the £25 threshold.",
+            risks: ["Customers just below the threshold (e.g. £23 basket) sometimes abandon rather than add more — consider nudging with a 'Popular Add-on' suggestion on your menu.", "Deliveroo charges commission on the pre-discount price. Your net on a £25 order: £25 - £5 saving - 35% commission = ~£13. Confirm this is profitable for your cost structure."],
+            tactics: "Set threshold 25–30% above your current AOV. If AOV is £18, set threshold at £22. Use £ off language — '£5 off' feels more concrete and trustworthy than '20% off' even when mathematically equivalent.",
+            competitorContext: "The 3 most threatening competitors in your Deliveroo zone are running blanket % off promos and burning margin. Your Spend & Save positions you as strategically smarter while still appearing in the Deals section."
+          }
+        },
+        hook: null,
+        bundle: null,
+        reason: "Deliveroo only allows one active platform promo. With the market doing % off, Spend & Save is the smarter weapon — it caps your discount exposure, forces higher basket sizes, and protects your bottom line while still giving you Deals section visibility."
+      };
+    }
+  } else if (platformKey === 'justeats') {
+    return {
+      action: 'TUESDAY OPT-IN',
+      primary: {
+        type: 'Cheeky Tuesday 20% Off', desc: 'Opt in for platform visibility boost.', img: IMG_STORE,
+        detail: {
+          howItWorks: "Just Eat's 'Cheeky Tuesday' is a platform-wide promotional event where participating restaurants receive algorithmically boosted placement in search results and the homepage deals section. It is opt-in but free to join — Just Eat absorbs the marketing spend and promotes the event. The 20% discount is funded by you but the extra visibility is funded by Just Eat.",
+          uplift: { orders: '+40–70% on Tuesdays vs. non-Cheeky-Tuesday weeks', newCustomers: '~70% of Cheeky Tuesday orders come from customers who haven\'t ordered from that restaurant in 30+ days', visibility: 'Homepage featured placement + Deals filter badge' },
+          timing: "Tuesday only, 11:00–23:00. Prepare inventory and staff — Cheeky Tuesday can spike orders 2–3x your normal Tuesday volume if you have strong ratings.",
+          risks: ["Not opting in means you're algorithmically deprioritised on Tuesdays — customers see opted-in restaurants first. Absence is effectively a search-rank penalty.", "A surge of Cheeky Tuesday orders with poor execution (late delivery, wrong items) will tank your weekly ratings. Only opt in if your kitchen can genuinely handle the volume."],
+          tactics: "Opt in every Tuesday without exception — the algorithm rewards consistency. Temporarily limit your menu to your 10 fastest-to-prepare items on Tuesdays to maintain quality under pressure. Respond to every Cheeky Tuesday review within 24h.",
+          competitorContext: "All 7 of your monitored competitors are opted into Cheeky Tuesday. Absence is not an option — you are invisible to Just Eat's deal-seeking traffic every Tuesday you miss."
+        }
+      },
+      hook: {
+        type: 'Free Delivery', desc: 'Toggle on in delivery settings for max visibility.', img: IMG_MEAL,
+        detail: {
+          howItWorks: "Just Eat allows restaurants to absorb delivery fees — toggling Free Delivery on means customers see no delivery charge, giving your listing a 'Free Delivery' badge. This is one of the most-used search filters on Just Eat, applied in ~38% of all browsing sessions.",
+          uplift: { orders: '+20–35% on sessions using the Free Delivery filter', newCustomers: '~50% of Free Delivery filter users are new customers comparison shopping', visibility: 'Free Delivery badge on listing tile + filter inclusion' },
+          timing: "Keep Free Delivery on Tuesdays to pair with Cheeky Tuesday for a maximum dual-badge combination. Consider toggling off on Friday and Saturday evenings where delivery-fee sensitivity is lower — customers may convert anyway, saving you the cost.",
+          risks: ["Absorbing delivery costs reduces per-order margin by £1.50–£3.50 depending on distance. On low-AOV orders this can make individual orders unprofitable.", "Free Delivery filter is competitive — you'll appear alongside all other free delivery restaurants including large chains with better ratings."],
+          tactics: "Apply free delivery above a minimum order threshold (e.g. free on orders over £15) to protect margin on small orders. Combined with Cheeky Tuesday, your listing shows both badges simultaneously — 'Cheeky Tuesday 20% Off + Free Delivery' — appearing in two deal filters at once.",
+          competitorContext: "4 of your 7 competitors offer free delivery on Tuesdays. Without it, your Cheeky Tuesday listing appears inferior to competitors showing both badges."
+        }
+      },
+      bundle: null,
+      reason: "Tuesday traffic on Just Eat is artificially concentrated by the Cheeky Tuesday algorithm. Opting in is non-negotiable — non-participants are effectively penalised in search ranking. Adding Free Delivery creates a dual-badge listing that dominates both the deals and delivery-filter discovery surfaces simultaneously."
+    };
   } else {
-     description = `${level} Threat. ${pp.length} restaurants in Ilford right now are running promos. `;
-     
-     if (directMatches.length > 0) {
-        description += `${directMatches.length} restaurants in your category are offering aggressive discounts (like '${directMatches[0].promo}'). `;
-     }
-     if (topPromo && (!directMatches.length || topPromo.restaurant !== directMatches[0].restaurant)) {
-        description += `The most aggressive overall offer is from ${topPromo.restaurant} running '${topPromo.promo}'. `;
-     }
+    return { action: 'MIXED', primary: null, hook: null, bundle: null, reason: 'Varies by platform.' };
   }
-
-  const structuredMetrics = {
-     totalArea: pp.length,
-     totalCategory: directMatches.length,
-     categoryExample: directMatches.length > 0 ? directMatches[0] : null
-  };
-
-  return { total, level, volumeScore, aggressivenessScore, itemOverlapScore, count: pp.length, topPromo, description, structuredMetrics };
 }
 
-// ================================================================
-// PHASE 1 — MARKET DIAGNOSIS
-// Reads live conditions and produces a structured diagnosis.
-// No promo decision is made here — only facts are collected.
-// ================================================================
 
-function diagnoseMarket(promos, platform, timeObj) {
-  const { state, dayName, hour, isTuesday } = timeObj;
-  const pp = promos.filter(p => p.platform === platform);
-
-  // --- Promo type breakdown ---
-  const promoTypeMap = {};
-  pp.forEach(p => {
-    const t = p.type || 'Unknown';
-    promoTypeMap[t] = (promoTypeMap[t] || 0) + 1;
-  });
-  const promoTypeSummary = Object.entries(promoTypeMap)
-    .map(([type, count]) => `${count}x ${type}`)
-    .join(', ');
-
-  const directOverlap = pp.filter(p =>
-    p.itemOverlapLevel === 'direct_match_promo' ||
-    p.itemOverlapLevel === 'direct_match' ||
-    p.itemOverlapLevel === 'same_cuisine'
-  );
-
-  // --- Threat scoring ---
-  const volumeScore = pp.length === 0 ? 0 : pp.length <= 2 ? 8 : pp.length <= 5 ? 14 : 20;
-  const AG_SCORES_LOCAL = { free_delivery: 6, Delivery: 6, free_item: 12, 'Free Item': 12, spend_save: 18, Threshold: 18, discount_low: 24, discount_high: 30, Discount: 24, bogo: 35, BOGO: 35 };
-  const OL_SCORES_LOCAL = { same_cuisine: 15, direct_match: 30, direct_match_promo: 45 };
-  let aggressivenessScore = 0;
-  let topPromo = null;
-  pp.forEach(p => {
-    const s = AG_SCORES_LOCAL[p.promoCategory] || AG_SCORES_LOCAL[p.type] || 6;
-    if (s > aggressivenessScore) { aggressivenessScore = s; topPromo = p; }
-  });
-  const itemOverlapScore = pp.length > 0
-    ? pp.reduce((max, p) => Math.max(max, OL_SCORES_LOCAL[p.itemOverlapLevel] || 15), 0)
-    : 0;
-  const totalScore = Math.min(volumeScore + aggressivenessScore + itemOverlapScore, 100);
-  let threatLevel = 'Low';
-  if (totalScore > 25 && totalScore <= 50) threatLevel = 'Moderate';
-  if (totalScore > 50 && totalScore <= 75) threatLevel = 'High';
-  if (totalScore > 75) threatLevel = 'Extreme';
-
-  // --- Human-readable time label ---
-  const ampm = hour >= 12 ? 'pm' : 'am';
-  const hour12 = hour % 12 || 12;
-  const timeLabel = `${hour12}${ampm} on ${dayName}`;
-
-  const timeDescription = {
-    QUIET: 'a quiet traffic window — moderate organic demand, low competition',
-    BUSY: 'a busy traffic window — high organic demand, elevated competition',
-    HYPER: 'a peak traffic window — maximum platform demand of the week',
-    OFF: 'an off-peak window — very low platform traffic'
-  }[state] || 'an unknown traffic window';
-
-  return {
-    state, dayName, hour, isTuesday, timeLabel, timeDescription,
-    totalPromos: pp.length,
-    directOverlapCount: directOverlap.length,
-    promoTypeSummary: promoTypeSummary || 'None',
-    topPromo,
-    threatLevel, totalScore,
-    volumeScore, aggressivenessScore, itemOverlapScore,
-    structuredMetrics: {
-      totalArea: pp.length,
-      totalCategory: directOverlap.length,
-      categoryExample: directOverlap.length > 0 ? directOverlap[0] : null
-    }
-  };
-}
-
-// ================================================================
-// PHASE 2 — PROMO FORMULATION (Case Study Applied)
-// Takes the market diagnosis and applies validated research to
-// produce a promo recommendation with full reasoning chain.
-// ================================================================
-
-function formulatePromo(diagnosis, platform) {
-  const { state, threatLevel, timeLabel, timeDescription, totalPromos, directOverlapCount, promoTypeSummary, topPromo, isTuesday } = diagnosis;
-  const isJustEat = platform === 'justeats';
-
-  // Build the market summary prefix that goes into every reason
-  const marketSummary = totalPromos === 0
-    ? `The market scan shows zero active promos right now.`
-    : `The market scan detected ${totalPromos} active promo${totalPromos > 1 ? 's' : ''} (${promoTypeSummary})${directOverlapCount > 0 ? `, of which ${directOverlapCount} are from restaurants in your direct category` : ''}. ${topPromo ? `The most aggressive offer is from ${topPromo.restaurant} running "${topPromo.promo}".` : ''}`;
-
-  const timeSummary = `${timeLabel} is ${timeDescription}.`;
-
-  const tuesdayNote = isTuesday && isJustEat
-    ? ` Today is Tuesday — opt into JustEat Cheeky Tuesday now. The platform co-funds part of the 20% cost so your net cost is closer to 10–12%. This is the cheapest high-visibility play available to you today.`
-    : '';
-
-  const options = [];
-
-  if (state === 'QUIET') {
-    if (threatLevel === 'Low') {
-      options.push({ type: 'Conservative', title: 'Hold & Monitor', promoType: 'None',
-        reason: `${timeSummary} ${marketSummary} With no competitor activity and quiet traffic, holding your margins is the right call — there is nothing to defend against and organic demand is insufficient to justify a promo cost.${tuesdayNote}` });
-      options.push({ type: 'Normal', title: 'Visibility Boost', promoType: isJustEat && isTuesday ? 'Cheeky Tuesday — 20% off £15+' : 'Free Delivery or Free Item Add-on',
-        reason: `${timeSummary} ${marketSummary} No competition means every order you capture right now is purely incremental — it is not stealing from your own peak hours. A Free Item add-on costs you ~£0.80 in food vs. ~£5 for a 20% discount, with the same conversion impact. Research shows "free" consistently outperforms "% off" in customer psychology.${tuesdayNote}` });
-      options.push({ type: 'Aggressive', title: 'Market Capture', promoType: '15% off hero items with £15 minimum spend',
-        reason: `${timeSummary} ${marketSummary} With competitors asleep, an aggressive play captures all quiet-time traffic for yourself. Always enforce a minimum spend threshold (£15+) — without it, 15% off on a low-value order combined with 30% platform commission can push the order into a net loss.${tuesdayNote}` });
-    } else if (threatLevel === 'Moderate') {
-      options.push({ type: 'Conservative', title: 'Free Delivery Shield', promoType: 'Free Delivery',
-        reason: `${timeSummary} ${marketSummary} Competitors are active during a quiet window — they are building algorithm ranking for later. Free Delivery is the cheapest defence: it costs a fraction of a % discount and places you inside the "Free Delivery" filter tab that a large share of customers browse first. It protects your food margin completely.${tuesdayNote}` });
-      options.push({ type: 'Normal', title: 'Counter with Value', promoType: isJustEat && isTuesday ? 'Cheeky Tuesday — 20% off £15+' : 'Free Item add-on or 10–15% off with £15 min spend',
-        reason: `${timeSummary} ${marketSummary} Competitors are buying feed position during a quiet window — counter before they pull customers who would otherwise find you first. Research principle: if they are running % off, respond with a Free Item instead. Your cost: ~£0.80. Their cost on 20% off: ~£5. You win on margin every time.${tuesdayNote}` });
-      options.push({ type: 'Aggressive', title: 'Volume Push', promoType: '20% off orders over £20',
-        reason: `${timeSummary} ${marketSummary} Overpower the moderate competition during this quiet window. Enforce a £20 minimum spend — this forces a higher basket size that dilutes the 20% cost and keeps you above your break-even threshold. Never run 20% off without a minimum spend floor.${tuesdayNote}` });
-    } else {
-      options.push({ type: 'Conservative', title: 'Anchor with Free Delivery', promoType: 'Free Delivery only',
-        reason: `${timeSummary} ${marketSummary} Heavy competitor promo spend during quiet hours means they are buying future algorithm ranking at a high cost. Your counter: run Free Delivery only as a cheap visibility anchor. Their promo cost is 5–10× yours — let them burn margin while you protect it.${tuesdayNote}` });
-      options.push({ type: 'Normal', title: 'Strategic Counter', promoType: '15% off hero items with £20 min spend, or Spend & Save (£5 off £25)',
-        reason: `${timeSummary} ${marketSummary} High competitor pressure requires a counter — but on your terms. Target your highest-margin hero items only, not a blanket menu discount. Spend & Save (£5 off £25) is especially powerful: it raises basket size, protects margin on small orders, and appears as attractive as a % discount to the customer.${tuesdayNote}` });
-      options.push({ type: 'Aggressive', title: 'Match & Contain', promoType: '20–25% off with £20 minimum spend',
-        reason: `${timeSummary} ${marketSummary} Competitors are monopolising quiet-hour feed position. Match their aggression — but the £20+ minimum spend is non-negotiable. Without it, 25% off combined with 30% platform commission on a small order is a guaranteed net loss on every order.${tuesdayNote}` });
-    }
-  } else if (state === 'BUSY') {
-    if (threatLevel === 'Low') {
-      options.push({ type: 'Conservative', title: 'Organic Maximisation', promoType: 'None',
-        reason: `${timeSummary} ${marketSummary} Peak traffic, zero competitor promos — this is the ideal trading scenario. Every order arriving right now is 100% organic. Running any promo means paying to discount orders you would receive anyway. Hold and collect the full margin.${tuesdayNote}` });
-      options.push({ type: 'Normal', title: 'Focus on Ops, Not Promos', promoType: 'None',
-        reason: `${timeSummary} ${marketSummary} High demand, no competition. The highest-ROI action right now is zero promo spend. Instead, focus on kitchen speed: platform algorithms track preparation time as a live ranking signal, and a drop from 4.5 to 4.0 stars can reduce your platform ranking by 20–30%, costing more than any promo could recover.${tuesdayNote}` });
-      options.push({ type: 'Aggressive', title: 'Low-Cost Volume Push', promoType: 'Free Delivery only',
-        reason: `${timeSummary} ${marketSummary} If pushing maximum volume is the goal, Free Delivery is the only justifiable promo during a no-threat busy window — it appears in the filter tab without touching food margin. Any % off here means discounting orders that were already coming to you organically.${tuesdayNote}` });
-    } else if (threatLevel === 'Moderate') {
-      options.push({ type: 'Conservative', title: 'Margin Priority', promoType: 'None',
-        reason: `${timeSummary} ${marketSummary} Busy period with moderate competitor activity. Your organic demand during this window is strong enough to absorb some competition — the moderate threat level is unlikely to significantly shift order share. Protecting margins is the right priority.${tuesdayNote}` });
-      options.push({ type: 'Normal', title: 'Free Delivery Only', promoType: 'Free Delivery',
-        reason: `${timeSummary} ${marketSummary} Competitor promos are active during peak. Free Delivery is the lowest-cost response — a fraction of the cost of % off, and it places you in the Free Delivery filter. Critical rule from case study research: never match competitors' % discount with your own % discount during busy hours. Counter value with value, not price with price.${tuesdayNote}` });
-      options.push({ type: 'Aggressive', title: 'Free Item Counter', promoType: 'Free Item add-on (e.g. free side or drink)',
-        reason: `${timeSummary} ${marketSummary} Case study finding: a free side costs ~£0.80–£1.20. A 20% discount on a £25 order costs ~£5. The perceived value to the customer is almost identical. By countering with a Free Item instead of matching on price, you spend 75–85% less for the same competitive effect.${tuesdayNote}` });
-    } else {
-      options.push({ type: 'Conservative', title: 'Defensive Free Delivery', promoType: 'Free Delivery',
-        reason: `${timeSummary} ${marketSummary} Heavy competitor activity during peak hours. Free Delivery maintains your baseline feed visibility without triggering a destructive margin war. You are not winning this window outright — but you are not losing ground either, and you protect your margin entirely.${tuesdayNote}` });
-      options.push({ type: 'Normal', title: 'Value Counter', promoType: 'Free Item + Free Delivery, or Spend & Save (£5 off £25)',
-        reason: `${timeSummary} ${marketSummary} You are actively losing orders during peak. Research rule: never match a % discount with another % discount during peak — it triggers a margin war neither side can win profitably. Combined Free Item + Free Delivery costs ~£1.50 total. A competitor's 20% off costs them ~£5. Counter value with value.${tuesdayNote}` });
-      options.push({ type: 'Aggressive', title: 'Targeted Match', promoType: '20% off with £25 minimum spend — never BOGO',
-        reason: `${timeSummary} ${marketSummary} You are losing serious order share during your best trading window. Match the competitor's discount level but enforce a £25+ minimum spend. Avoid BOGO at all costs — on a £30 order, BOGO combined with 30% platform commission leaves under £3 net profit on food that costs £10 to make. A 20% off with minimum spend is survivable. BOGO is a margin massacre.${tuesdayNote}` });
-    }
-  } else {
-    if (threatLevel === 'Low') {
-      options.push({ type: 'Conservative', title: 'Absolute Hold', promoType: 'None',
-        reason: `${timeSummary} ${marketSummary} This is the single highest-value organic trading window of the week — Friday and Saturday evenings account for 55–65% of all weekly delivery demand. Zero competitor threat. Do not spend a penny on promos. A 4.5-star restaurant with no promo outperforms a 4.0-star with 30% off in every platform algorithm.${tuesdayNote}` });
-      options.push({ type: 'Normal', title: 'Organic Window', promoType: 'None',
-        reason: `${timeSummary} ${marketSummary} Peak hour, no threat. The highest-ROI action is zero promo spend. Use this window to focus on kitchen prep speed — platforms track preparation time as a live ranking signal. Slower prep during HYPER directly reduces your visibility for the next trading session.${tuesdayNote}` });
-      options.push({ type: 'Aggressive', title: 'Volume Amplifier', promoType: 'Free Delivery on this platform only',
-        reason: `${timeSummary} ${marketSummary} If pushing beyond organic volume is the goal, Free Delivery on this single platform is the only justifiable play. Research shows running promos across all three platforms simultaneously during HYPER does not generate sufficient incremental return to justify the cross-platform cost.${tuesdayNote}` });
-    } else if (threatLevel === 'Moderate') {
-      options.push({ type: 'Conservative', title: 'Hold & Monitor', promoType: 'None',
-        reason: `${timeSummary} ${marketSummary} Peak hour with moderate competition. The organic traffic volume during HYPER is substantial enough to absorb moderate competitor promos without you spending anything. Monitor live order volume — if it drops below your expected peak baseline, activate Free Delivery immediately.${tuesdayNote}` });
-      options.push({ type: 'Normal', title: 'Single Platform Play', promoType: 'Free Delivery on this platform only',
-        reason: `${timeSummary} ${marketSummary} Moderate competition during your best trading window. Run Free Delivery on this one platform only — not across all three. Case study finding: the incremental return of simultaneous multi-platform promos during HYPER does not justify the combined cost. Stay targeted.${tuesdayNote}` });
-      options.push({ type: 'Aggressive', title: 'Free Item Differentiator', promoType: 'Free Item add-on (e.g. free garlic bread or soft drink)',
-        reason: `${timeSummary} ${marketSummary} Differentiate from moderately active competitors. A free side has very high perceived value while costing ~£0.80–£1.20 in food. Research consistently shows "free" outperforms "% off" in customer conversion — at a fraction of the cost. This is the most efficient promo type available.${tuesdayNote}` });
-    } else {
-      options.push({ type: 'Conservative', title: 'Value Counter', promoType: 'Free Item + Free Delivery',
-        reason: `${timeSummary} ${marketSummary} Heavy competitor promos during peak. Avoid matching large % discounts. Counter with Free Item + Free Delivery — your combined cost: ~£1.50. A competitor running 25% off a £25 order spends £6.25. You achieve identical feed visibility at 76% lower cost.${tuesdayNote}` });
-      options.push({ type: 'Normal', title: 'Promo War Response', promoType: topPromo?.type === 'BOGO' ? 'Counter BOGO with Free Item + Free Delivery (never match BOGO)' : 'Match competitor % within 5% with £25 min spend',
-        reason: `${timeSummary} ${marketSummary} Peak-hour promo war — you are losing visible feed share in the highest-volume window of the week. Case study rule: if competitors run BOGO, counter with Free Item — never match BOGO directly (it is a margin massacre). If they run % off, match within 5% but enforce a £25+ minimum spend to protect margin.${tuesdayNote}` });
-      options.push({ type: 'Aggressive', title: 'Full Response', promoType: '25% off with £25 minimum spend — never BOGO',
-        reason: `${timeSummary} ${marketSummary} All-out peak-hour response. Match competitor aggression at 25% but enforce £25+ minimum spend — without it, combined platform commission (30%) and discount (25%) on a small order guarantees a net loss. Avoid BOGO entirely: on a £30 order, BOGO plus commission leaves you netting ~£3–5 on food that cost £10 to prepare.${tuesdayNote}` });
-    }
-  }
-
-  return options;
-}
-
-function runIntel(promos) {
-  const timeObj = getTimeVariable();
+function runIntel(promos, strategyMode) {
+  const time = getTimeVariable();
   const platforms = [
-    { key: 'ubereats',  label: 'Uber Eats' },
-    { key: 'deliveroo', label: 'Deliveroo' },
-    { key: 'justeats',  label: 'Just Eat' },
+    { key: 'ubereats',  label: 'UBEREATS' },
+    { key: 'deliveroo', label: 'DELIVEROO' },
+    { key: 'justeats',  label: 'JUSTEATS' },
+    { key: 'all',  label: 'OVERALL MARKET' },
   ];
-  const results = platforms.map(plt => {
-    const diagnosis = diagnoseMarket(promos, plt.key, timeObj);
-    const outputOptions = formulatePromo(diagnosis, plt.key);
-    return { ...plt, time: timeObj.state, timeObj, diagnosis, threatData: diagnosis, outputOptions };
-  });
-
-  const sorted = [...results].sort((a, b) => (b.diagnosis.totalScore || 0) - (a.diagnosis.totalScore || 0));
-  return { time: timeObj.state, timeObj, results, topResult: sorted[0] };
-}
-
-
-// ================================================================
-// COMPONENT
-// ================================================================
-
-const PromoOptionCard = ({ option, onClick }) => {
-  let imageUrl = '';
-  let themeColor = '';
   
-  if (option.type === 'Aggressive') {
-    imageUrl = '/promo_aggressive.png';
-    themeColor = '#EF4444'; // Red
-  } else if (option.type === 'Normal') {
-    imageUrl = '/promo_normal.png';
-    themeColor = '#10B981'; // Green
-  } else {
-    imageUrl = '/promo_conservative.png';
-    themeColor = '#EAB308'; // Yellow
-  }
-
-  return (
-    <div 
-      className="glass-panel"
-      onClick={onClick}
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        marginBottom: '16px',
-        border: '1px solid rgba(0,0,0,0.05)',
-        background: '#FFFFFF',
-        borderRadius: '20px',
-        boxShadow: '0 6px 20px -10px rgba(0, 0, 0, 0.04)',
-        transition: 'transform 0.3s ease, box-shadow 0.3s ease',
-        cursor: 'pointer'
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.transform = 'translateY(-4px)';
-        e.currentTarget.style.boxShadow = '0 12px 30px -10px rgba(0, 0, 0, 0.08)';
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.transform = 'translateY(0)';
-        e.currentTarget.style.boxShadow = '0 6px 20px -10px rgba(0, 0, 0, 0.04)';
-      }}
-    >
-       {/* Image Section */}
-       <div style={{ width: '100%', height: '90px', flexShrink: 0, position: 'relative' }}>
-          <img 
-            src={imageUrl} 
-            alt={option.type} 
-            style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-          />
-          <div style={{
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-            background: 'linear-gradient(to bottom, transparent 0%, rgba(255,255,255,1) 95%, rgba(255,255,255,1) 100%)'
-          }}></div>
-       </div>
-
-       {/* Content Section */}
-       <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-             <div style={{ flex: 1, paddingRight: '12px' }}>
-                <div style={{ fontSize: '10px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                   Promo
-                </div>
-                <div style={{ fontSize: '14px', fontWeight: 700, color: '#111' }}>
-                   {option.promoType}
-                </div>
-             </div>
-             
-             <div style={{ flexShrink: 0, textAlign: 'right' }}>
-                <span style={{ fontSize: '11px', fontWeight: 700, color: themeColor, textTransform: 'uppercase', letterSpacing: '0' }}>
-                  {option.type === 'Normal' ? 'Optimal' : option.type} Strategy
-                </span>
-             </div>
-          </div>
-
-          <div>
-             <div style={{ fontSize: '10px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
-                Algorithm Reasoning
-             </div>
-             <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.4, fontWeight: 500 }}>
-                {option.reason}
-             </div>
-          </div>
-       </div>
-    </div>
-  )
+  const results = platforms.map(plt => {
+    const td = getThreatData(promos, plt.key);
+    const stack = getStrategyStack(plt.key, time, td.level, strategyMode);
+    return { ...plt, time, threatData: td, output: stack };
+  });
+  
+  return { time, results };
 }
+
+
+const GLASS_PANEL_STYLE = {
+  background: 'rgba(255, 255, 255, 0.75)',
+  backdropFilter: 'blur(16px)',
+  WebkitBackdropFilter: 'blur(16px)',
+  border: '1px solid rgba(255, 255, 255, 0.9)',
+  boxShadow: '0 8px 32px rgba(0, 0, 0, 0.04)',
+  borderRadius: '20px',
+};
 
 const PromoIntelligenceContent = () => {
   const urlParams = new URLSearchParams(window.location.search);
-  const initialPlatform = urlParams.get('platform') || 'ubereats';
-  const [intelPlatform, setIntelPlatform] = useState(initialPlatform);
-  const [selectedPromoOption, setSelectedPromoOption] = useState(null);
-  const [activePromoFilter, setActivePromoFilter] = useState('All');
+  const [intelPlatforms, setIntelPlatforms] = useState(['ubereats', 'deliveroo', 'justeats']);
+  const [isBundleModalOpen, setIsBundleModalOpen] = useState(false);
+  const [selectedPromoDetail, setSelectedPromoDetail] = useState(null);
+  
+  // Filter States
+  const [searchQuery, setSearchQuery] = useState('');
+  const [targetFilter, setTargetFilter] = useState('All');
+  const [threatFilter, setThreatFilter] = useState('All');
+  const [platformFilters, setPlatformFilters] = useState([]);
+  const [platformDropdownOpen, setPlatformDropdownOpen] = useState(false);
+  const [activeLeftTab, setActiveLeftTab] = useState('feed');
+  
+  const [strategyMode, setStrategyMode] = useState('margin'); // 'margin' or 'growth'
   const [expandedPromoIndex, setExpandedPromoIndex] = useState(null);
+  const [intelPlatformDropdownOpen, setIntelPlatformDropdownOpen] = useState(false);
 
-  const staticPromos = [
-    { restaurant: "Domino's Ilford", promo: '25% off selected pizzas', type: 'Discount', active: 'Active', platform: 'deliveroo', itemOverlapLevel: 'direct_match_promo' },
-    { restaurant: 'Pizza Palace Barking', promo: 'Buy 1 Get 1 Free', type: 'BOGO', active: 'Active', platform: 'deliveroo', itemOverlapLevel: 'direct_match' },
-    { restaurant: 'Al-Amin Pizza', promo: 'Free Delivery', type: 'Delivery', active: 'Active', platform: 'justeats', itemOverlapLevel: 'same_cuisine' },
-    { restaurant: 'Fire Crust', promo: 'Spend £20 Save £5', type: 'Threshold', active: 'Active', platform: 'deliveroo', itemOverlapLevel: 'same_cuisine' },
-    { restaurant: 'Burger Boss Ilford', promo: '20% off entire menu', type: 'Discount', active: 'Active', platform: 'ubereats', itemOverlapLevel: 'none' },
-    { restaurant: 'Wok Master', promo: 'Free Spring Rolls', type: 'Free Item', active: 'Active', platform: 'justeats', itemOverlapLevel: 'same_broad_category' },
+  const platforms = [
+    { key: 'deliveroo', name: 'Deliveroo', color: '#00CCBC', bg: '#00CCBC' },
+    { key: 'ubereats', name: 'Uber Eats', color: '#06C167', bg: '#000' },
+    { key: 'justeats', name: 'Just Eat', color: '#FF8000', bg: '#FF8000' }
   ];
 
-  const intelData = runIntel(staticPromos);
-  const activePlatformData = intelData.results.find(r => r.key === intelPlatform);
+  // Map and enrich mock data with our new categorizations
+  let promos = mockLondonEcosystem.flatMap(restaurant => 
+    restaurant.promos.map(promo => {
+      const titleLower = promo.title.toLowerCase();
+      
+      // Determine Type
+      let type = 'Discount';
+      if (titleLower.includes('buy 1 get 1') || titleLower.includes('bogo')) type = 'BOGO';
+      else if (titleLower.includes('free delivery')) type = 'Free Delivery';
+      else if (titleLower.includes('free')) type = 'Free Item';
 
-  const handlePlatformClick = (key) => {
-    setIntelPlatform(intelPlatform === key ? null : key);
-  };
+      // Determine Target
+      let target = 'Entire Menu';
+      if (titleLower.includes('fries') || titleLower.includes('drink') || titleLower.includes('side')) target = 'Sides/Drinks';
+      else if (titleLower.includes('burger') || titleLower.includes('pizza') || titleLower.includes('chicken')) target = 'Mains';
 
-  const timeColors = {
-    QUIET: '#3B82F6', BUSY: '#EF4444', HYPER: '#8B5CF6', OFF: '#6B7280'
-  };
-  const activeTimeColor = timeColors[intelData.time] || timeColors.OFF;
+      // Determine Threat Level
+      let threatLevel = 'Fair';
+      let threatColor = '#F59E0B'; // yellow/orange
+      if (type === 'BOGO' || titleLower.includes('25%') || titleLower.includes('30%') || titleLower.includes('50%')) {
+        threatLevel = 'High';
+        threatColor = '#EF4444'; // red
+      }
 
-  const renderDetailView = () => {
-    if (!intelPlatform) {
-      return (
-        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>
-          <Target size={32} style={{ marginBottom: '12px', opacity: 0.5 }} />
-          <div style={{ fontSize: '16px', fontWeight: 500 }}>Select a platform to view promo intel details.</div>
-        </div>
-      );
+      // Generate the deal summary for the yellow pill
+      let dealSummary = promo.title;
+      if (type === 'BOGO') dealSummary = 'BOGO';
+      else if (titleLower.includes('% off')) {
+        const match = titleLower.match(/\d+%\s*off/);
+        if (match) dealSummary = match[0].toUpperCase();
+      }
+
+      return {
+        logo: restaurant.image,
+        name: restaurant.name,
+        type: type,
+        target: target,
+        threatLevel: threatLevel,
+        threatColor: threatColor,
+        dealSummary: dealSummary,
+        title: promo.title,
+        status: 'Active',
+        details: promo.description,
+        itemImage: promo.image || restaurant.topDishes?.[0]?.image || restaurant.image,
+        platformKey: ['ubereats', 'deliveroo', 'justeats'][Math.floor(Math.random() * 3)] // Mock platform association
+      };
+    })
+  );
+
+  // Apply filters
+  promos = promos.filter(p => {
+    if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+    if (targetFilter !== 'All' && p.target !== targetFilter) return false;
+    if (threatFilter !== 'All' && p.threatLevel !== threatFilter) return false;
+    if (platformFilters.length > 0) {
+      if (!platformFilters.includes(p.platformKey)) return false;
     }
+    return true;
+  });
 
-    const platformConfig = {
-      ubereats: { name: 'Uber Eats', bg: '#000000', text: '#FFF', logoInner: '#06C167' },
-      deliveroo: { name: 'Deliveroo', bg: '#00CCBC', text: '#FFF', logoInner: '#FFF' },
-      justeats: { name: 'Just Eats', bg: '#FF8000', text: '#FFF', logoInner: '#FFF' },
-    }[intelPlatform];
+  const highThreatPromos = promos.filter(p => p.threatLevel === 'High');
+  const intelResult = runIntel(highThreatPromos, strategyMode);
+  
+  const ACTION_COLORS = { 'MATCH': '#EF4444', 'HEAVY COUNTER': '#EF4444', 'COUNTER': '#F59E0B', 'SMART COUNTER': '#F59E0B', 'AGGRESSIVE STACK': '#EF4444', 'DEFENSIVE STACK': '#3B82F6', 'TUESDAY OPT-IN': '#F59E0B', 'LIGHT': '#3B82F6', 'HOLD': '#10B981' };
 
-    const currentPlatformData = intelData.results.find(r => r.key === intelPlatform);
+  // Market Overview Calculations
+  const totalPromosActive = promos.length;
+  const highThreatCount = promos.filter(p => p.threatLevel === 'High').length;
+  const bundleCount = promos.filter(p => p.type === 'BOGO' || p.type === 'Bundle').length;
 
-    const distribution = [
-      { label: 'BOGO', count: 30, color: '#111' },
-      { label: '> 10% Discount', count: 25, color: '#3B82F6' },
-      { label: '10% Discount', count: 14, color: '#EC4899' },
-      { label: 'Free Delivery', count: 20, color: '#10B981' },
-      { label: 'No promotion', count: 53, color: '#E5E7EB' },
-    ];
-    
-    const totalDist = 142;
-    let currentPct = 0;
-    const gradientStops = distribution.map(d => {
-      const start = currentPct;
-      const pct = (d.count / totalDist) * 100;
-      currentPct += pct;
-      return `${d.color} ${start}% ${currentPct}%`;
-    }).join(', ');
+  const myActivePromos = [
+    {
+      title: '20% Off Orders Over £20',
+      details: 'Entire Menu',
+      itemImage: promos[0]?.itemImage || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=64&q=80',
+      platformKey: 'ubereats',
+      target: 'Entire Menu',
+      effectiveness: 'Optimal',
+      effColor: '#10B981',
+    },
+    {
+      title: 'Buy 1 Get 1 Free',
+      details: 'Pizzas only',
+      itemImage: promos[1]?.itemImage || 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=64&q=80',
+      platformKey: 'deliveroo',
+      target: 'Entire Menu',
+      effectiveness: 'Mismatch',
+      effColor: '#F59E0B',
+    },
+    {
+      title: 'Free Delivery',
+      details: 'Min order £15',
+      itemImage: promos[2]?.itemImage || 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=64&q=80',
+      platformKey: 'justeats',
+      target: 'Delivery Fee',
+      effectiveness: 'Overkill',
+      effColor: '#EF4444',
+    }
+  ];
+  
+  const typeCounts = {};
+  promos.forEach(p => { typeCounts[p.type] = (typeCounts[p.type] || 0) + 1; });
+  const sortedTypes = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+  const topTypesText = sortedTypes.slice(0, 2).map(([type, count]) => `${type} (${Math.round((count/Math.max(totalPromosActive, 1))*100)}%)`).join(', ');
 
-    const promos = mockLondonEcosystem.flatMap(restaurant => 
-      restaurant.promos.map(promo => {
-        let mappedType = 'Discount';
-        const titleLower = promo.title.toLowerCase();
-        if (titleLower.includes('buy 1 get 1') || titleLower.includes('bogo')) mappedType = 'Buy 1 Get 1 Free';
-        else if (titleLower.includes('% off') || promo.type === 'Discount') mappedType = '20% Off Orders';
-        else if (titleLower.includes('delivery')) mappedType = 'Free Delivery';
-        else if (titleLower.includes('free')) mappedType = 'Free Item';
+  const platformHeat = intelResult.results.filter(r => r.key !== 'all').sort((a, b) => b.threatData.total - a.threatData.total)[0];
+
+  const overviewStats = {
+    deliveroo: { competitors: 42, promos: 18 },
+    ubereats: { competitors: 56, promos: 34 },
+    justeats: { competitors: 38, promos: 12 },
+  };
+
+  return (
+    <div style={{ 
+      minHeight: '110vh', 
+      background: 'transparent',
+      padding: '24px 24px 120px 24px', 
+      display: 'flex', 
+      flexDirection: 'column', 
+      gap: '24px', 
+      fontFamily: "'Inter', sans-serif" 
+    }}>
+      <style>{`
+        @keyframes threatPulse {
+          0% { background-color: rgba(255, 0, 0, 0.05); }
+          50% { background-color: rgba(255, 0, 0, 0.15); }
+          100% { background-color: rgba(255, 0, 0, 0.05); }
+        }
+        .high-threat-row {
+          animation: threatPulse 2s infinite ease-in-out;
+        }
+      `}</style>
+      <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '24px', flex: 1 }}>
         
-        return {
-          logo: restaurant.image,
-          name: restaurant.name,
-          type: mappedType,
-          status: 'Active',
-          details: `${promo.title} — ${promo.description}`,
-          itemImage: promo.image || restaurant.topDishes?.[0]?.image || restaurant.image
-        };
-      })
-    );
+        {/* 1. TOP OVERVIEW SECTION (Floating Glass, 75% Width) */}
+        <div style={{ ...GLASS_PANEL_STYLE, padding: '20px 24px 16px 24px', display: 'flex', alignItems: 'center', width: '75%', gap: '16px' }}>
+            
+            {/* Title */}
+            <div style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E293B', letterSpacing: '-0.02em', whiteSpace: 'nowrap' }}>
+              Promo Intel
+            </div>
 
-    return (
-      <div style={{
-        background: '#FCFBFA',
-        borderRadius: '24px',
-        padding: '32px',
-        position: 'relative',
-        display: 'flex',
-        border: '1px solid rgba(0,0,0,0.05)',
-        boxShadow: '0 20px 40px rgba(0,0,0,0.04)',
-        gap: '40px'
-      }}>
+            <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.1)', margin: '0 8px' }} />
 
-        {/* LEFT COLUMN: Platform Info (60%) */}
-        <div style={{ flex: '0 0 58%', display: 'flex', flexDirection: 'column', paddingRight: '40px', borderRight: '1px solid rgba(55, 65, 81, 0.2)' }}>
-          
-          <div style={{
-            background: `linear-gradient(135deg, ${platformConfig.bg}, ${platformConfig.bg}dd)`,
-            borderRadius: '20px',
-            height: '100px',
-            width: '100%',
-            marginBottom: '32px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            gap: '16px',
-            flexShrink: 0,
-          }}>
-            {intelPlatform === 'ubereats' ? (
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: platformConfig.logoInner, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                 <span style={{ fontSize: '15px', fontWeight: 700, color: '#111', lineHeight: 1, textAlign: 'center', letterSpacing: '-0.05em' }}>Uber<br/>Eats</span>
-              </div>
-            ) : (
-              <div style={{ width: '56px', height: '56px', borderRadius: '50%', background: platformConfig.logoInner, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                 <span style={{ fontSize: '15px', fontWeight: 700, color: platformConfig.bg, lineHeight: 1.1, textAlign: 'center' }}>{platformConfig.name.split(' ')[0]}</span>
-              </div>
-            )}
-            <h2 style={{ color: platformConfig.text, fontSize: '32px', fontWeight: 700, margin: 0, letterSpacing: '-0.02em' }}>
-              {platformConfig.name}
-            </h2>
-          </div>
-
-          <div style={{
-            background: '#FFFFFF',
-            borderRadius: '16px',
-            padding: '16px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: '24px',
-            boxShadow: '0 4px 15px rgba(0,0,0,0.03)',
-            border: '1px solid rgba(0,0,0,0.04)',
-            flexShrink: 0,
-            transform: 'translateY(-10%)',
-            position: 'relative',
-            zIndex: 5
-          }}>
-            {[
-              { label: 'Total Competitors', value: '142' },
-              { label: 'Ilford', value: '45' },
-              { label: 'Neighborhood', value: '97' },
-              { label: 'Active Promos', value: '18' },
-            ].map(stat => (
-              <div key={stat.label} style={{ display: 'flex', flexDirection: 'column', gap: '4px', alignItems: 'center', flex: 1 }}>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B', letterSpacing: '0.01em', textAlign: 'center', fontFamily: 'Inter, sans-serif' }}>{stat.label}</span>
-                <span style={{ fontSize: '20px', fontWeight: 700, color: '#E86A58' }}>{stat.value}</span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '8px' }}>
-            <h3 style={{ fontSize: '18px', fontWeight: 700, color: '#1F2937', margin: 0 }}>
-              Live Promos
-            </h3>
-            <span style={{ fontSize: '12px', fontWeight: 600, color: '#6B7280' }}>
-              {promos.filter(p => {
-                if (activePromoFilter === 'All') return true;
-                if (activePromoFilter === 'BOGO') return p.type.includes('Buy 1 Get 1 Free');
-                if (activePromoFilter === 'Discount') return p.type.includes('% Off');
-                if (activePromoFilter === 'Free Delivery') return p.type === 'Free Delivery';
-                return true;
-              }).length} Active
-            </span>
-          </div>
-
-          <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', overflowX: 'auto', paddingBottom: '4px' }}>
-            {['All', 'BOGO', 'Discount', 'Free Delivery'].map(filter => {
-              const isActive = activePromoFilter === filter;
-              return (
-                <button
-                  key={filter}
-                  onClick={() => setActivePromoFilter(filter)}
-                  style={{
-                    padding: '8px 16px',
-                    borderRadius: '20px',
-                    fontSize: '12px',
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    border: isActive ? `1px solid ${platformConfig.bg}` : '1px solid rgba(0,0,0,0.06)',
-                    background: isActive ? `${platformConfig.bg}15` : '#FFFFFF',
-                    color: isActive ? platformConfig.bg : '#6B7280',
-                    transition: 'all 0.2s ease',
-                    boxShadow: isActive ? 'none' : '0 2px 4px rgba(0,0,0,0.02)',
-                    whiteSpace: 'nowrap'
-                  }}
-                >
-                  {filter}
-                </button>
-              );
-            })}
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '24px', marginBottom: '24px', padding: '0 8px' }}>
-            {/* Glowing Ring */}
-            <div style={{
-              width: '100px', height: '100px', borderRadius: '50%',
-              background: `conic-gradient(#DC2626 0% 20%, #F59E0B 20% 65%, #10B981 65% 100%)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              boxShadow: '0 8px 20px rgba(0,0,0,0.06)'
-            }}>
-              <div style={{
-                width: '90px', height: '90px', borderRadius: '50%', background: '#fff',
-                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
-                boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.02)'
-              }}>
-                <span style={{ fontSize: '24px', color: '#111', fontWeight: 700, lineHeight: 1 }}>
-                  {promos.filter(p => {
-                    if (activePromoFilter === 'All') return true;
-                    if (activePromoFilter === 'BOGO') return p.type.includes('Buy 1 Get 1 Free');
-                    if (activePromoFilter === 'Discount') return p.type.includes('% Off');
-                    if (activePromoFilter === 'Free Delivery') return p.type === 'Free Delivery';
-                    return true;
-                  }).length}
-                </span>
-                <span style={{ fontSize: '9px', color: '#6B7280', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', marginTop: '4px' }}>
-                  {activePromoFilter === 'All' ? 'Total' : activePromoFilter}
-                </span>
+            {/* Total Promos Block */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TOTAL PROMOS:</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#E86A58', lineHeight: 1 }}>64</span>
               </div>
             </div>
 
-            {/* Legend */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
-              {[
-                { label: 'BOGO', pct: '20%', color: '#DC2626' },
-                { label: 'Discount', pct: '45%', color: '#F59E0B' },
-                { label: 'Free Delivery', pct: '35%', color: '#10B981' }
-              ].map(d => {
-                const isFaded = activePromoFilter !== 'All' && activePromoFilter !== d.label;
+            <div style={{ width: '1px', height: '40px', background: 'rgba(0,0,0,0.1)', margin: '0 12px' }} />
+
+            {/* Total Competitors Block */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+                <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TOTAL COMPETITORS:</span>
+                <span style={{ fontSize: '1.25rem', fontWeight: 800, color: '#1E293B', lineHeight: 1 }}>136</span>
+              </div>
+            </div>
+
+            <div style={{ width: '1px', height: '40px', background: 'rgba(0,0,0,0.1)', margin: '0 12px' }} />
+
+            {/* Time Metric */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', whiteSpace: 'nowrap' }}>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>TIME:</span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                {(() => {
+                  const globalState = intelResult?.time === 'OFF' ? 'Quiet' : intelResult?.time === 'PEAK' ? 'Hyper' : 'Busy';
+                  const globalColor = globalState === 'Hyper' ? '#EF4444' : globalState === 'Busy' ? '#F59E0B' : '#10B981';
+                  return (
+                    <>
+                      <div className="animate-pulse" style={{ width: '10px', height: '10px', borderRadius: '50%', background: globalColor, boxShadow: `0 0 8px ${globalColor}` }} />
+                      <span style={{ fontSize: '1rem', fontWeight: 700, color: '#475569', lineHeight: 1 }}>{globalState}</span>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
+            <div style={{ width: '1px', height: '40px', background: 'rgba(0,0,0,0.1)', margin: '0 12px' }} />
+
+            {/* Platform Status Block */}
+            <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+              {platforms.map((p, index) => {
+                const mockLevels = ['Low', 'Medium', 'High'];
+                const pLevel = mockLevels[index % 3];
+                const statusText = pLevel === 'High' ? 'Hyper' : pLevel === 'Medium' ? 'Busy' : 'Quiet';
+                const statusColor = pLevel === 'High' ? '#EF4444' : pLevel === 'Medium' ? '#F59E0B' : '#10B981';
+                
                 return (
-                  <div key={d.label} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', opacity: isFaded ? 0.3 : 1, transition: 'opacity 0.2s ease' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: d.color, boxShadow: `0 0 8px ${d.color}60` }}></div>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#4B5563' }}>{d.label}</span>
+                  <div key={p.key} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                    <img src={PLATFORM_ICONS[p.key]} alt={p.name} style={{ width: '24px', height: '24px', borderRadius: '50%', boxShadow: '0 2px 4px rgba(0,0,0,0.05)' }} />
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                      <div className="animate-pulse" style={{ width: '6px', height: '6px', borderRadius: '50%', background: statusColor, boxShadow: `0 0 6px ${statusColor}` }} />
+                      <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#475569' }}>{statusText}</span>
                     </div>
-                    <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>{d.pct}</span>
                   </div>
                 )
               })}
             </div>
           </div>
 
-          <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start', flexShrink: 0, flexDirection: 'column' }}>
-
-            <div style={{ width: '100%', display: 'flex', flexDirection: 'column' }}>
-              <div style={{ display: 'flex', padding: '0 20px', marginBottom: '8px', marginTop: '8px' }}>
-                <span style={{ flex: 2, fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.05em' }}>PROMOS</span>
-                <span style={{ flex: 1, fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.05em' }}>TYPE</span>
-                <span style={{ width: '70px', fontSize: '11px', fontWeight: 700, color: '#6B7280', letterSpacing: '0.05em', textAlign: 'right' }}>STATUS</span>
-              </div>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {promos.filter(p => {
-                  if (activePromoFilter === 'All') return true;
-                  if (activePromoFilter === 'BOGO') return p.type.includes('Buy 1 Get 1 Free');
-                  if (activePromoFilter === 'Discount') return p.type.includes('% Off');
-                  if (activePromoFilter === 'Free Delivery') return p.type === 'Free Delivery';
-                  return true;
-                }).map((p, i) => {
-                  const isExpanded = expandedPromoIndex === i;
-                  return (
-                    <div key={i} style={{
-                      background: '#FFFFFF',
-                      borderRadius: '14px',
-                      boxShadow: '0 2px 8px rgba(0,0,0,0.02)',
-                      overflow: 'hidden',
-                      display: 'flex',
-                      flexDirection: 'column'
-                    }}>
-                      <div 
-                        onClick={() => setExpandedPromoIndex(isExpanded ? null : i)}
-                        style={{
-                          padding: '12px 20px',
-                          display: 'flex',
-                          alignItems: 'center',
-                          cursor: 'pointer',
-                          transition: 'background 0.2s ease',
-                          background: isExpanded ? '#F9FAFB' : 'transparent'
-                        }}
-                      >
-                        <div style={{ flex: 2, display: 'flex', alignItems: 'center', gap: '12px' }}>
-                          <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: '#F3F4F6', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                            <img src={p.logo} alt={p.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={(e) => { e.target.style.display = 'none'; e.target.nextSibling.style.display = 'block'; }} />
-                            <span style={{ display: 'none', fontSize: '14px', fontWeight: 700, color: '#9CA3AF' }}>{p.name.charAt(0)}</span>
-                          </div>
-                          <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>{p.name}</span>
-                        </div>
-                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '8px' }}>
-                          <div style={{ width: '20px', height: '20px', borderRadius: '4px', overflow: 'hidden', flexShrink: 0, border: '1px solid #E5E7EB' }}>
-                            <img 
-                              src={p.type === 'Free Delivery' ? '/promo_conservative.png' : p.type === 'Buy 1 Get 1 Free' ? '/promo_aggressive.png' : '/promo_normal.png'} 
-                              alt="Promo level"
-                              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                            />
-                          </div>
-                          <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>{p.type}</span>
-                        </div>
-
-                        <div style={{ width: '70px', textAlign: 'right', fontSize: '12px', fontWeight: 700, color: '#DC2626' }}>
-                          {p.status}
-                        </div>
-                      </div>
-
-                      {isExpanded && (
-                        <div style={{
-                          padding: '12px 20px 16px 64px',
-                          borderTop: '1px solid rgba(0,0,0,0.04)',
-                          background: '#FAFAFA',
-                          display: 'flex',
-                          alignItems: 'center',
-                          gap: '14px'
-                        }}>
-                          <div style={{ width: '46px', height: '46px', borderRadius: '10px', overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.08)' }}>
-                            <img src={p.itemImage} alt="Promo item" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                          </div>
-                          <div style={{ fontSize: '12px', color: '#4B5563', lineHeight: 1.4 }}>
-                            <strong style={{ color: '#111', display: 'block', marginBottom: '2px', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Offer Details</strong> 
-                            {p.details}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* RIGHT COLUMN: Recommended Promos (40%) */}
-        <div style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
-          <h3 style={{ fontSize: '22px', fontWeight: 700, color: '#1F2937', marginBottom: '24px', marginTop: 0, flexShrink: 0 }}>
-            Recommended Promos
-          </h3>
+        {/* TWO COLUMN GRID */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 0.7fr', gap: '24px', flex: 1 }}>
           
-          <div style={{ display: 'flex', gap: '16px', flexDirection: 'column' }}>
-            {currentPlatformData?.outputOptions?.map((opt, i) => (
-               <PromoOptionCard key={i} option={opt} onClick={() => setSelectedPromoOption(opt)} />
-            ))}
-          </div>
-        </div>
-
-      </div>
-    );
-  };
-
-  return (
-    <div className="invisible-scrollbar" style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column', background: 'linear-gradient(to bottom, transparent 0%, #FFFFFF 100%)', overflowY: 'auto', padding: '24px 32px 32px 32px' }}>
-      
-      <style>{`
-        @keyframes pulse-glow {
-          0% { box-shadow: 0 0 0 0 ${activeTimeColor}66; }
-          70% { box-shadow: 0 0 0 12px transparent; }
-          100% { box-shadow: 0 0 0 0 transparent; }
-        }
-        .invisible-scrollbar::-webkit-scrollbar { width: 0px; background: transparent; }
-        .invisible-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
-        
-        .premium-glass-card {
-          background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(255, 255, 255, 0.7) 100%);
-          backdrop-filter: blur(40px);
-          -webkit-backdrop-filter: blur(40px);
-          box-shadow: 0 20px 40px rgba(0,0,0,0.03), inset 0 1px 0 rgba(255,255,255,1);
-          border: 1px solid rgba(255,255,255,0.6);
-          border-radius: 24px;
-          transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .premium-glass-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 30px 60px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,1);
-          background: linear-gradient(135deg, rgba(255, 255, 255, 1) 0%, rgba(255, 255, 255, 0.8) 100%);
-        }
-        
-        .text-gradient {
-          background-clip: text;
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
-        }
-      `}</style>
-
-      {/* 1. Top Hero Section */}
-      <div style={{ padding: '0 0 1.5rem 0', flexShrink: 0 }}>
-        <h1 style={{ fontSize: '18px', fontWeight: 500, lineHeight: 1.4, color: '#6B7280', margin: 0, maxWidth: '1000px', letterSpacing: '-0.01em' }}>
-          Real-time analysis of competitive promo pressure across all active delivery platforms.
-        </h1>
-      </div>
-
-      {/* 2. Strategy Matrix (Bento Grid) */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '1.25rem', marginBottom: '1.5rem', flexShrink: 0 }}>
-        {intelData.results.map((res) => {
-          const isSelected = intelPlatform === res.key;
-          
-          let platformColor = '#111';
-          let platformGradient = '';
-          let iconUrl = '';
-          if (res.key === 'ubereats') { platformColor = '#06C167'; platformGradient = 'linear-gradient(135deg, #111111, #2d2d2d)'; iconUrl = 'https://cdn.simpleicons.org/ubereats/white'; }
-          if (res.key === 'deliveroo') { platformColor = '#00CCBC'; platformGradient = 'linear-gradient(135deg, #00CCBC, #00A699)'; iconUrl = 'https://cdn.simpleicons.org/deliveroo/white'; }
-          if (res.key === 'justeats') { platformColor = '#FF8000'; platformGradient = 'linear-gradient(135deg, #FF8000, #E67300)'; iconUrl = 'https://cdn.simpleicons.org/justeat/white'; }
-
-          const threatLevel = res.diagnosis?.threatLevel || res.threatData?.level || 'Low';
-          const statusMeta = {
-            Low:      { label: 'Quiet', color: '#10B981' },
-            Moderate: { label: 'Busy',  color: '#F59E0B' },
-            High:     { label: 'Hyper', color: '#E63946' },
-            Extreme:  { label: 'Hyper', color: '#E63946' },
-          }[threatLevel] || { label: 'Quiet', color: '#10B981' };
-          const isPulsing = threatLevel === 'High' || threatLevel === 'Extreme';
-
-          return (
-            <div
-              key={res.key}
-              onClick={() => handlePlatformClick(res.key)}
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                padding: '12px 16px',
-                cursor: 'pointer',
-                border: isSelected ? `1px solid ${platformColor}40` : '1px solid rgba(0,0,0,0.06)',
-                background: isSelected ? `${platformColor}08` : '#FFFFFF',
-                borderRadius: '14px',
-                transition: 'all 0.2s ease',
-                boxShadow: isSelected ? `0 4px 16px ${platformColor}18` : '0 2px 6px rgba(0,0,0,0.02)',
-              }}
-            >
-              {/* Left: logo + name */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                <div style={{
-                  width: '36px', height: '36px', borderRadius: '8px',
-                  background: platformGradient,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                }}>
-                  <img src={iconUrl} alt={res.label} style={{ width: '18px', height: '18px', objectFit: 'contain' }} />
-                </div>
-                <span style={{ fontSize: '0.95rem', fontWeight: 600, color: '#334155', letterSpacing: '0.01em', fontFamily: 'Inter, sans-serif' }}>
-                  {res.label}
-                </span>
-              </div>
-
-              {/* Right: dot + status */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px', paddingRight: '4px' }}>
-                <div style={{
-                  width: '8px', height: '8px', borderRadius: '50%',
-                  backgroundColor: statusMeta.color,
-                  boxShadow: `0 0 8px ${statusMeta.color}80`,
-                  animation: isPulsing ? 'live-pulse 1.5s infinite' : 'none'
-                }} />
-                <span style={{ fontSize: '0.9rem', fontWeight: 700, color: '#475569' }}>{statusMeta.label}</span>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* 3. Detailed View (Replaces old lower section) */}
-      <div style={{ display: 'flex', flexDirection: 'column', paddingBottom: '2rem' }}>
-        {renderDetailView()}
-      </div>
-
-      {/* Promo Details Modal */}
-      {selectedPromoOption && (
-        <div style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0, 0, 0, 0.4)', backdropFilter: 'blur(8px)', zIndex: 99999,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px',
-          animation: 'fadeIn 0.2s ease-out'
-        }} onClick={() => setSelectedPromoOption(null)}>
-          <div style={{
-            background: '#FFFFFF', borderRadius: '24px', width: '100%', maxWidth: '600px',
-            overflow: 'hidden', display: 'flex', flexDirection: 'column',
-            boxShadow: '0 25px 50px -12px rgba(0,0,0,0.25)', border: '1px solid rgba(255,255,255,0.6)',
-            transform: 'translateY(0)', animation: 'slideUp 0.3s ease-out'
-          }} onClick={(e) => e.stopPropagation()}>
+          {/* 2. LEFT SECTION (Floating Glass) */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0, height: '100%' }}>
             
-            {/* Modal Header Image */}
-            <div style={{ width: '100%', height: '140px', position: 'relative' }}>
-              <img 
-                src={selectedPromoOption.type === 'Aggressive' ? '/promo_aggressive.png' : selectedPromoOption.type === 'Normal' ? '/promo_normal.png' : '/promo_conservative.png'} 
-                alt={selectedPromoOption.type} 
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
-              />
-              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'linear-gradient(to bottom, transparent 0%, #FFFFFF 100%)' }}></div>
-              <button 
-                onClick={() => setSelectedPromoOption(null)}
-                style={{ position: 'absolute', top: '16px', right: '16px', width: '32px', height: '32px', borderRadius: '50%', background: 'rgba(255,255,255,0.9)', border: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#111', boxShadow: '0 2px 10px rgba(0,0,0,0.1)' }}
-              >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
-              </button>
-            </div>
-
-            <div style={{ padding: '0 32px 32px 32px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px', marginTop: '-10px', position: 'relative', zIndex: 2 }}>
-                <span style={{ 
-                  background: selectedPromoOption.type === 'Aggressive' ? '#FEF2F2' : selectedPromoOption.type === 'Normal' ? '#ECFDF5' : '#FEF9C3',
-                  color: selectedPromoOption.type === 'Aggressive' ? '#EF4444' : selectedPromoOption.type === 'Normal' ? '#10B981' : '#EAB308',
-                  padding: '4px 12px', borderRadius: '99px', fontSize: '11px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0'
-                }}>
-                  {selectedPromoOption.type === 'Normal' ? 'Optimal' : selectedPromoOption.type} Strategy
-                </span>
+            {/* Promo Feed Container */}
+            <div style={{ ...GLASS_PANEL_STYLE, display: 'flex', flexDirection: 'column', overflow: 'hidden', flex: 1, minHeight: '500px' }}>
+              
+              {/* Tabs */}
+              <div style={{ display: 'flex', borderBottom: '1px solid rgba(0,0,0,0.06)', background: 'transparent' }}>
+                <div 
+                  onClick={() => setActiveLeftTab('feed')}
+                  style={{ flex: 1, textAlign: 'center', padding: '16px', cursor: 'pointer', fontWeight: 800, fontSize: '0.75rem', color: activeLeftTab === 'feed' ? '#E86A58' : '#94A3B8', borderBottom: activeLeftTab === 'feed' ? '2px solid #E86A58' : '2px solid transparent', transition: 'all 0.2s' }}
+                >
+                  Live Competitor Promos
+                </div>
+                <div 
+                  onClick={() => setActiveLeftTab('psychology')}
+                  style={{ flex: 1, textAlign: 'center', padding: '16px', cursor: 'pointer', fontWeight: 800, fontSize: '0.75rem', color: activeLeftTab === 'psychology' ? '#E86A58' : '#94A3B8', borderBottom: activeLeftTab === 'psychology' ? '2px solid #E86A58' : '2px solid transparent', transition: 'all 0.2s' }}
+                >
+                  Bundle Promos
+                </div>
+                <div 
+                  onClick={() => setActiveLeftTab('my_promos')}
+                  style={{ flex: 1, textAlign: 'center', padding: '16px', cursor: 'pointer', fontWeight: 800, fontSize: '0.75rem', color: activeLeftTab === 'my_promos' ? '#E86A58' : '#94A3B8', borderBottom: activeLeftTab === 'my_promos' ? '2px solid #E86A58' : '2px solid transparent', transition: 'all 0.2s' }}
+                >
+                  My Active Promos
+                </div>
               </div>
 
-              <h2 style={{ fontSize: '24px', fontWeight: 700, color: '#111', margin: '0 0 24px 0', letterSpacing: '-0.02em' }}>
-                {selectedPromoOption.title}
-              </h2>
-
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-
-                {/* PHASE 1 — MARKET DIAGNOSIS */}
-                <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ background: '#F3F4F6', borderRadius: '4px', padding: '2px 8px', fontWeight: 800 }}>Phase 1</span> Market Diagnosis
+              {/* Filter Mechanism Toolbar */}
+              <div style={{ padding: '16px 24px', borderBottom: '1px solid rgba(0,0,0,0.04)' }}>
+                <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
+                  
+                  {/* Promo Count Label */}
+                  <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1E293B', display: 'flex', alignItems: 'center', gap: '4px', marginRight: '4px' }}>
+                    <span style={{ color: '#E86A58' }}>Promos:</span> {promos.length}
                   </div>
+                  
+                  <div style={{ width: '1px', height: '16px', background: 'rgba(0,0,0,0.06)', margin: '0 4px' }} />
 
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px', background: '#F3F4F6', borderRadius: '16px', overflow: 'hidden' }}>
-                    {/* Time */}
-                    <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600 }}>Time Window</span>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>
-                        {activePlatformData?.diagnosis?.timeLabel} · {activePlatformData?.diagnosis?.state}
-                      </span>
-                    </div>
-                    {/* Active Promos */}
-                    <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600 }}>Active Promos in Area</span>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>{activePlatformData?.diagnosis?.totalPromos}</span>
-                    </div>
-                    {/* Promo Types */}
-                    <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600, flexShrink: 0 }}>Promo Types Detected</span>
-                      <span style={{ fontSize: '13px', fontWeight: 600, color: '#374151', textAlign: 'right' }}>{activePlatformData?.diagnosis?.promoTypeSummary || 'None'}</span>
-                    </div>
-                    {/* Direct Overlap */}
-                    <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600 }}>Direct Category Overlap</span>
-                      <span style={{ fontSize: '13px', fontWeight: 700, color: activePlatformData?.diagnosis?.directOverlapCount > 0 ? '#DC2626' : '#111' }}>
-                        {activePlatformData?.diagnosis?.directOverlapCount} restaurant{activePlatformData?.diagnosis?.directOverlapCount !== 1 ? 's' : ''}
-                      </span>
-                    </div>
-
-                    {/* Score Breakdown */}
-                    <div style={{ background: '#F9FAFB', padding: '14px 16px' }}>
-                      <div style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '10px' }}>Threat Score Breakdown</div>
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {[
-                          { label: 'Volume (how many promos)', score: activePlatformData?.diagnosis?.volumeScore, max: 20 },
-                          { label: 'Aggressiveness (promo type)', score: activePlatformData?.diagnosis?.aggressivenessScore, max: 35 },
-                          { label: 'Item Overlap (menu match)', score: activePlatformData?.diagnosis?.itemOverlapScore, max: 45 },
-                        ].map(({ label, score, max }) => (
-                          <div key={label}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                              <span style={{ fontSize: '12px', color: '#6B7280', fontWeight: 500 }}>{label}</span>
-                              <span style={{ fontSize: '12px', fontWeight: 700, color: '#111' }}>{score ?? 0} / {max}</span>
-                            </div>
-                            <div style={{ height: '5px', background: '#E5E7EB', borderRadius: '99px', overflow: 'hidden' }}>
-                              <div style={{ height: '100%', width: `${((score ?? 0) / max) * 100}%`, background: (score ?? 0) / max > 0.6 ? '#EF4444' : (score ?? 0) / max > 0.3 ? '#F59E0B' : '#10B981', borderRadius: '99px', transition: 'width 0.4s ease' }} />
-                            </div>
-                          </div>
-                        ))}
-                        <div style={{ display: 'flex', justifyContent: 'space-between', paddingTop: '8px', borderTop: '1px solid #E5E7EB', marginTop: '4px' }}>
-                          <span style={{ fontSize: '12px', fontWeight: 700, color: '#111' }}>Total Threat Score</span>
-                          <span style={{ fontSize: '13px', fontWeight: 800, color: '#111' }}>{activePlatformData?.diagnosis?.totalScore ?? 0} / 100</span>
-                        </div>
+                  {/* Platform Custom Filter */}
+                  <div style={{ position: 'relative' }} onMouseLeave={() => setPlatformDropdownOpen(false)}>
+                    <div 
+                      onClick={() => setPlatformDropdownOpen(!platformDropdownOpen)}
+                      style={{ display: 'flex', alignItems: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', height: '32px', padding: '0 10px', cursor: 'pointer', gap: '8px', whiteSpace: 'nowrap', width: '140px' }}
+                    >
+                      <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>Platform:</span>
+                      <div style={{ flex: 1, display: 'flex', gap: '4px', alignItems: 'center' }}>
+                        {platformFilters.length === 0 ? (
+                          <span style={{ fontSize: '0.7rem', fontWeight: 600, color: '#475569', whiteSpace: 'nowrap' }}>All</span>
+                        ) : (
+                          platformFilters.map(key => (
+                            <img key={key} src={PLATFORM_ICONS[key]} alt={key} style={{ width: '14px', height: '14px', borderRadius: '50%' }} />
+                          ))
+                        )}
                       </div>
+                      <ChevronDown size={12} color="#94A3B8" style={{ flexShrink: 0 }} />
                     </div>
-
-                    {/* Threat Level */}
-                    <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600 }}>Threat Level</span>
-                      <span style={{ fontSize: '13px', fontWeight: 800, color: activePlatformData?.diagnosis?.threatLevel === 'Low' ? '#059669' : activePlatformData?.diagnosis?.threatLevel === 'Moderate' ? '#D97706' : '#DC2626' }}>
-                        {activePlatformData?.diagnosis?.threatLevel}
-                      </span>
-                    </div>
-                    {/* Most Aggressive Competitor */}
-                    {activePlatformData?.diagnosis?.topPromo && (
-                      <div style={{ background: '#fff', padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '16px' }}>
-                        <span style={{ fontSize: '13px', color: '#6B7280', fontWeight: 600, flexShrink: 0 }}>Top Competitor</span>
-                        <span style={{ fontSize: '13px', fontWeight: 600, color: '#374151', textAlign: 'right' }}>
-                          {activePlatformData.diagnosis.topPromo.restaurant} — "{activePlatformData.diagnosis.topPromo.promo}"
-                        </span>
+                    
+                    {platformDropdownOpen && (
+                      <div style={{ position: 'absolute', top: '100%', left: 0, marginTop: '4px', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', zIndex: 50, padding: '8px', display: 'flex', flexDirection: 'column', gap: '4px', minWidth: '140px' }}>
+                        <div 
+                          onClick={() => { setPlatformFilters([]); setPlatformDropdownOpen(false); }} 
+                          style={{ fontSize: '0.75rem', padding: '8px 12px', cursor: 'pointer', borderRadius: '6px', background: platformFilters.length === 0 ? '#F8FAFC' : 'transparent', fontWeight: platformFilters.length === 0 ? 700 : 500, color: '#1E293B', whiteSpace: 'nowrap' }}
+                        >
+                          All Platforms
+                        </div>
+                        {['deliveroo', 'ubereats', 'justeats'].map(key => {
+                          const isSelected = platformFilters.includes(key);
+                          return (
+                            <div 
+                              key={key} 
+                              onClick={() => {
+                                if (isSelected) setPlatformFilters(platformFilters.filter(k => k !== key));
+                                else setPlatformFilters([...platformFilters, key]);
+                              }} 
+                              style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.75rem', padding: '8px 12px', cursor: 'pointer', borderRadius: '6px', background: isSelected ? '#F8FAFC' : 'transparent', fontWeight: isSelected ? 700 : 500, color: '#1E293B', whiteSpace: 'nowrap' }}
+                            >
+                              <img src={PLATFORM_ICONS[key]} style={{ width: '16px', height: '16px', borderRadius: '50%' }} />
+                              <span style={{ textTransform: 'capitalize', whiteSpace: 'nowrap' }}>{key === 'ubereats' ? 'Uber Eats' : key === 'deliveroo' ? 'Deliveroo' : 'Just Eat'}</span>
+                            </div>
+                          )
+                        })}
                       </div>
                     )}
                   </div>
+
+                  {/* Other Dropdowns */}
+                  {['Category', 'Threat'].map((filterName) => {
+                    if (activeLeftTab === 'psychology' && filterName === 'Category') return null;
+                    const value = filterName === 'Category' ? targetFilter : threatFilter;
+                    const setter = filterName === 'Category' ? setTargetFilter : setThreatFilter;
+                    const options = filterName === 'Category' ? ['All', 'Entire Menu', 'Mains', 'Sides/Drinks'] :
+                                    ['All', 'High', 'Fair'];
+                    
+                    return (
+                      <div key={filterName} style={{ display: 'flex', alignItems: 'center', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', height: '32px', padding: '0 10px', cursor: 'pointer' }}>
+                        <select 
+                          value={value}
+                          onChange={(e) => setter(e.target.value)}
+                          style={{ appearance: 'none', border: 'none', background: 'none', outline: 'none', fontSize: '0.7rem', fontWeight: 600, color: '#475569', paddingRight: '16px', cursor: 'pointer' }}
+                        >
+                          <option value="All">{filterName}: All</option>
+                          {options.filter(o => o !== 'All').map(opt => (
+                            <option key={opt} value={opt}>{filterName}: {opt}</option>
+                          ))}
+                        </select>
+                        <ChevronDown size={12} color="#94A3B8" style={{ marginLeft: '-12px', pointerEvents: 'none' }} />
+                      </div>
+                    );
+                  })}
+
+                  {/* Search Bar */}
+                  {activeLeftTab === 'feed' && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#FFF', border: '1px solid #E2E8F0', borderRadius: '8px', padding: '0 10px', height: '32px', width: '250px', marginLeft: 'auto' }}>
+                      <Search size={14} color="#94A3B8" />
+                      <input 
+                        type="text" 
+                        placeholder="Search promos..." 
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        style={{ border: 'none', background: 'none', outline: 'none', fontSize: '0.7rem', width: '100%', color: '#1E293B' }} 
+                      />
+                    </div>
+                  )}
                 </div>
-
-                {/* PHASE 2 — PROMO FORMULATION */}
-                <div>
-                  <div style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <span style={{ background: '#111', color: '#fff', borderRadius: '4px', padding: '2px 8px', fontWeight: 800 }}>Phase 2</span> Promo Formulation
-                  </div>
-
-                  <div style={{ fontSize: '13px', color: '#4B5563', lineHeight: 1.7, fontWeight: 500, background: '#F9FAFB', padding: '16px', borderRadius: '16px', border: '1px solid #F3F4F6', marginBottom: '16px' }}>
-                    {selectedPromoOption.reason}
-                  </div>
-                </div>
-
-                {/* Suggested Promo */}
-                <div style={{ background: '#F9FAFB', padding: '16px', borderRadius: '16px', border: '1px solid #F3F4F6', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                  <div style={{ width: '48px', height: '48px', borderRadius: '12px', overflow: 'hidden', flexShrink: 0, boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
-                    <img
-                      src={selectedPromoOption.type === 'Aggressive' ? '/promo_aggressive.png' : selectedPromoOption.type === 'Normal' ? '/promo_normal.png' : '/promo_conservative.png'}
-                      alt="Strategy Thumbnail"
-                      style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                    />
-                  </div>
-                  <div>
-                    <div style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>Suggested Promo Action</div>
-                    <div style={{ fontSize: '16px', fontWeight: 700, color: '#111' }}>{selectedPromoOption.promoType}</div>
-                  </div>
-                </div>
-
               </div>
 
-              <div style={{ display: 'flex', marginTop: '32px' }}>
-                <button 
-                  onClick={() => setSelectedPromoOption(null)}
-                  style={{ width: '100%', padding: '14px', borderRadius: '12px', background: '#F3F4F6', color: '#4B5563', fontWeight: 700, fontSize: '14px', border: 'none', cursor: 'pointer', transition: 'background 0.2s' }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = '#E5E7EB'}
-                  onMouseLeave={(e) => e.currentTarget.style.background = '#F3F4F6'}
-                >
-                  Close
-                </button>
+              {activeLeftTab === 'feed' && (
+                <>
+              {/* Feed List */}
+              <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1 }}>
+                
+                {/* Table Header */}
+                <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', padding: '20px 24px 12px 24px', borderBottom: '1px solid rgba(0,0,0,0.06)', fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <div style={{ flex: '2' }}>Promo Details</div>
+                  <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                  <div style={{ flex: '1.5' }}>Restaurant</div>
+                  <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                  <div style={{ width: '100px' }}>Platform</div>
+                  <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                  <div style={{ flex: '1' }}>Threat</div>
+                  <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                  <div style={{ flex: '1' }}>Category</div>
+                </div>
+
+                {promos.length === 0 ? (
+                  <div style={{ padding: '32px', textAlign: 'center', color: '#64748B', fontSize: '0.75rem', fontWeight: 500 }}>No promos match this filter.</div>
+                ) : (
+                  promos.map((p, i) => {
+                    const isExpanded = expandedPromoIndex === i;
+                    const isLast = i === promos.length - 1;
+                    return (
+                      <div key={i} className={!isExpanded && p.threatLevel === 'High' ? 'high-threat-row' : ''} style={{
+                        ...(isExpanded ? { background: '#F8FAFC' } : p.threatLevel !== 'High' ? { background: 'transparent' } : {}), 
+                        borderBottom: isLast ? 'none' : '1px solid rgba(0,0,0,0.12)',
+                        cursor: 'pointer', transition: 'border 0.2s'
+                      }}>
+                        {/* Feed Row */}
+                        <div onClick={() => setExpandedPromoIndex(isExpanded ? null : i)} style={{ padding: '12px 24px', display: 'flex', alignItems: 'center' }}>
+                          
+                          {/* Promo Details (Image & Title) */}
+                          <div style={{ flex: '2', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                            <div style={{ position: 'relative' }}>
+                              <img src={p.itemImage} alt="Promo item" style={{ width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #E2E8F0' }} />
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#1E293B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{p.title}</span>
+                            </div>
+                          </div>
+
+                          <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+
+                          {/* Restaurant Name */}
+                          <div style={{ flex: '1.5', display: 'flex', alignItems: 'center' }}>
+                            <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#1E293B' }}>{p.name}</span>
+                          </div>
+
+                          <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+
+                          {/* Platform */}
+                          <div style={{ width: '100px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <img src={PLATFORM_ICONS[p.platformKey]} alt="Platform" style={{ width: '14px', height: '14px', borderRadius: '50%' }} />
+                            <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#1E293B', textTransform: 'capitalize' }}>{p.platformKey === 'ubereats' ? 'Uber Eats' : p.platformKey === 'deliveroo' ? 'Deliveroo' : 'Just Eat'}</span>
+                          </div>
+
+                          <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+                          
+                          {/* Threat Level */}
+                          <div style={{ flex: '1', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: p.threatColor }} />
+                            <span style={{ fontSize: '0.7rem', fontWeight: 800, color: p.threatColor }}>{p.threatLevel}</span>
+                          </div>
+
+                          <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+
+                          {/* Target / Type */}
+                          <div style={{ flex: '1', display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.7rem', color: '#1E293B', fontWeight: 700 }}>{p.target}</span>
+                          </div>
+
+                        </div>
+
+                        {/* Expanded Details */}
+                        {isExpanded && (
+                          <div style={{ padding: '0px 24px 20px 80px', display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            <img src={p.itemImage} alt="Promo" style={{ width: '40px', height: '40px', borderRadius: '6px', objectFit: 'cover' }} />
+                            <div style={{ fontSize: '0.75rem', color: '#475569', lineHeight: 1.5 }}>
+                              <strong style={{ color: '#1E293B', display: 'block', marginBottom: '2px', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Promo Details</strong> 
+                              {p.title} â€” {p.details}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
+                )}
               </div>
+              </>
+              )}
+              {activeLeftTab === 'psychology' && (
+                <div style={{ display: 'flex', flexDirection: 'column', overflowX: 'auto', overflowY: 'auto', flex: 1 }}>
+                  
+                  {/* Table Header */}
+                  <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', padding: '20px 24px 12px 24px', borderBottom: '1px solid rgba(0,0,0,0.06)', fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <div style={{ flex: '1', textAlign: 'center' }}>Bundle Promo</div>
+                    <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                    <div style={{ flex: '1', textAlign: 'center' }}>Restaurant</div>
+                    <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                    <div style={{ width: '90px', textAlign: 'center' }}>Platform</div>
+                    <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                    <div style={{ flex: '3.5', textAlign: 'center' }}>Item Breakdown</div>
+                    <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                    <div style={{ width: '72px', textAlign: 'center' }}>Actual Cost</div>
+                    <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                    <div style={{ width: '72px', textAlign: 'center' }}>Bundle Cost</div>
+                  </div>                  
+                  
+                  {/* Psych Rows */}
+                  {[
+                    { 
+                      name: 'The Decoy Bundle', rest: 'Competitor Benchmark', img: promos[0]?.itemImage || '', actual: '£5.99', bundle: '£4.99', platform: 'justeats',
+                      items: [
+                        { name: 'Burger', price: '£3.99', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Fries', price: '£1.00', img: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Drink', price: '£1.00', img: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=64&q=80' }
+                      ]
+                    },
+                    { 
+                      name: 'Family Feast', rest: 'Pizza Express', img: promos[1]?.itemImage || '', actual: '£18.50', bundle: '£14.99', platform: 'deliveroo',
+                      items: [
+                        { name: 'Pizza', price: '£9.50', img: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Wings', price: '£4.00', img: 'https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Garlic Bread', price: '£2.50', img: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Drink', price: '£2.50', img: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=64&q=80' }
+                      ]
+                    },
+                    { 
+                      name: 'Lunch Rush Combo', rest: 'Wagamama', img: promos[2]?.itemImage || '', actual: '£12.90', bundle: '£9.90', platform: 'ubereats',
+                      items: [
+                        { name: 'Katsu', price: '£8.90', img: 'https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Gyoza', price: '£2.50', img: 'https://images.unsplash.com/photo-1541529086526-db283c563270?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Drink', price: '£1.50', img: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=64&q=80' }
+                      ]
+                    },
+                    { 
+                      name: 'Ultimate Mega Burger Box For Two', rest: 'Burger King', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=64&q=80', actual: '£15.99', bundle: '£11.99', platform: 'deliveroo',
+                      items: [
+                        { name: 'Burger', price: '£5.99', img: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Fries', price: '£2.00', img: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=64&q=80' }
+                      ]
+                    },
+                    { 
+                      name: 'Super Saver Family Weekend Feast With Extra Sides And Drinks Included', rest: 'KFC', img: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?auto=format&fit=crop&w=64&q=80', actual: '£25.50', bundle: '£18.00', platform: 'ubereats',
+                      items: [
+                        { name: 'Chicken', price: '£12.00', img: 'https://images.unsplash.com/photo-1569058242253-92a9c755a0ec?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Fries', price: '£3.00', img: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Gravy', price: '£1.50', img: 'https://images.unsplash.com/photo-1573140247632-f8fd74997d5c?auto=format&fit=crop&w=64&q=80' },
+                        { name: 'Drink', price: '£1.50', img: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=64&q=80' }
+                      ]
+                    }
+                  ].map((combo, idx) => {
+                    const isDense = combo.items.length > 3;
+                    const imgSize = isDense ? '16px' : '24px';
+                    const priceSize = isDense ? '0.6rem' : '0.75rem';
+                    const nameSize = isDense ? '0.5rem' : '0.65rem';
+                    const plusSize = isDense ? '0.65rem' : '0.9rem';
+                    const plusMargin = isDense ? '-10px' : '-16px';
+                    
+                    const actualNum = parseFloat(combo.actual.replace(/[^0-9.]/g, ''));
+                    const bundleNum = parseFloat(combo.bundle.replace(/[^0-9.]/g, ''));
+                    const discountPct = Math.round((1 - (bundleNum / actualNum)) * 100);
+                    const promoNameSize = combo.name.length > 30 ? '0.55rem' : '0.65rem';
+
+                    return (
+                    <div key={idx} style={{ borderBottom: '1px solid rgba(0,0,0,0.12)', transition: 'all 0.2s', padding: '16px 24px', display: 'flex', alignItems: 'center' }}>
+                        
+                        <div style={{ flex: '1', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', textAlign: 'center' }}>
+                          <img src={combo.img} alt="Bundle item" style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', border: '1px solid #E2E8F0', boxShadow: '0 2px 8px rgba(0,0,0,0.04)' }} />
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                            <span style={{ fontSize: promoNameSize, lineHeight: 1.3, fontWeight: 800, color: '#1E293B', display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden', textOverflow: 'ellipsis' }}>{combo.name}</span>
+                          </div>
+                        </div>
+
+                        <div style={{ width: '1px', height: '40px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+
+                        {/* Restaurant */}
+                        <div style={{ flex: '1', display: 'flex', justifyContent: 'center', alignItems: 'center', textAlign: 'center' }}>
+                          <span style={{ fontSize: '0.75rem', color: '#475569', fontWeight: 600 }}>{combo.rest}</span>
+                        </div>
+
+                        <div style={{ width: '1px', height: '40px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+
+                        {/* Platform */}
+                        <div style={{ width: '90px', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '6px' }}>
+                          <img src={PLATFORM_ICONS[combo.platform]} alt="Platform" style={{ width: '14px', height: '14px', borderRadius: '50%' }} />
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#1E293B', textTransform: 'capitalize' }}>{combo.platform === 'ubereats' ? 'Uber Eats' : combo.platform === 'deliveroo' ? 'Deliveroo' : 'Just Eat'}</span>
+                        </div>
+
+                        <div style={{ width: '1px', height: '40px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+
+                        <div style={{ flex: '3.5', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: isDense ? '4px' : '12px' }}>
+                           {combo.items.map((item, itemIdx) => (
+                              <React.Fragment key={itemIdx}>
+                                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: isDense ? '2px' : '4px' }}>
+                                   <div style={{ display: 'flex', alignItems: 'center', gap: isDense ? '2px' : '4px' }}>
+                                      <img src={item.img} style={{ width: imgSize, height: imgSize, borderRadius: '50%', objectFit: 'cover', boxShadow: '0 2px 6px rgba(0,0,0,0.08)' }} alt={item.name} />
+                                      <span style={{ fontSize: priceSize, fontWeight: 800, color: '#1E293B', letterSpacing: '-0.02em' }}>{item.price}</span>
+                                   </div>
+                                   <span style={{ fontSize: nameSize, color: '#64748B', fontWeight: 600 }}>{item.name}</span>
+                                 </div>
+                                 {itemIdx < combo.items.length - 1 && (
+                                   <span style={{ fontSize: plusSize, color: '#CBD5E1', fontWeight: 800, marginTop: plusMargin }}>+</span>
+                                 )}
+                              </React.Fragment>
+                           ))}
+                        </div>
+
+                        <div style={{ width: '1px', height: '40px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+
+                        <div style={{ width: '72px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                          <span style={{ fontSize: '0.85rem', fontWeight: 700, color: '#94A3B8', textDecoration: 'line-through' }}>{combo.actual}</span>
+                        </div>
+
+                        <div style={{ width: '1px', height: '40px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+                        
+                        <div style={{ width: '72px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '4px' }}>
+                          <span style={{ fontSize: '1rem', fontWeight: 800, color: '#E86A58', lineHeight: 1 }}>{combo.bundle}</span>
+                          <div style={{ background: 'rgba(16, 185, 129, 0.1)', color: '#10B981', padding: '2px 6px', borderRadius: '4px', fontSize: '0.65rem', fontWeight: 700 }}>
+                            -{discountPct}%
+                          </div>
+                        </div>
+                    </div>
+                  )})}
+                </div>
+              )}
+              {activeLeftTab === 'my_promos' && (
+                <div style={{ display: 'flex', flexDirection: 'column', overflowY: 'auto', flex: 1 }}>
+                  {/* Table Header */}
+                  <div style={{ position: 'sticky', top: 0, zIndex: 10, background: 'rgba(255, 255, 255, 0.85)', backdropFilter: 'blur(12px)', WebkitBackdropFilter: 'blur(12px)', display: 'flex', alignItems: 'center', padding: '20px 24px 12px 24px', borderBottom: '1px solid rgba(0,0,0,0.06)', fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    <div style={{ flex: '2' }}>Promo Details</div>
+                    <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                    <div style={{ width: '100px' }}>Platform</div>
+                    <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                    <div style={{ flex: '1.5' }}>Effectiveness</div>
+                    <div style={{ width: '1px', height: '12px', background: 'transparent', margin: '0 16px' }} />
+                    <div style={{ flex: '1.5' }}>Category</div>
+                  </div>
+
+                  {myActivePromos.map((p, i) => {
+                    const isLast = i === myActivePromos.length - 1;
+                    return (
+                      <div key={i} style={{ borderBottom: isLast ? 'none' : '1px solid rgba(0,0,0,0.12)', padding: '12px 24px', display: 'flex', alignItems: 'center' }}>
+                        
+                        {/* Promo Details */}
+                        <div style={{ flex: '2', display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          <img src={p.itemImage} alt="Promo item" style={{ width: '36px', height: '36px', borderRadius: '6px', objectFit: 'cover', border: '1px solid #E2E8F0' }} />
+                          <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#1E293B' }}>{p.title}</span>
+                        </div>
+
+                        <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+
+                        {/* Platform */}
+                        <div style={{ width: '100px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <img src={PLATFORM_ICONS[p.platformKey]} alt="Platform" style={{ width: '14px', height: '14px', borderRadius: '50%' }} />
+                          <span style={{ fontSize: '0.65rem', fontWeight: 700, color: '#1E293B', textTransform: 'capitalize' }}>{p.platformKey === 'ubereats' ? 'Uber Eats' : p.platformKey === 'deliveroo' ? 'Deliveroo' : 'Just Eat'}</span>
+                        </div>
+
+                        <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+                        
+                        {/* Effectiveness */}
+                        <div style={{ flex: '1.5', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: p.effColor }} />
+                          <span style={{ fontSize: '0.7rem', fontWeight: 800, color: p.effColor, textTransform: 'uppercase' }}>{p.effectiveness}</span>
+                        </div>
+
+                        <div style={{ width: '1px', height: '24px', background: 'rgba(0,0,0,0.06)', margin: '0 16px' }} />
+
+                        {/* Target / Type */}
+                        <div style={{ flex: '1.5', display: 'flex', flexDirection: 'column' }}>
+                          <span style={{ fontSize: '0.7rem', color: '#1E293B', fontWeight: 700 }}>{p.target}</span>
+                        </div>
+
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+
+
+          </div>
+
+          ﻿          {/* 3. RIGHT SECTION (Floating Glass) */}
+          <div style={{ ...GLASS_PANEL_STYLE, padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', minWidth: 0, height: '100%' }}>
+            
+            {/* Header: AI Strategy & Threats */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '1rem', fontWeight: 800, color: '#1E293B' }}>
+                    Promo Threat Radar
+                  </span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#EF4444', background: 'rgba(239,68,68,0.1)', padding: '4px 8px', borderRadius: '100px' }}>
+                    {highThreatPromos.length}
+                  </span>
+                </div>
+                
+                {/* STRATEGY MODE TOGGLE */}
+                <div style={{ display: 'flex', background: '#F1F5F9', borderRadius: '100px', padding: '4px' }}>
+                  <div 
+                    onClick={() => setStrategyMode('margin')}
+                    style={{ padding: '6px 12px', borderRadius: '100px', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', background: strategyMode === 'margin' ? '#FFF' : 'transparent', color: strategyMode === 'margin' ? '#1E293B' : '#94A3B8', boxShadow: strategyMode === 'margin' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none' }}
+                  >
+                    MARGIN
+                  </div>
+                  <div 
+                    onClick={() => setStrategyMode('growth')}
+                    style={{ padding: '6px 12px', borderRadius: '100px', fontSize: '0.65rem', fontWeight: 800, cursor: 'pointer', transition: 'all 0.2s', background: strategyMode === 'growth' ? '#FFF' : 'transparent', color: strategyMode === 'growth' ? '#1E293B' : '#94A3B8', boxShadow: strategyMode === 'growth' ? '0 2px 8px rgba(0,0,0,0.05)' : 'none' }}
+                  >
+                    GROWTH
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                {platforms.map(p => {
+                  const htPromos = highThreatPromos.filter(promo => promo.platformKey === p.key).length;
+                  const totalPlatformPromos = overviewStats[p.key].promos;
+                  
+                  // If all 3 are selected, we treat them as 'default' state (no opacity drop)
+                  // If less than 3 are selected, the inactive ones drop in opacity
+                  const isFullyActive = intelPlatforms.includes(p.key);
+                  const isFiltered = intelPlatforms.length < 3;
+                  const opacity = isFiltered && !isFullyActive ? 0.4 : 1;
+                  const bg = isFiltered && isFullyActive ? '#F8FAFC' : 'transparent';
+                  const border = isFiltered && isFullyActive ? '1px solid #E2E8F0' : '1px solid transparent';
+                  
+                  return (
+                    <div 
+                      key={p.key} 
+                      onClick={() => {
+                        if (intelPlatforms.length === 1 && intelPlatforms[0] === p.key) {
+                          // Toggle off -> reset to all
+                          setIntelPlatforms(['ubereats', 'deliveroo', 'justeats']);
+                        } else {
+                          // Select only this one
+                          setIntelPlatforms([p.key]);
+                        }
+                      }}
+                      style={{ 
+                        display: 'flex', 
+                        flexDirection: 'column', 
+                        alignItems: 'center', 
+                        gap: '6px', 
+                        flex: 1,
+                        cursor: 'pointer',
+                        padding: '8px 4px',
+                        borderRadius: '12px',
+                        background: bg,
+                        border: border,
+                        opacity: opacity,
+                        transition: 'all 0.2s'
+                      }}
+                    >
+                      <img src={PLATFORM_ICONS[p.key]} alt={p.name} style={{ width: '20px', height: '20px', borderRadius: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.1)' }} />
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', whiteSpace: 'nowrap' }}>
+                          {totalPlatformPromos} PROMO{totalPlatformPromos !== 1 ? 'S' : ''}
+                        </span>
+                        <span style={{ fontSize: '0.65rem', fontWeight: 800, color: '#E86A58', whiteSpace: 'nowrap' }}>
+                          {htPromos} THREAT{htPromos !== 1 ? 'S' : ''}
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+
+            <div style={{ width: '100%', height: '1px', background: 'rgba(0,0,0,0.06)' }} />
+
+            {/* AI Strategy Rendering */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '24px', flex: 1, overflowY: 'auto', paddingRight: '8px' }}>
+              {intelPlatforms.length === 0 ? (
+                <div style={{ padding: '32px', textAlign: 'center', color: '#94A3B8', fontSize: '0.8rem', fontWeight: 500 }}>
+                  Select a platform to view AI Strategy recommendations.
+                </div>
+              ) : (
+                intelPlatforms.map(platformKey => {
+                  const activeIntel = intelResult.results.find(r => r.key === platformKey);
+                  if (!activeIntel || !activeIntel.output) return null;
+                  
+                  const actionColor = ACTION_COLORS[activeIntel.output.action] || '#1E293B';
+                  
+                  return (
+                    <div key={platformKey} style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '24px', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Recommended Promo Stack</div>
+                        
+                        {/* Primary Pull */}
+                        {activeIntel.output.primary && (
+                          <div style={{ background: '#FFF', padding: '16px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <img src={activeIntel.output.primary.img} style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover' }} alt="Primary" />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                              <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#E86A58', textTransform: 'uppercase' }}>1. Primary Pull</div>
+                              <div style={{ fontSize: '0.9rem', color: '#1E293B', fontWeight: 800 }}>{activeIntel.output.primary.type}</div>
+                              <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500 }}>{activeIntel.output.primary.desc}</div>
+                            </div>
+                            <button 
+                              onClick={() => setSelectedPromoDetail({ title: activeIntel.output.primary.type, desc: activeIntel.output.primary.desc, reason: activeIntel.output.reason, category: 'Primary Pull', img: activeIntel.output.primary.img, detail: activeIntel.output.primary.detail })}
+                              style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#FEF2F2', color: '#EF4444', fontWeight: 700, fontSize: '0.7rem', cursor: 'pointer', alignSelf: 'flex-start' }}
+                            >
+                              Detail
+                            </button>
+                          </div>
+                        )}
+
+                        {/* The Hook */}
+                        {activeIntel.output.hook && (
+                          <div style={{ background: '#FFF', padding: '16px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <img src={activeIntel.output.hook.img} style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover' }} alt="Hook" />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                              <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#3B82F6', textTransform: 'uppercase' }}>2. The Hook</div>
+                              <div style={{ fontSize: '0.9rem', color: '#1E293B', fontWeight: 800 }}>{activeIntel.output.hook.type}</div>
+                              <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500 }}>{activeIntel.output.hook.desc}</div>
+                            </div>
+                            <button 
+                              onClick={() => setSelectedPromoDetail({ title: activeIntel.output.hook.type, desc: activeIntel.output.hook.desc, reason: activeIntel.output.reason, category: 'The Hook', img: activeIntel.output.hook.img, detail: activeIntel.output.hook.detail })}
+                              style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#FEF2F2', color: '#EF4444', fontWeight: 700, fontSize: '0.7rem', cursor: 'pointer', alignSelf: 'flex-start' }}
+                            >
+                              Detail
+                            </button>
+                          </div>
+                        )}
+
+                        {/* The Basket Builder */}
+                        {activeIntel.output.bundle && (
+                          <div style={{ background: '#FFF', padding: '16px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', gap: '12px', alignItems: 'center' }}>
+                            <img src={activeIntel.output.bundle.img} style={{ width: '48px', height: '48px', borderRadius: '8px', objectFit: 'cover' }} alt="Bundle" />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                              <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#10B981', textTransform: 'uppercase' }}>3. Basket Builder</div>
+                              <div style={{ fontSize: '0.9rem', color: '#1E293B', fontWeight: 800 }}>{activeIntel.output.bundle.type}</div>
+                              <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500 }}>{activeIntel.output.bundle.desc}</div>
+                            </div>
+                            <button 
+                              onClick={() => setSelectedPromoDetail({ title: activeIntel.output.bundle.type, desc: activeIntel.output.bundle.desc, reason: activeIntel.output.reason, category: 'Basket Builder', img: activeIntel.output.bundle.img, detail: activeIntel.output.bundle.detail })}
+                              style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#FEF2F2', color: '#EF4444', fontWeight: 700, fontSize: '0.7rem', cursor: 'pointer', alignSelf: 'flex-start' }}
+                            >
+                              Detail
+                            </button>
+                          </div>
+                        )}
+                        
+                        {/* Blue Ocean / Hidden Bundle Opportunity */}
+                        {strategyMode === 'margin' && (
+                          <div 
+                            style={{ background: '#FFF', padding: '16px', borderRadius: '12px', boxShadow: '0 4px 12px rgba(0,0,0,0.03)', display: 'flex', gap: '12px', alignItems: 'center', transition: 'all 0.2s' }}
+                          >
+                            <div style={{ width: '48px', height: '48px', borderRadius: '8px', background: 'rgba(0,0,0,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#1E293B' }}>
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                              <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Stealth Opportunity Detected</div>
+                              <div style={{ fontSize: '0.9rem', color: '#1E293B', fontWeight: 800 }}>Unlabelled Competitor Bundles</div>
+                              <div style={{ fontSize: '0.7rem', color: '#64748B', fontWeight: 500 }}>Click to view calculated bundle combinations to match market.</div>
+                            </div>
+                            <button 
+                              onClick={() => setIsBundleModalOpen(true)}
+                              style={{ padding: '6px 12px', borderRadius: '6px', border: 'none', background: '#FEF2F2', color: '#EF4444', fontWeight: 700, fontSize: '0.7rem', cursor: 'pointer', alignSelf: 'flex-start' }}
+                            >
+                              Detail
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+
+          </div>
+        </div>
+      </div>
+
+      {/* Bundle Opportunity Modal */}
+      {isBundleModalOpen && (
+        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.4)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          <div style={{ width: '480px', background: '#FFF', borderRadius: '24px', boxShadow: '0 24px 48px rgba(0,0,0,0.1)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+            <div style={{ padding: '24px', borderBottom: '1px solid #E2E8F0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(139, 92, 246, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#8B5CF6' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: '1rem', fontWeight: 800, color: '#1E293B' }}>Bundle Opportunity</span>
+                  <span style={{ fontSize: '0.75rem', fontWeight: 500, color: '#64748B' }}>Stealth Competitor Moves</span>
+                </div>
+              </div>
+              <button onClick={() => setIsBundleModalOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94A3B8' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+              </button>
+            </div>
+            
+            <div style={{ padding: '24px', display: 'flex', flexDirection: 'column', gap: '20px' }}>
+              <div style={{ fontSize: '0.85rem', color: '#475569', lineHeight: 1.6 }}>
+                <strong>7 competitors</strong> in your 2mi radius are running meal deal bundles. <strong>5 of them are unlabelled</strong> (not showing as promos in search filters), effectively giving them a hidden conversion boost.
+              </div>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ fontSize: '0.7rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Calculated Combinations to Match Market</div>
+                
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <img src="https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=64&h=64&fit=crop" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} alt="Pizza Combo" />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1E293B' }}>Pizza + Fries + Drink</span>
+                      <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Standard Price: £18.49</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10B981' }}>£14.99</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#E86A58' }}>Save £3.50</span>
+                  </div>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px', borderRadius: '12px', border: '1px solid #E2E8F0', background: '#F8FAFC' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                    <img src="https://images.unsplash.com/photo-1594212885974-297eb0d36cda?w=64&h=64&fit=crop" style={{ width: '40px', height: '40px', borderRadius: '8px', objectFit: 'cover' }} alt="Burger Combo" />
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <span style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1E293B' }}>Burger + Fries + Drink</span>
+                      <span style={{ fontSize: '0.75rem', color: '#64748B' }}>Standard Price: £16.29</span>
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#10B981' }}>£13.49</span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 700, color: '#E86A58' }}>Save £2.80</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div style={{ padding: '24px', background: '#F8FAFC', borderTop: '1px solid #E2E8F0', display: 'flex', justifyContent: 'flex-end', gap: '12px' }}>
+              <button onClick={() => setIsBundleModalOpen(false)} style={{ padding: '10px 20px', borderRadius: '8px', border: '1px solid #CBD5E1', background: '#FFF', color: '#475569', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer' }}>
+                Cancel
+              </button>
+              <button onClick={() => setIsBundleModalOpen(false)} style={{ padding: '10px 20px', borderRadius: '8px', border: 'none', background: '#8B5CF6', color: '#FFF', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(139, 92, 246, 0.25)' }}>
+                Mark as Implemented
+              </button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Detail Modal */}
+      {selectedPromoDetail && (() => {
+        const d = selectedPromoDetail.detail;
+        const verdictColors = {
+          strong:  { bg: '#F0FDF4', border: '#86EFAC', text: '#166534', dot: '#22C55E' },
+          caution: { bg: '#FFFBEB', border: '#FCD34D', text: '#92400E', dot: '#F59E0B' },
+          risk:    { bg: '#FEF2F2', border: '#FCA5A5', text: '#991B1B', dot: '#EF4444' },
+        };
+        const vc = verdictColors[d?.verdict] || verdictColors.caution;
+
+        return (
+          <div onClick={() => setSelectedPromoDetail(null)} style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.45)', backdropFilter: 'blur(8px)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '560px', background: '#FFF', borderRadius: '20px', boxShadow: '0 24px 48px rgba(0,0,0,0.12)', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
+
+              {/* Header */}
+              <div style={{ padding: '20px 24px', borderBottom: '1px solid #F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+                  {selectedPromoDetail.img && (
+                    <img src={selectedPromoDetail.img} style={{ width: '48px', height: '48px', borderRadius: '10px', objectFit: 'cover' }} alt="Promo" />
+                  )}
+                  <div>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#E86A58', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '2px' }}>{selectedPromoDetail.category}</div>
+                    <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#1E293B', lineHeight: 1.2 }}>{selectedPromoDetail.title}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 500, marginTop: '2px' }}>{selectedPromoDetail.desc}</div>
+                  </div>
+                </div>
+                <button onClick={() => setSelectedPromoDetail(null)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#94A3B8', padding: '4px' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+              </div>
+
+              {/* Body */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0', overflowY: 'auto' }}>
+
+                {/* Verdict Banner */}
+                {d?.verdictLabel && (
+                  <div style={{ margin: '20px 24px 0', background: vc.bg, border: `1px solid ${vc.border}`, borderRadius: '12px', padding: '14px 18px', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <div style={{ width: '10px', height: '10px', borderRadius: '50%', background: vc.dot, flexShrink: 0, marginTop: '4px' }} />
+                    <div>
+                      <div style={{ fontSize: '0.75rem', fontWeight: 800, color: vc.text, textTransform: 'uppercase', letterSpacing: '0.05em' }}>{d.verdictLabel}</div>
+                      {d.profileNote && <div style={{ fontSize: '0.82rem', color: vc.text, fontWeight: 500, marginTop: '3px', opacity: 0.85 }}>{d.profileNote}</div>}
+                    </div>
+                  </div>
+                )}
+
+                {/* Why Now */}
+                {d?.reasons?.length > 0 && (
+                  <div style={{ margin: '20px 24px 0' }}>
+                    <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '10px' }}>Why Now</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {d.reasons.map((r, i) => (
+                        <div key={i} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                          <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#F1F5F9', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#E86A58" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                          </div>
+                          <span style={{ fontSize: '0.84rem', color: '#334155', lineHeight: 1.5, fontWeight: 500 }}>{r}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Timing + Risks side by side */}
+                <div style={{ display: 'flex', gap: '12px', margin: '20px 24px 0' }}>
+                  {d?.timing && (
+                    <div style={{ flex: 1, background: '#F8FAFC', borderRadius: '10px', padding: '14px', border: '1px solid #E2E8F0' }}>
+                      <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Best Timing</div>
+                      <div style={{ fontSize: '0.82rem', color: '#334155', fontWeight: 500, lineHeight: 1.5 }}>{d.timing}</div>
+                    </div>
+                  )}
+                  {d?.risks?.length > 0 && (
+                    <div style={{ flex: 1, background: '#FFF8F7', borderRadius: '10px', padding: '14px', border: '1px solid #FECDD3' }}>
+                      <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#E86A58', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '6px' }}>Watch Out</div>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                        {d.risks.map((r, i) => (
+                          <div key={i} style={{ fontSize: '0.82rem', color: '#64748B', fontWeight: 500, lineHeight: 1.5 }}>{r}</div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Pair With */}
+                {d?.pairWith && (
+                  <div style={{ margin: '16px 24px 24px', background: '#F8FAFC', borderRadius: '10px', padding: '14px 18px', border: '1px solid #E2E8F0', display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                    <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: 'rgba(232,106,88,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#E86A58" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path></svg>
+                    </div>
+                    <div>
+                      <div style={{ fontSize: '0.62rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: '3px' }}>Pair With</div>
+                      <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#1E293B' }}>{d.pairWith.label}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#64748B', fontWeight: 500, marginTop: '2px', lineHeight: 1.5 }}>{d.pairWith.note}</div>
+                    </div>
+                  </div>
+                )}
+
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </div>
   );

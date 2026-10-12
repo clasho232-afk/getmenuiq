@@ -1,3 +1,4 @@
+import { ErrorBoundary } from './ErrorBoundary';
 import React, { useEffect, useState } from 'react';
 import { Activity, ArrowRight, AlertTriangle, Sparkles, Send, Wallet, Satellite, Megaphone, ChefHat, TrendingUp, TrendingDown, X, Eye, Clock, BarChart3, ChevronRight, AlertCircle, MapPin, Tag, Shield, Truck , Star } from 'lucide-react';
 import { DeliverooIcon, UberEatsIcon, JustEatIcon } from './PlatformIcons';
@@ -47,6 +48,7 @@ import './DashboardContent.css';
 import MarketPositionReport from './MarketPositionReport';
 import AuditCommandCenterModal from './AuditCommandCenterModal';
 import RestaurantHealthModal from './RestaurantHealthModal';
+import PhotoAnalysisModal from './PhotoAnalysisModal';
 import DeliveryShadowModal from './DeliveryShadowModal';
 import PromoTrackerModal from './PromoTrackerModal';
 import CompetitorPriceModal from './CompetitorPriceModal';
@@ -58,9 +60,23 @@ import AIGreeting from './AIGreeting';
 import AICommandOverlay from './AICommandOverlay';
 import { supabase } from '../supabase';
 import InstantPriceAlertsWidget from './InstantPriceAlertsWidget';
+import AlertSystemWidget from './AlertSystemWidget';
+import AlertSystemModal from './AlertSystemModal';
+import MenuDescriptionWidget from './MenuDescriptionWidget';
 import MarketStatusCard from './MarketStatusCard';
-import { MapContainer, TileLayer, Polygon, useMap } from 'react-leaflet';
+import MarketZoneModal from './MarketZoneModal';
+import { MapContainer, TileLayer, Polygon, useMap, Circle, Marker, Tooltip } from 'react-leaflet';
+import MarkerClusterGroup from 'react-leaflet-cluster';
+import { COMPETITOR_POOL, createCustomIcon, createClusterCustomIcon } from './MarketZoneModal';
 import 'leaflet/dist/leaflet.css';
+
+const haversineDist = (lat1, lng1, lat2, lng2) => {
+  const R = 3959;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
 import eastLondonAreas from './east_london_areas.json';
 
 const MapUpdater = ({ center, zoom }) => {
@@ -70,6 +86,14 @@ const MapUpdater = ({ center, zoom }) => {
       map.setView(center, zoom, { animate: false });
     }
   }, [center, zoom, map]);
+
+  // Force Leaflet to recalculate container size to fix grey tile bugs
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [map]);
   return null;
 };
 
@@ -156,12 +180,27 @@ const AnimatedNumber = ({ value }) => {
   return displayValue;
 };
 
-const DashboardContent = () => {
+const DashboardContent = ({ selectedRestaurant }) => {
   const [selectedCard, setSelectedCard] = React.useState(null);
   const [showPromos, setShowPromos] = React.useState(false);
+
+
+
+  const getFallbackImage = (name) => {
+    if (!name) return 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=800&q=80'; // generic
+    const n = name.toLowerCase();
+    if (n.includes('burger')) return 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=800&q=80';
+    if (n.includes('pizza')) return 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80';
+    if (n.includes('chicken') || n.includes('peri')) return 'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?auto=format&fit=crop&w=800&q=80';
+    if (n.includes('sushi')) return 'https://images.unsplash.com/photo-1579871494447-9811cf80d66c?auto=format&fit=crop&w=800&q=80';
+    return 'https://images.unsplash.com/photo-1514933651103-005eec06c04b?auto=format&fit=crop&w=800&q=80';
+  };
+
+  const [showMarketZone, setShowMarketZone] = React.useState(false);
   const [selectedPromoDetail, setSelectedPromoDetail] = React.useState(null);
   const [selectedMetric, setSelectedMetric] = React.useState(null);
   const [showHealthModal, setShowHealthModal] = React.useState(false);
+  const [showPhotoAnalysisModal, setShowPhotoAnalysisModal] = React.useState(false);
   const [dismissedAlerts, setDismissedAlerts] = React.useState([]);
   const [priceAlertFilter, setPriceAlertFilter] = React.useState('all');
   const [showMarketReport, setShowMarketReport] = React.useState(false);
@@ -173,23 +212,24 @@ const DashboardContent = () => {
   const [selectedItemDetails, setSelectedItemDetails] = React.useState(null);
   const [selectedPlatformFilter, setSelectedPlatformFilter] = React.useState('Deliveroo');
   const [showVisibilityModal, setShowVisibilityModal] = React.useState(false);
+  const [showAlertModal, setShowAlertModal] = React.useState(false);
   const [selectedVisibilityPlatform, setSelectedVisibilityPlatform] = React.useState('All');
   // 1. Pull the active, user-selected ID string token directly out of local storage
   const savedSessionId = localStorage.getItem('menu_iq_active_store_id');
   if (!savedSessionId) {
     console.warn("⚠️ No active session found. Routing back to find-your-restaurant portal.");
   }
-  const finalSessionId = savedSessionId || "602"; // Fallback to prevent crash if accessed directly
+  const finalSessionId = savedSessionId || "166944"; // Fallback to Chesters Ilford ID
 
   // Simulating Platform-Wide Scaling Matrix (Mock Session)
   const storeSessionProfileB = { 
     id: finalSessionId,
     restaurantId: finalSessionId, 
-    name: "Chesters Ilford",
+    name: selectedRestaurant?.name || "Unknown Restaurant",
     estimated_delivery_time: "Est. 20 Min",
-    hero_image_url: "https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800",
-    primaryArea: "Ilford", 
-    areaSublabel: "Redbridge" 
+    hero_image_url: null,
+    primaryArea: selectedRestaurant?.city || "London", 
+    areaSublabel: selectedRestaurant?.city || "London" 
   };
   const activeUserSession = storeSessionProfileB;
 
@@ -203,6 +243,20 @@ const DashboardContent = () => {
   const [mapCenter, setMapCenter] = useState([51.5588, 0.0711]); // Default to Ilford
 
   const [monitoredAreas, setMonitoredAreas] = useState(['Ilford']);
+  
+  const [marketRadius, setMarketRadius] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('menu_iq_market_zone') || '{}').radius || 2.0; } catch { return 2.0; }
+  });
+
+  useEffect(() => {
+    const handleMarketZoneUpdate = (e) => {
+      if (e.detail && e.detail.radius) {
+        setMarketRadius(e.detail.radius);
+      }
+    };
+    window.addEventListener('market-zone-updated', handleMarketZoneUpdate);
+    return () => window.removeEventListener('market-zone-updated', handleMarketZoneUpdate);
+  }, []);
 
   useEffect(() => {
     const handleStorageUpdate = (e) => {
@@ -227,8 +281,13 @@ const DashboardContent = () => {
   useEffect(() => {
     let isMounted = true;
     const fetchLocation = async () => {
+      if (selectedRestaurant?.lat && selectedRestaurant?.lng) {
+        if (isMounted) setMapCenter([selectedRestaurant.lat, selectedRestaurant.lng]);
+        return;
+      }
+      const searchName = selectedRestaurant?.address || selectedRestaurant?.city || currentBoroughName;
       try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(currentBoroughName)},London,UK&format=json`);
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchName)},London,UK&format=json`);
         const data = await response.json();
         
         if (data && data.length > 0 && isMounted) {
@@ -244,37 +303,48 @@ const DashboardContent = () => {
     
     fetchLocation();
     return () => { isMounted = false; };
-  }, [currentBoroughName]);
+  }, [currentBoroughName, selectedRestaurant]);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         console.log(`📡 Fetching profile header definitions for Restaurant ID: [${activeUserSession.restaurantId}]`);
         
-        // 1. Run the Supabase query select pipeline
+        // 1. Run the Supabase query select pipeline for all platforms
+        const targetIds = selectedRestaurant?.all_ids || [activeUserSession.restaurantId];
         const { data: restaurantData, error: restError } = await supabase
           .from('restaurants')
-          .select('id, name, hero_image_url, rating, rating_count, delivery_fee, estimated_delivery_time, cuisines, areas, address, city, is_open, price_range')
-          .eq('id', activeUserSession.restaurantId)
-          .maybeSingle(); // .maybeSingle() is safer than .single() because it returns null instead of throwing an error if 0 rows match
+          .select('id, name, hero_image_url, rating, rating_count, delivery_fee, estimated_delivery_time, cuisines, areas, address, city, is_open, price_range, lat, lng')
+          .in('id', targetIds);
 
         // 2. Critical Catch: If there's an explicit database network network error, step out to fallback
         if (restError) throw restError;
 
-        let rest = restaurantData;
+        let rest = null;
 
         // 3. Evaluation Check: If row exists, hydrate the UI layers with live database values
-        if (rest) {
-          console.log("✅ Row match verified. Hydrating layout with live database items:", rest.name);
+        if (restaurantData && restaurantData.length > 0) {
+          console.log("✅ Row match verified. Aggregating multi-platform live database items...");
+          // Merge platforms into a single Master Entity view
+          rest = { ...restaurantData[0] };
+          const withHero = restaurantData.find(r => r.hero_image_url);
+          if (withHero) rest.hero_image_url = withHero.hero_image_url;
+          
+          const highestRating = [...restaurantData].sort((a, b) => (b.rating || 0) - (a.rating || 0))[0];
+          if (highestRating) {
+            rest.rating = highestRating.rating;
+            rest.rating_count = highestRating.rating_count;
+          }
+          rest.name = selectedRestaurant?.name || rest.name;
           setRestaurant(rest);
         } else {
           // 4. Fallback Execution: If restaurant is null (0 rows returned), force recovery with session state
           console.warn(`⚠️ Supabase returned 0 rows for ID: [${activeUserSession.restaurantId}]. Triggering fallback recovery state...`);
           rest = {
             id: activeUserSession.restaurantId,
-            name: activeUserSession.name || "Chesters Ilford",
+            name: selectedRestaurant?.name || "Unknown Restaurant",
             estimated_delivery_time: activeUserSession.estimated_delivery_time || "Est. 20 Min",
-            hero_image_url: activeUserSession.hero_image_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800',
+            hero_image_url: null,
             areas: [activeUserSession.primaryArea]
           };
           setRestaurant(rest);
@@ -305,9 +375,9 @@ const DashboardContent = () => {
         // If the network request fails entirely, apply fallback values to unfreeze the UI state instantly
         setRestaurant({
           id: activeUserSession.restaurantId,
-          name: activeUserSession.name || "Chesters Ilford",
+          name: selectedRestaurant?.name || "Unknown Restaurant",
           estimated_delivery_time: activeUserSession.estimated_delivery_time || "Est. 20 Min",
-          hero_image_url: activeUserSession.hero_image_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800',
+          hero_image_url: null,
           areas: [activeUserSession.primaryArea]
         });
       } finally {
@@ -337,13 +407,12 @@ const DashboardContent = () => {
   const newCount = visibleAlerts.filter(a => a.isNew).length;
   const affectsYouCount = visibleAlerts.filter(a => a.youSellThis).length;
 
-  const promoCount = livePromos.length > 0 ? livePromos.length : 8; // using 8 for high threat test
+  const promoCount = livePromos.length > 0 ? livePromos.length : 31; // using 31 for double-digit test
   
   let bgGradientClass = 'bg-gradient-to-br from-[#E86A58] to-[#D55A48]'; // High
   if (promoCount <= 3) bgGradientClass = 'bg-gradient-to-br from-emerald-400 to-emerald-600'; // Low
   else if (promoCount <= 6) bgGradientClass = 'bg-gradient-to-br from-amber-400 to-orange-500'; // Medium
   
-
   const centerLat = mapCenter[0];
   const centerLng = mapCenter[1];
 
@@ -359,18 +428,15 @@ const DashboardContent = () => {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '2rem' }}>
       <div style={{ display: 'flex', flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: '3rem', width: '100%' }}>
-        <div style={{ fontSize: '1.875rem', fontWeight: 700, flexShrink: 0, letterSpacing: '-0.02em', transform: 'translateY(35%)' }}>Dashboard</div>
+        <div style={{ fontSize: '1.875rem', fontWeight: 700, flexShrink: 0, letterSpacing: '-0.02em', transform: 'translateY(20%)' }}>Dashboard</div>
       </div>
       
-      {/* Floating AI Greeting */}
-      <div style={{ position: 'fixed', bottom: '2rem', right: '2rem', zIndex: 50, background: '#ffffff', padding: '0.75rem 1.25rem', borderRadius: '999px', boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.04)', cursor: 'pointer', transition: 'all 0.2s ease' }} className="hover:-translate-y-1 hover:shadow-lg">
-        <AIGreeting onClick={() => setIsAIOverlayOpen(true)} />
-      </div>
+      {/* Floating AI Greeting removed to be absolutely positioned under Price Alerts */}
       
       <AICommandOverlay isOpen={isAIOverlayOpen} onClose={() => setIsAIOverlayOpen(false)} />
       
       {/* Master Dashboard Wrapper */}
-      <div className="w-full flex flex-col gap-6" style={{ transform: 'translateY(-5%)' }}>
+      <div className="w-full flex flex-col gap-6" style={{ transform: 'translateY(-1%)' }}>
         
         {/* TOP ROW - 12-Column Grid matching 5-3-4 red box layout */}
         <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6">
@@ -382,7 +448,7 @@ const DashboardContent = () => {
                 flex: 1, 
                 width: '50%',
                 position: 'relative', 
-                backgroundImage: `url('${restaurant?.hero_image_url || 'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=800&q=80'}')`, 
+                backgroundImage: `url('${restaurant?.hero_image_url || selectedRestaurant?.hero_image_url || getFallbackImage(restaurant?.name || selectedRestaurant?.name)}')`, 
                 backgroundSize: 'cover', 
                 backgroundPosition: 'center',
                 minHeight: '260px',
@@ -421,7 +487,7 @@ const DashboardContent = () => {
                   </h2>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#64748B', marginTop: '0.35rem', fontSize: '0.7rem', fontWeight: 500 }}>
                     <MapPin size={12} />
-                    {currentBoroughName || 'Ilford'}, London
+                    {selectedRestaurant?.city || selectedRestaurant?.address?.split(',').pop() || currentBoroughName || 'London'}
                   </div>
                 </div>
 
@@ -477,55 +543,127 @@ const DashboardContent = () => {
           {/* Child 2: Promo Tracker (Combined Map & Tracker) */}
           <div className="col-span-12 md:col-span-3 flex flex-col">
             <div 
-              onClick={() => setShowPromos(true)} 
+              onClick={() => setShowMarketZone(true)} 
               className="harmonized-card-bg w-full flex-1 rounded-[24px] flex items-stretch justify-between relative cursor-pointer group transition-transform duration-300 hover:-translate-y-1 overflow-hidden"
             >
               
               <div 
-                className="flex flex-col justify-center z-20 w-[60%] shrink-0 relative pointer-events-none"
-                style={{ paddingLeft: '26px', paddingRight: '0.5rem' }}
+                className="flex flex-col justify-between z-20 w-[60%] shrink-0 relative pointer-events-none"
+                style={{ paddingLeft: '26px', paddingRight: '0.5rem', paddingTop: '1.5rem', paddingBottom: '1.5rem' }}
               >
-                <span className="text-[10px] font-extrabold text-gray-400 uppercase tracking-widest mb-1">
-                  Competitor Promos
-                </span>
-                <h2 className="text-xl font-bold text-gray-900 leading-tight mb-4">
-                  Promo Tracker
-                </h2>
-                <div className="flex items-end gap-2">
-                  <span className="text-6xl font-black text-[#E86A58] leading-none tracking-tighter">{promoCount}</span>
-                  <div className="flex flex-col pb-1">
-                    <span className="text-sm font-bold text-gray-800 leading-tight">Active</span>
-                    <span className="text-xs font-semibold text-gray-400">Promotions</span>
+                {/* Zone 1 — Header */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px', alignSelf: 'flex-start' }}>
+                  <h2 className="text-xl font-bold text-gray-900 leading-tight">Market Zone</h2>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    <span style={{ fontSize: '11px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Radius:</span>
+                    <span style={{ fontSize: '12px', fontWeight: 800, color: '#E86A58' }}>{marketRadius.toFixed(1)}mi</span>
                   </div>
                 </div>
-                <span className="text-xs font-bold text-gray-400 group-hover:text-[#E86A58] transition-colors mt-6">
-                  View Market Data →
-                </span>
+
+                {/* Zone 2 — Threat Hero (Middle) */}
+                <div className="flex items-center gap-3">
+                  <div className="flex flex-col items-center justify-center relative">
+                    <span className="font-black text-[#E86A58] leading-none tracking-tighter" style={{ fontSize: '48px' }}>6</span>
+                    <div style={{ position: 'absolute', bottom: '-2px', width: '100%', height: '4px', backgroundColor: '#E86A58', borderRadius: '2px', opacity: 0.2 }}></div>
+                  </div>
+                  <div className="flex flex-col pb-1">
+                    <span className="text-sm font-bold text-gray-900 leading-tight">High Threat</span>
+                    <span className="text-xs font-bold text-[#E86A58] uppercase tracking-wide">Competitors</span>
+                  </div>
+                </div>
+
+                {/* Zone 3 — Data Grid (Bottom) */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px 16px', width: '100%' }}>
+                  
+                  {/* Metric 1 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Active</span>
+                    <span style={{ fontSize: '15px', fontWeight: 900, color: '#111827', lineHeight: 1 }}>31</span>
+                  </div>
+
+                  {/* Metric 2 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Promos</span>
+                    <span style={{ fontSize: '15px', fontWeight: 900, color: '#111827', lineHeight: 1 }}>12</span>
+                  </div>
+
+                  {/* Metric 3 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.04em' }}>New (7d)</span>
+                    <span style={{ fontSize: '15px', fontWeight: 900, color: '#10B981', lineHeight: 1 }}>+4</span>
+                  </div>
+
+                  {/* Metric 4 */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Avg Rating</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
+                      <span style={{ fontSize: '15px', fontWeight: 900, color: '#111827', lineHeight: 1 }}>4.3</span>
+                      <svg width="11" height="11" viewBox="0 0 24 24" fill="#F59E0B" style={{ transform: 'translateY(-1px)' }}><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+                    </div>
+                  </div>
+
+                </div>
+
               </div>
 
-              {/* Right Map Interface Column */}
+              {/* Map Layer — absolutely pinned behind the text */}
               <div 
-                className="relative w-[55%] shrink-0 -ml-[15%] z-10 pointer-events-none"
-                style={{ 
-                  WebkitMaskImage: 'linear-gradient(to right, transparent, black 35%)',
-                  maskImage: 'linear-gradient(to right, transparent, black 35%)'
+                style={{
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  bottom: 0,
+                  width: '70%',
+                  zIndex: 10,
+                  pointerEvents: 'none',
+                  WebkitMaskImage: 'linear-gradient(to right, transparent 0%, black 35%)',
+                  maskImage: 'linear-gradient(to right, transparent 0%, black 35%)'
                 }}
               >
+                <style>{`
+                  .market-area-map .leaflet-container { background: transparent !important; }
+                  @keyframes slowRadarPulse {
+                    0% { transform: scale(0.5); opacity: 0.8; }
+                    100% { transform: scale(2.5); opacity: 0; }
+                  }
+                `}</style>
+                <div className="market-area-map" style={{ width: '100%', height: '100%' }}>
                 <MapContainer 
                     center={mapCenter}
-                    zoom={13.5}
+                    zoom={marketRadius > 4 ? 11 : marketRadius > 2.5 ? 12 : marketRadius > 1.5 ? 13 : 14}
                     zoomControl={false}
                     dragging={false}
                     doubleClickZoom={false}
                     scrollWheelZoom={false}
                     attributionControl={false}
-                    style={{ width: '100%', height: '100%', minHeight: '200px' }}
+                    style={{ width: '100%', height: '100%' }}
                   >
-                    <MapUpdater center={mapCenter} zoom={13.5} />
-                    <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+                    <MapUpdater center={mapCenter} zoom={marketRadius > 4 ? 11 : marketRadius > 2.5 ? 12 : marketRadius > 1.5 ? 13 : 14} />
+                    <TileLayer url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png" />
+                    <Circle 
+                      center={mapCenter} 
+                      radius={marketRadius * 1609.34} 
+                      pathOptions={{ color:'#E86A58', fillColor:'#E86A58', fillOpacity:0.04, weight:1.5, dashArray:'4 6' }} 
+                    />
+                    
+                    {/* Markers removed from dashboard card map to prevent clutter */}
                   </MapContainer>
+                </div>
 
+                <style>{``}</style>
+
+                {/* Center Pulsing Dot (Current Location) */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none', zIndex: 9999 }}>
+                  <div style={{ position: 'relative' }}>
+                    <div style={{ width: '12px', height: '12px', backgroundColor: '#E86A58', borderRadius: '50%', position: 'relative', zIndex: 10, boxShadow: '0 0 10px rgba(232,106,88,0.8)' }} />
+                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', pointerEvents: 'none' }}>
+                      <div style={{ width: '40px', height: '40px', backgroundColor: '#E86A58', borderRadius: '50%', animation: 'slowRadarPulse 3.5s ease-out infinite' }} />
+                    </div>
+                  </div>
+                </div>
               </div>
+
+
             </div>
           </div>
 
@@ -539,8 +677,7 @@ const DashboardContent = () => {
         <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6">
         {/* Pricing Overview Consolidated Card */}
         <div className="col-span-12 md:col-span-5">
-          <div className="pricing-gauge-card transition-transform duration-300 hover:-translate-y-1" style={{ minHeight: '280px', height: '100%', padding: 0, flexDirection: 'row' }}>
-            {/* Left 60% Column */}
+          <div className="pricing-gauge-card transition-transform duration-300 hover:-translate-y-1 cursor-pointer" style={{ minHeight: '280px', height: '100%', padding: 0, flexDirection: 'row' }} onClick={() => setSelectedCard({ title: 'Underpriced Items', color: '#E86A58' })}>
             <div style={{ width: '60%', padding: '1.25rem', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
               {/* Header with Filters */}
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', borderBottom: '1px solid rgba(228, 226, 228, 0.6)', paddingBottom: '0.75rem', flexWrap: 'wrap', gap: '0.5rem' }}>
@@ -834,10 +971,30 @@ const DashboardContent = () => {
         </div>
 
         {/* Price Change Alerts (Grouped by Competitor) - Moved to Red Box */}
-        <div className="col-span-12 md:col-span-4" style={{ display: 'flex', flexDirection: 'column' }}>
+        <div className="col-span-12 md:col-span-4" style={{ display: 'flex', flexDirection: 'column', position: 'relative' }}>
           <InstantPriceAlertsWidget />
+          
+          <div style={{ position: 'absolute', bottom: '-4rem', right: '0', zIndex: 40, background: '#ffffff', padding: '0.75rem 1.25rem', borderRadius: '999px', boxShadow: '0 4px 20px rgba(0,0,0,0.08), 0 1px 3px rgba(0,0,0,0.05)', border: '1px solid rgba(0,0,0,0.04)', cursor: 'pointer', transition: 'all 0.2s ease', whiteSpace: 'nowrap' }} className="hover:-translate-y-1 hover:shadow-lg">
+            <AIGreeting onClick={() => setIsAIOverlayOpen(true)} />
+          </div>
         </div>
       </div>
+
+
+      {/* NEW ROW - Market Zone Command */}
+      <div className="w-full grid grid-cols-1 md:grid-cols-12 gap-6 mt-6">
+        <div className="col-span-12 md:col-span-5">
+          <MenuDescriptionWidget onClick={() => setShowPhotoAnalysisModal(true)} />
+        </div>
+        <div className="col-span-12 md:col-span-3">
+          <div style={{ height: '280px' }}>
+            <AlertSystemWidget onClick={() => setShowAlertModal(true)} />
+          </div>
+        </div>
+      </div>
+      
+      <ErrorBoundary><MarketZoneModal isOpen={showMarketZone} onClose={() => setShowMarketZone(false)} center={mapCenter} ownerRestaurant={restaurant} /></ErrorBoundary>
+      <AlertSystemModal isOpen={showAlertModal} onClose={() => setShowAlertModal(false)} />
       
       {/* Menu Pricing Intelligence Modal */}
       <MenuPricingIntelligenceModal 
@@ -862,6 +1019,17 @@ const DashboardContent = () => {
         isOpen={showHealthModal} 
         onClose={() => setShowHealthModal(false)} 
         restaurant={restaurant}
+        onMetricClick={(type) => {
+          if (type === 'photos') {
+            setShowPhotoAnalysisModal(true);
+          }
+        }}
+      />
+      
+      {/* Photo Analysis Modal */}
+      <PhotoAnalysisModal 
+        isOpen={showPhotoAnalysisModal}
+        onClose={() => setShowPhotoAnalysisModal(false)}
       />
 
       {/* Modal Overlay for Promos */}
@@ -935,6 +1103,7 @@ const DashboardContent = () => {
         isOpen={showVisibilityModal} 
         onClose={() => setShowVisibilityModal(false)} 
         initialPlatform={selectedVisibilityPlatform} 
+        selectedRestaurant={restaurant || selectedRestaurant}
       />
 
     </div>

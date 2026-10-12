@@ -45,21 +45,54 @@ const ComparisonModal = ({ isOpen, onClose, ownerRestaurant: initialOwner, compe
 
   const competitors = [ownerRestaurant, ...additionalCompetitors];
 
-  const renderRow = (label, getter, isLast = false) => (
-    <div style={{ display: 'flex', borderBottom: isLast ? 'none' : '1px solid #E5E7EB' }}>
-      <div style={{ flex: '0 0 130px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '13px', fontWeight: 600, color: '#111' }}>
-        {label}
+  const healthScores = React.useMemo(() => {
+    return competitors.map(c => {
+      const strId = c.id ? String(c.id) : (c.name || 'rand');
+      const fallbackScore = 60 + ((strId.length * 7) % 30);
+      const offset = platformView === 'all' ? 0 : platformView === 'ubereats' ? -4 : platformView === 'deliveroo' ? 2 : -2;
+      return Math.max(0, Math.min(100, (c.score || fallbackScore) + offset));
+    });
+  }, [competitors, platformView]);
+
+  const maxHealthScore = Math.max(...healthScores);
+
+  const renderRow = (label, computeValue, renderer, direction, isLast = false) => {
+    const values = competitors.map((c, i) => computeValue(c, i));
+    const numericValues = values.filter(v => typeof v === 'number' && !isNaN(v));
+    let max = -Infinity, min = Infinity;
+    if (numericValues.length > 0) {
+      max = Math.max(...numericValues);
+      min = Math.min(...numericValues);
+    }
+    
+    return (
+      <div style={{ display: 'flex', borderBottom: isLast ? 'none' : '1px solid #E5E7EB' }}>
+        <div style={{ flex: '0 0 130px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '13px', fontWeight: 600, color: '#111' }}>
+          {label}
+        </div>
+        {competitors.map((restaurant, idx) => {
+           const isOwner = idx === 0;
+           const val = values[idx];
+           let color = '#111';
+           if (typeof val === 'number' && min !== max) {
+             if (direction === 'high') {
+               if (val === max) color = '#16A34A';
+               else if (val === min) color = '#DC2626';
+             } else if (direction === 'low') {
+               if (val === min) color = '#16A34A';
+               else if (val === max) color = '#DC2626';
+             }
+           }
+           
+           return (
+             <div key={`row-${label}-${restaurant.id}`} style={{ flex: '1', minWidth: '140px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '13px', fontWeight: 500, color: '#4B5563', backgroundColor: isOwner ? '#F0FDF4' : '#fff', borderLeft: '1px solid #E5E7EB' }}>
+               {renderer(val, restaurant, idx, color)}
+             </div>
+           );
+        })}
       </div>
-      {competitors.map((restaurant, idx) => {
-         const isOwner = idx === 0;
-         return (
-           <div key={`row-${label}-${restaurant.id}`} style={{ flex: '1', minWidth: '140px', padding: '0.75rem 1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center', fontSize: '13px', fontWeight: 500, color: '#4B5563', backgroundColor: isOwner ? '#F0FDF4' : '#fff', borderLeft: '1px solid #E5E7EB' }}>
-             {getter(restaurant)}
-           </div>
-         );
-      })}
-    </div>
-  );
+    );
+  };
 
   return (
     <div style={{
@@ -162,13 +195,19 @@ const ComparisonModal = ({ isOpen, onClose, ownerRestaurant: initialOwner, compe
           {/* Header Row */}
           <div style={{ display: 'flex', borderBottom: '1px solid #E5E7EB' }}>
             <div style={{ flex: '0 0 130px', padding: '1rem', display: 'flex', alignItems: 'center', justifyContent: 'center', textAlign: 'center' }}>
-               <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>Metrics</span>
+               <span style={{ fontSize: '13px', fontWeight: 700, color: '#111' }}>Platform Health</span>
             </div>
             {competitors.map((restaurant, idx) => {
               const isOwner = idx === 0;
+              const isWinner = healthScores[idx] === maxHealthScore && competitors.length > 1 && maxHealthScore > Math.min(...healthScores);
               return (
-                <div key={`header-${restaurant.id}`} style={{ flex: '1', minWidth: '140px', padding: '1rem', backgroundColor: isOwner ? '#F0FDF4' : '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', borderLeft: '1px solid #E5E7EB' }}>
-                  <div style={{ fontSize: '11px', fontWeight: 800, color: isOwner ? '#16A34A' : '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem' }}>
+                <div key={`header-${restaurant.id}`} style={{ position: 'relative', flex: '1', minWidth: '140px', padding: '1rem', backgroundColor: isOwner ? '#F0FDF4' : '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', borderLeft: '1px solid #E5E7EB' }}>
+                  {isWinner && (
+                    <div style={{ position: 'absolute', top: '-12px', zIndex: 10, display: 'flex', alignItems: 'center', gap: '4px', backgroundColor: '#16A34A', color: '#FFF', padding: '4px 10px', borderRadius: '12px', fontSize: '10px', fontWeight: 800, textTransform: 'uppercase', letterSpacing: '0.05em', boxShadow: '0 4px 6px -1px rgba(22, 163, 74, 0.4)' }}>
+                      <span style={{ fontSize: '12px' }}>🏆</span> Overall Leader
+                    </div>
+                  )}
+                  <div style={{ fontSize: '11px', fontWeight: 800, color: isOwner ? '#16A34A' : '#6B7280', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '0.75rem', marginTop: isWinner ? '8px' : '0' }}>
                     {isOwner ? 'My Restaurant' : 'Competitor'}
                   </div>
                   <div style={{ position: 'relative', width: '120px', height: '120px', borderRadius: '12px', overflow: 'hidden', marginBottom: '0.75rem' }}>
@@ -184,81 +223,111 @@ const ComparisonModal = ({ isOpen, onClose, ownerRestaurant: initialOwner, compe
           </div>
 
           {/* Data Rows */}
-          {renderRow('Health Score', c => {
-             const offset = platformView === 'all' ? 0 : platformView === 'ubereats' ? -4 : platformView === 'deliveroo' ? 2 : -2;
-             const score = Math.max(0, Math.min(100, (c.score || Math.floor(Math.random() * 30 + 60)) + offset));
-             return (
+          {renderRow('Health Score', 
+             (c, idx) => healthScores[idx],
+             (val, c, idx, color) => (
                <div style={{ display: 'flex', alignItems: 'baseline', gap: '2px' }}>
-                 <span style={{ fontSize: '1.1rem', fontWeight: 800, color: '#111' }}>{score}</span>
+                 <span style={{ fontSize: '1.1rem', fontWeight: 800, color }}>{val}</span>
                  <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#9CA3AF' }}>/100</span>
                </div>
-             );
-          })}
-          {renderRow('Platform Rating', c => {
-             const platOffset = platformView === 'all' ? 0 : platformView === 'ubereats' ? -0.2 : platformView === 'deliveroo' ? 0.1 : -0.1;
-             const rating = parseFloat(c.rating || (Math.random() * 1 + 4).toFixed(1)) + platOffset;
-             return `${Math.max(1, Math.min(5, rating)).toFixed(1)} avg`;
-          })}
-          {renderRow('Search Visibility', (c, idx) => {
-             const visibility = c.search_visibility || Math.floor(Math.random() * 20 + 5);
-             return (
+             ),
+             'high'
+          )}
+          {renderRow('Platform Rating', 
+             c => {
+               const platOffset = platformView === 'all' ? 0 : platformView === 'ubereats' ? -0.2 : platformView === 'deliveroo' ? 0.1 : -0.1;
+               return parseFloat(c.rating || (Math.random() * 1 + 4).toFixed(1)) + platOffset;
+             },
+             (val, c, idx, color) => (
+               <span style={{ color, fontWeight: 700 }}>{Math.max(1, Math.min(5, val)).toFixed(1)} avg</span>
+             ),
+             'high'
+          )}
+          {renderRow('Search Visibility', 
+             c => c.search_visibility || Math.floor(Math.random() * 20 + 5),
+             (val, c, idx, color) => (
                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', justifyContent: 'center' }}>
                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#6B7280', textTransform: 'uppercase' }}>Top</span>
-                 <span style={{ fontSize: '14px', fontWeight: 800, color: '#111' }}>{visibility}%</span>
+                 <span style={{ fontSize: '14px', fontWeight: 800, color }}>{val}%</span>
                </div>
-             );
-          })}
-          {renderRow('Menu Overlap', (c, idx) => {
-            if (idx === 0) return <span style={{ fontSize: '13px', fontWeight: 600, color: '#9CA3AF' }}>-</span>;
-            const overlap = c.menu_overlap || Math.floor(Math.random() * 40 + 40);
-            return (
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', justifyContent: 'center' }}>
-                <span style={{ fontSize: '14px', fontWeight: 800, color: '#111' }}>{overlap}%</span>
-                <span style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280' }}>Match</span>
-              </div>
-            );
-          })}
-          {renderRow('Price Variance', (c, idx) => {
-            if (idx === 0) return <span style={{ fontSize: '13px', fontWeight: 600, color: '#9CA3AF' }}>Baseline</span>;
-            // Generate deterministic but pseudo-random variance based on id length
-            const strId = c.id ? String(c.id) : c.name;
-            const variance = ((strId.length * 7) % 15) + 1;
-            const isCheaper = strId.length % 2 === 0;
-            return (
-              <span style={{ fontSize: '14px', fontWeight: 700, color: isCheaper ? '#16A34A' : '#DC2626' }}>
-                {isCheaper ? '-' : '+'}{variance}%
-              </span>
-            );
-          })}
-          {renderRow('Delivery Platforms', c => {
-             const plats = detectPlatforms(c);
-             const displayPlats = platformView === 'all' ? plats : plats.filter(p => p === platformView);
-             if (displayPlats.length === 0) return <span style={{ color: '#9CA3AF', fontStyle: 'italic', fontSize: '11px' }}>Not Listed</span>;
-             return (
-               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
-                 {displayPlats.map(p => (
-                   <img key={p} src={`https://cdn.simpleicons.org/${p === 'ubereats' ? 'ubereats/06C167' : p === 'deliveroo' ? 'deliveroo/00CCBC' : 'justeat/FF8000'}`} alt={p} style={{ width: '16px', height: '16px' }} />
-                 ))}
+             ),
+             'low'
+          )}
+          {renderRow('Menu Overlap', 
+             (c, idx) => {
+               if (idx === 0) return null;
+               return c.menu_overlap || Math.floor(Math.random() * 40 + 40);
+             },
+             (val, c, idx, color) => {
+               if (idx === 0) return <span style={{ fontSize: '13px', fontWeight: 600, color: '#9CA3AF' }}>-</span>;
+               return (
+                 <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', justifyContent: 'center' }}>
+                   <span style={{ fontSize: '14px', fontWeight: 800, color: '#111' }}>{val}%</span>
+                   <span style={{ fontSize: '11px', fontWeight: 600, color: '#6B7280' }}>Match</span>
+                 </div>
+               );
+             },
+             'neutral'
+          )}
+          {renderRow('Price Variance', 
+             (c, idx) => {
+               const strId = c.id ? String(c.id) : c.name;
+               const variance = ((strId.length * 7) % 15) + 1;
+               const isCheaper = strId.length % 2 === 0;
+               return isCheaper ? -variance : variance;
+             },
+             (val, c, idx, color) => {
+               return (
+                 <span style={{ fontSize: '14px', fontWeight: 700, color }}>
+                   {val > 0 ? '+' : ''}{val}%
+                 </span>
+               );
+             },
+             'low'
+          )}
+          {renderRow('Delivery Platforms', 
+             c => {
+               const plats = detectPlatforms(c);
+               return platformView === 'all' ? plats : plats.filter(p => p === platformView);
+             },
+             (displayPlats, c, idx, color) => {
+               if (displayPlats.length === 0) return <span style={{ color: '#9CA3AF', fontStyle: 'italic', fontSize: '11px' }}>Not Listed</span>;
+               return (
+                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'center' }}>
+                   {displayPlats.map(p => (
+                     <img key={p} src={`https://cdn.simpleicons.org/${p === 'ubereats' ? 'ubereats/06C167' : p === 'deliveroo' ? 'deliveroo/00CCBC' : 'justeat/FF8000'}`} alt={p} style={{ width: '16px', height: '16px' }} />
+                   ))}
+                 </div>
+               );
+             },
+             'neutral'
+          )}
+          {renderRow('Delivery Fee', 
+             c => {
+               const rawDelivery = parseFloat(c.delivery_fee);
+               if (isNaN(rawDelivery)) return 0;
+               const feeOffset = platformView === 'all' ? 0 : platformView === 'ubereats' ? 0.49 : platformView === 'deliveroo' ? 0.99 : 0;
+               return rawDelivery + feeOffset;
+             },
+             (val, c, idx, color) => {
+               return <span style={{ fontWeight: 700, color }}>{val <= 0 ? 'Free' : `£${val.toFixed(2)}`}</span>;
+             },
+             'low'
+          )}
+          {renderRow('Active Promos', 
+             c => {
+               const promoOffset = platformView === 'all' ? 0 : platformView === 'ubereats' ? -1 : 0;
+               return Math.max(0, (c.promo_count || 0) + promoOffset);
+             },
+             (val, c, idx, color) => (
+               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', justifyContent: 'center' }}>
+                 <span style={{ fontSize: '14px', fontWeight: 700, color }}>{val}</span>
+                 <span style={{ fontSize: '12px', fontWeight: 800, color: '#E86A58', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Promos</span>
                </div>
-             );
-          })}
-          {renderRow('Delivery Fee', c => {
-            const rawDelivery = parseFloat(c.delivery_fee);
-            if (isNaN(rawDelivery)) return 'Free';
-            const feeOffset = platformView === 'all' ? 0 : platformView === 'ubereats' ? 0.49 : platformView === 'deliveroo' ? 0.99 : 0;
-            const finalFee = rawDelivery + feeOffset;
-            return finalFee <= 0 ? 'Free' : `£${finalFee.toFixed(2)}`;
-          })}
-          {renderRow('Active Promos', c => {
-            const promoOffset = platformView === 'all' ? 0 : platformView === 'ubereats' ? -1 : 0;
-            const promos = Math.max(0, (c.promo_count || 0) + promoOffset);
-            return (
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.25rem', justifyContent: 'center' }}>
-                <span style={{ fontSize: '14px', fontWeight: 700, color: '#111' }}>{promos}</span>
-                <span style={{ fontSize: '12px', fontWeight: 800, color: '#E86A58', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Promos</span>
-              </div>
-            );
-          }, true)}
+             ),
+             'high',
+             true
+          )}
         </div>
       </div>
     </div>

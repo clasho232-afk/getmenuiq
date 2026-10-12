@@ -583,7 +583,7 @@ const DeliveryShadowModal = ({ onClose }) => {
           >
             {/* Base Map: Light Monochrome with Labels (CartoDB Positron) */}
             <TileLayer 
-              url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png"
+              url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
             />
             
             {/* Unified Polygon Layer (Always visible, styles dynamically adjust) */}

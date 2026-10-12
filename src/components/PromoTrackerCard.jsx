@@ -105,7 +105,7 @@ const PromoTrackerCard = ({ onClick, activeSession, promoCount = 8 }) => {
             style={{ width: '100%', height: '100%' }}
             key={currentBoroughName + '_tracker'}
           >
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+            <TileLayer url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png" />
             
             {/* Pulsing Data Points overlay */}
             {mockCompetitors.map(comp => {

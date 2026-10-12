@@ -100,7 +100,7 @@ const RadiusMapModal = ({ isOpen, onClose, initialRadiusStr, onApply }) => {
           >
             <TileLayer
               attribution='&copy; <a href="https://carto.com/">CARTO</a>'
-              url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
+              url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png"
             />
             
             <Circle 

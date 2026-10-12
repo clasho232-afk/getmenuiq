@@ -22,7 +22,7 @@
 
 .feed-header-wrapper {
     background: transparent;
-    padding: 32px 32px 24px 32px;
+    padding: 32px 32px 0 32px;
     flex-shrink: 0;
     z-index: 10;
 }
@@ -30,7 +30,7 @@
 .feed-list {
     flex: 1;
     overflow-y: auto;
-    padding: 0 32px 32px 32px;
+    padding: 24px 32px 32px 32px;
     display: flex;
     flex-direction: column;
     gap: 16px;
@@ -62,8 +62,9 @@
 .niche-list-row {
     display: flex;
     padding: 16px;
-    background: #F9F8F4;
-    border: 1px solid #E5E5E5;
+    background: #FFFFFF;
+    border: 1px solid #E2E8F0;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.02);
     border-radius: 16px;
     cursor: pointer;
     transition: all 0.2s;
@@ -77,8 +78,8 @@
 }
 
 .niche-list-row.selected {
-    border-color: #E05046;
-    box-shadow: 0 8px 24px rgba(224, 80, 70, 0.1);
+    border-color: #E2E8F0;
+    box-shadow: 0 4px 24px rgba(224, 80, 70, 0.35);
 }
 
 .row-image {
@@ -229,15 +230,19 @@
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    margin-bottom: 16px;
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+    border-bottom: 1px solid #E2E8F0;
+    border-image: linear-gradient(to right, #E2E8F0 0%, #E2E8F0 75%, rgba(226, 232, 240, 0) 87%) 1;
     flex-shrink: 0;
 }
 
 .detail-title {
-    font-size: 14px;
-    font-weight: 700;
-    color: #1A1A1A;
+    font-size: 20px;
+    font-weight: 800;
+    color: #0F172A;
     margin: 0 0 6px 0;
+    letter-spacing: -0.5px;
 }
 
 .detail-location {
@@ -253,36 +258,44 @@
 }
 
 .detail-price {
-    font-size: 22px; /* Reduced from 28px */
+    font-size: 28px;
     font-weight: 800;
-    color: #1A1A1A;
+    color: #0F172A;
+    letter-spacing: -0.5px;
 }
 
 .detail-price-label {
-    font-size: 12px;
-    color: #999;
+    font-size: 11px;
+    color: #64748B;
+    text-transform: uppercase;
+    font-weight: 700;
+    letter-spacing: 0.5px;
 }
 
 .detail-tabs {
     display: flex;
-    border-bottom: 1px solid #E5E5E5;
-    margin-bottom: 5px;
+    margin-bottom: 0px;
     flex-shrink: 0;
+    border-bottom: 1px solid #E5E5E5;
 }
 
 .detail-tab {
-    padding: 8px 0;
-    margin-right: 32px;
+    padding: 8px 24px;
     font-size: 14px;
     font-weight: 600;
     color: #999;
     cursor: pointer;
-    border-bottom: 3px solid transparent;
+    border-right: 1px solid #E2E8F0;
+    border-radius: 8px 8px 0 0;
+}
+
+.detail-tab:last-child {
+    border-right: none;
 }
 
 .detail-tab.active {
     color: #1A1A1A;
-    border-bottom-color: #E05046;
+    background: rgba(0,0,0,0.03);
 }
 
 .detail-description {
@@ -363,14 +376,32 @@
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    background: white;
-    border-radius: 12px;
-    padding: 8px;
+    background: #E05046;
+    border: 3px solid #FFFFFF;
+    width: max-content;
+    max-width: 16px;
+    max-height: 16px;
+    border-radius: 50%;
+    padding: 0;
     display: flex;
     align-items: center;
     gap: 12px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    box-shadow: 0 4px 12px rgba(224, 80, 70, 0.4);
     z-index: 10;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.minimap-overlay-card:hover {
+    background: white;
+    max-width: 300px;
+    max-height: 100px;
+    padding: 8px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    z-index: 20;
 }
 
 .minimap-overlay-card img {
@@ -378,11 +409,69 @@
     height: 48px;
     border-radius: 8px;
     object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.minimap-overlay-card:hover img {
+    opacity: 1;
+}
+
+.mapbox-marker-dot {
+    background: #E05046;
+    border: 3px solid #FFFFFF;
+    width: max-content;
+    max-width: 16px;
+    max-height: 16px;
+    border-radius: 50%;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 4px 12px rgba(224, 80, 70, 0.4);
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mapbox-marker-dot:hover,
+.mapbox-marker-dot.zoomed {
+    background: white;
+    max-width: 300px;
+    max-height: 100px;
+    padding: 8px;
+    border: 1px solid #E2E8F0;
+    border-radius: 12px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+    z-index: 20;
+}
+
+.mapbox-marker-dot img {
+    width: 40px;
+    height: 40px;
+    border-radius: 6px;
+    object-fit: cover;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.mapbox-marker-dot:hover img,
+.mapbox-marker-dot.zoomed img {
+    opacity: 1;
 }
 
 .minimap-card-text {
     display: flex;
     flex-direction: column;
+    opacity: 0;
+    white-space: nowrap;
+    transition: opacity 0.3s;
+}
+
+.minimap-overlay-card:hover .minimap-card-text,
+.mapbox-marker-dot:hover .minimap-card-text,
+.mapbox-marker-dot.zoomed .minimap-card-text {
+    opacity: 1;
 }
 
 .minimap-card-text strong {
@@ -413,7 +502,7 @@
     gap: 24px;
     height: 100%;
     width: 100%;
-    margin-top: 16px;
+    margin-top: 0;
     flex: 1; /* Stretch to fill detail pane */
     overflow: hidden; /* No scrolling on the main container */
 }
@@ -797,3 +886,7 @@
 .detail-expanded-metrics { font-size: 14px; }
 .detail-expanded-metrics .metric-label { font-size: 12px; }
 .detail-expanded-metrics .metric-highlight { font-size: 14px; }
+
+.modern-competitor-row:hover {
+    background: #F8FAFC !important;
+}

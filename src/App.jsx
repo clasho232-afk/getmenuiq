@@ -6,6 +6,7 @@ import OnboardingFlow from './components/OnboardingFlow';
 import Sidebar from './components/Sidebar';
 import TopNav from './components/TopNav';
 import DashboardContent from './components/DashboardContent';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import MyMenuContent from './components/MyMenuContent';
 import CompetitorsContent from './components/CompetitorsContent';
 import BlindSpotContent from './components/BlindSpotContent';
@@ -158,7 +159,7 @@ function App() {
                 position: 'relative',
               }}
             >
-              {activeTab === 'Dashboard' && <DashboardContent userGoal={userGoal} selectedRestaurant={selectedRestaurant} />}
+              {activeTab === 'Dashboard' && <ErrorBoundary><DashboardContent userGoal={userGoal} selectedRestaurant={selectedRestaurant} /></ErrorBoundary>}
               {activeTab === 'My Menu' && <MyMenuContent selectedRestaurant={selectedRestaurant} analyzeTrigger={analyzeTrigger} />}
               {activeTab === 'Competitors' && <CompetitorsContent />}
               {activeTab === 'Blind Spot' && <BlindSpotContent />}

@@ -288,69 +288,51 @@ export function classifyCompetitor(owner, candidate) {
   // Can't compete with yourself
   if (owner.id === candidate.id) return null;
 
-  // ── Step 1: cuisine gate — must share at least one cuisine type ──────────
-  if (!cuisinesOverlap(owner.cuisines, candidate.cuisines)) {
-    return {
-      tier: TIER.NONE,
-      sharedAreas: [],
-      neighbouringAreas: [],
-      distanceKm: null,
-      reason: 'Different cuisine — not a competitor',
-    };
-  }
-
-  // ── Step 2: area analysis ────────────────────────────────────────────────
-  const ownerAreaSet    = new Set(owner.areas || []);
-  const ownerNeighbours = new Set(getNeighbouringAreas(owner.areas || []));
-
-  // Areas the candidate serves that are IDENTICAL to the owner's areas
-  const sharedAreas = (candidate.areas || []).filter(a => ownerAreaSet.has(a));
-
-  // Areas the candidate serves that BORDER the owner's areas (but are not the same)
-  const neighbouringAreas = (candidate.areas || []).filter(
-    a => ownerNeighbours.has(a) && !ownerAreaSet.has(a)
-  );
-
-  // ── Step 3: distance (for scoring only) ─────────────────────────────────
   let distanceKm = null;
   if (owner.lat && owner.lng && candidate.lat && candidate.lng) {
     distanceKm = haversineKm(owner.lat, owner.lng, candidate.lat, candidate.lng);
   }
 
-  // ── Step 4: assign tier based ONLY on area relationship ─────────────────
-
-  // TIER 1 — candidate serves at least one of the SAME areas as the owner
-  // Example: owner is in Ilford → any other restaurant also serving Ilford = Tier 1
-  if (sharedAreas.length >= 1) {
+  // Fallback
+  if (distanceKm === null) {
     return {
-      tier: TIER.DIRECT,
-      sharedAreas,
-      neighbouringAreas,
-      distanceKm,
-      reason: `Both serve ${sharedAreas.join(', ')}`,
+      tier: TIER.DISTANT,
+      sharedAreas: [],
+      neighbouringAreas: [],
+      distanceKm: null,
+      reason: 'No coordinates',
     };
   }
 
-  // TIER 2 — candidate serves a BORDERING area (no same-area overlap)
-  // Example: owner is in Ilford → restaurant in Barking/Seven Kings/Dagenham = Tier 2
-  if (neighbouringAreas.length >= 1) {
+  // TIER 1 — Direct (within ~2 miles / 3.2km)
+  if (distanceKm <= 3.2) {
+    return {
+      tier: TIER.DIRECT,
+      sharedAreas: candidate.areas || ['Local'], // give it an area so it doesn't fail scoring
+      neighbouringAreas: [],
+      distanceKm,
+      reason: `Within 2 miles (${distanceKm.toFixed(1)}km)`,
+    };
+  }
+
+  // TIER 2 — Adjacent (3.2km to 6.4km / ~4 miles)
+  if (distanceKm <= 6.4) {
     return {
       tier: TIER.ADJACENT,
       sharedAreas: [],
-      neighbouringAreas,
+      neighbouringAreas: candidate.areas || ['Adjacent'],
       distanceKm,
-      reason: `Serves bordering area: ${neighbouringAreas.join(', ')}`,
+      reason: `Within 4 miles (${distanceKm.toFixed(1)}km)`,
     };
   }
 
-  // TIER 3 — no area connection at all
-  // Example: owner is in Ilford → restaurant only serving Whitechapel/Stratford = Tier 3
+  // TIER 3 — Distant (> 6.4km)
   return {
     tier: TIER.DISTANT,
     sharedAreas: [],
     neighbouringAreas: [],
     distanceKm,
-    reason: 'No area connection — different customer pool entirely',
+    reason: `Further than 4 miles`,
   };
 }
 
@@ -473,13 +455,13 @@ export function sortByRelevance(owner, candidates, options = {}) {
  *   const competitors = await fetchCompetitors(supabase, ownerRestaurant);
  */
 export async function fetchCompetitors(supabase, owner) {
-  const neighbourAreas = getNeighbouringAreas(owner.areas || []);
-
-  // Combine owner's own areas + neighbouring areas for the query
-  const allRelevantAreas = [...new Set([...(owner.areas || []), ...neighbourAreas])];
-
-  // Normalised cuisine list for filtering
-  const normCuisines = (owner.cuisines || []).map(normaliseCuisine);
+  // Use a bounding box roughly equivalent to a 6.4km radius (~4 miles)
+  // 1 degree lat = ~111km -> 6.4km = ~0.058 degrees
+  // 1 degree lng at London lat = ~69km -> 6.4km = ~0.092 degrees
+  const oLat = parseFloat(owner.lat);
+  const oLng = parseFloat(owner.lng);
+  const latDelta = 0.058;
+  const lngDelta = 0.092;
 
   const { data, error } = await supabase
     .from('restaurants')
@@ -493,24 +475,26 @@ export async function fetchCompetitors(supabase, owner) {
       rating,
       rating_count,
       delivery_fee,
-      ubereats_url
+      lat,
+      lng
     `)
-    .neq('id', owner.id)                       // exclude self
-    .overlaps('areas', allRelevantAreas)        // must serve at least one relevant area
+    .neq('id', owner.id)
+    .gte('lat', oLat - latDelta)
+    .lte('lat', oLat + latDelta)
+    .gte('lng', oLng - lngDelta)
+    .lte('lng', oLng + lngDelta)
     .order('rating_count', { ascending: false })
-    .limit(100);                                // fetch up to 100, score+filter in JS
+    .limit(100); 
 
   if (error) {
     console.error('[competitorEngine] fetchCompetitors error:', error.message);
     return [];
   }
 
-  // Filter by cuisine overlap in JS (Supabase doesn't do normalised text matching)
-  const cuisineFiltered = (data || []).filter(r =>
-    cuisinesOverlap(owner.cuisines, r.cuisines || [])
-  );
-
-  return cuisineFiltered;
+  // We no longer filter by cuisine or strict area in JS. 
+  // Any restaurant within the bounding box is passed to classifyCompetitor, 
+  // which then accurately scores them by exact Haversine distance.
+  return data || [];
 }
 
 /**
@@ -626,33 +610,52 @@ export const MOCK_DATASET = [
 ];
 
 export async function getRankedCompetitors(supabase, owner) {
-  // Return the mock dataset formatted exactly like the components expect
-  return MOCK_DATASET.map(mock => {
-    return {
-      restaurant: {
-        id: mock.id.toString(),
-        name: mock.name,
-        lat: mock.lat,
-        lng: mock.lng,
-        areas: mock.areaName.split(', '),
-        cuisines: mock.cuisine.split(', '),
-        promo_count: mock.hasActivePromos ? mock.promotions.length : 0,
-        delivery_fee: "0.00",
-        hero_image_url: mock.avatarUrl,
-        ubereats_url: mock.platforms.includes("Uber Eats") ? "https://ubereats.com" : null,
-        deliveroo_url: mock.platforms.includes("Deliveroo") ? "https://deliveroo.co.uk" : null,
-        justeat_url: mock.platforms.includes("Just Eat") ? "https://just-eat.co.uk" : null,
-        isWatchlisted: mock.isWatchlisted
-      },
-      tier: mock.tier,
-      score: mock.threatScore,
-      threat: threatFromScore(mock.threatScore),
-      classification: {
-        sharedAreas: mock.tier === 1 ? mock.areaName.split(', ') : [],
-        neighbouringAreas: mock.tier === 2 ? mock.areaName.split(', ') : []
+  // ── Try Supabase first (CACHE BUSTER) ──────────────────────────────────
+  try {
+    const liveCompetitors = await fetchCompetitors(supabase, owner);
+    if (liveCompetitors && liveCompetitors.length > 0) {
+      const ranked = sortByRelevance(owner, liveCompetitors);
+      if (ranked.length === 0) {
+        return [{ restaurant: { id: 'debug1', name: 'DEBUG: 0 Ranked out of ' + liveCompetitors.length, lat: owner.lat, lng: owner.lng, rating: 5, promo_count: 1 }, tier: 1, score: 100 }];
       }
-    };
-  });
+      return ranked;
+    } else {
+      return [{ restaurant: { id: 'debug2', name: 'DEBUG: liveCompetitors is empty', lat: owner.lat, lng: owner.lng, rating: 5, promo_count: 1 }, tier: 1, score: 100 }];
+    }
+  } catch (err) {
+    console.warn('[competitorEngine] Supabase fetch failed, using mock data:', err);
+    return [{ restaurant: { id: 'debug3', name: 'DEBUG ERR: ' + err.message, lat: owner.lat, lng: owner.lng, rating: 5, promo_count: 1 }, tier: 1, score: 100 }];
+  }
+
+  // ── Fallback: MOCK_DATASET when Supabase has no data yet ──────────────────
+  // Run the bridge script (scraper_to_supabase.py) after a scraping session
+  // to populate Supabase and replace this fallback with real data.
+  return []; // disabled MOCK_DATASET.map(mock => {
+//     return {
+//       restaurant: {
+//         id: mock.id.toString(),
+//         name: mock.name,
+//         lat: mock.lat,
+//         lng: mock.lng,
+//         areas: mock.areaName.split(', '),
+//         cuisines: mock.cuisine.split(', '),
+//         promo_count: mock.hasActivePromos ? mock.promotions.length : 0,
+//         delivery_fee: '0.00',
+//         hero_image_url: mock.avatarUrl,
+//         ubereats_url: mock.platforms.includes('Uber Eats') ? 'https://ubereats.com' : null,
+//         deliveroo_url: mock.platforms.includes('Deliveroo') ? 'https://deliveroo.co.uk' : null,
+//         justeat_url: mock.platforms.includes('Just Eat') ? 'https://just-eat.co.uk' : null,
+//         isWatchlisted: mock.isWatchlisted,
+//       },
+//       tier: mock.tier,
+//       score: mock.threatScore,
+//       threat: threatFromScore(mock.threatScore),
+//       classification: {
+//         sharedAreas: mock.tier === 1 ? mock.areaName.split(', ') : [],
+//         neighbouringAreas: mock.tier === 2 ? mock.areaName.split(', ') : [],
+//       },
+//     };
+//   });
 }
 
 

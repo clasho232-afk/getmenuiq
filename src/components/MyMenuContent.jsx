@@ -4,18 +4,23 @@ import MarketPositionReport from './MarketPositionReport';
 import { supabase } from '../supabase';
 import './MyMenuContent.css';
 
-const mockMenuItems = [
-  { id: 1, name: 'Spicy Chicken Burger', category: 'Burgers', price: '£8.50', cost: '£3.20', margin: '62%', status: 'Active', image: 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80' },
-  { id: 2, name: 'Classic Cheeseburger', category: 'Burgers', price: '£7.00', cost: '£2.80', margin: '60%', status: 'Active', image: 'https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=150&q=80' },
-  { id: 3, name: 'Truffle Fries', category: 'Sides', price: '£4.50', cost: '£1.10', margin: '75%', status: 'Active', image: 'https://images.unsplash.com/photo-1576107232684-1279f390859f?auto=format&fit=crop&w=150&q=80' },
-  { id: 4, name: 'Margherita Pizza', category: 'Pizzas', price: '£11.00', cost: '£2.50', margin: '77%', status: 'Active', image: 'https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=150&q=80' },
-  { id: 5, name: 'Vegan Wrap', category: 'Wraps', price: '£6.50', cost: '£2.10', margin: '67%', status: 'Inactive', image: 'https://images.unsplash.com/photo-1626700051175-6818013e1d4f?auto=format&fit=crop&w=150&q=80' },
-  { id: 6, name: 'Cola Zero', category: 'Drinks', price: '£2.50', cost: '£0.40', margin: '84%', status: 'Active', image: 'https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=150&q=80' },
-  { id: 7, name: 'Milkshake', category: 'Drinks', price: '£4.00', cost: '£1.20', margin: '70%', status: 'Active', image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=150&q=80' },
-  { id: 8, name: 'Sweet Potato Fries', category: 'Sides', price: '£5.00', cost: '£1.40', margin: '72%', status: 'Active', image: 'https://images.unsplash.com/photo-1596649285097-70b1cb3b3209?auto=format&fit=crop&w=150&q=80' }
-];
+
 
 import AuditCommandCenterModal, { getMarketData } from './AuditCommandCenterModal';
+
+
+const ImageWithFallback = ({ src, alt, ...props }) => {
+  const [error, setError] = React.useState(false);
+  const fallback = 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80';
+  return (
+    <img 
+      src={error || !src ? fallback : src} 
+      alt={alt} 
+      onError={() => setError(true)} 
+      {...props} 
+    />
+  );
+};
 
 const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
   const [activeCategory, setActiveCategory] = useState('All');
@@ -48,35 +53,98 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
         
         console.log(`📡 Fetching schema records for restaurant_id: ${selectedRestaurant.id}`);
 
-        // Query step matching your exact columns
-        const { data: items, error: itemsError } = await supabase
+        // First, check if the selected restaurant is part of a Master Entity
+        const { data: selfRest } = await supabase
+          .from('restaurants')
+          .select('master_id')
+          .eq('id', selectedRestaurant.id)
+          .single();
+          
+        const targetMasterId = selfRest?.master_id;
+
+        // Fetch platform mapping for all sibling restaurants (or just itself)
+        let restsQuery = supabase.from('restaurants').select('id, platform');
+        if (targetMasterId) {
+            restsQuery = restsQuery.eq('master_id', targetMasterId);
+        } else {
+            restsQuery = restsQuery.eq('id', selectedRestaurant.id);
+        }
+        
+        const { data: restData } = await restsQuery;
+        const platformMap = {};
+        const siblingIds = [];
+        restData?.forEach(r => {
+            platformMap[r.id] = r.platform;
+            siblingIds.push(r.id);
+        });
+
+        // Fetch menu items for the master entity using indexed restaurant_id
+        let itemsQuery = supabase
           .from('menu_items')
-          .select('id, name, description, price, image_url, is_available, section_name')
-          .eq('restaurant_id', selectedRestaurant.id)
+          .select('id, name, description, price, image_url, is_available, section_name, restaurant_id')
           .order('section_name');
+          
+        if (siblingIds.length > 0) {
+            itemsQuery = itemsQuery.in('restaurant_id', siblingIds);
+        } else {
+            itemsQuery = itemsQuery.eq('restaurant_id', selectedRestaurant.id);
+        }
+
+        const { data: items, error: itemsError } = await itemsQuery;
 
         if (itemsError) throw itemsError;
 
+        const categorizeItem = (name, section, existingCategory) => {
+          if (existingCategory && existingCategory !== 'Uncategorized') return existingCategory;
+          if (section === 'Uncategorized') return 'Extras & Modifiers';
+          const str = `${name} ${section}`.toLowerCase();
+          if (str.match(/(meal deal|offer|discount|combo|promo|special|saver|bundle)/)) return 'Promo';
+          if (str.match(/(drink|cola|water|shake|juice|sprite|fanta|tea|coffee|can|bottle|pepsi|smoothie|beverage)/)) return 'Drinks';
+          if (str.match(/(doner box|bowl|kebab|burger|wrap)/)) return 'Mains';
+          if (str.match(/(side|fry|fries|dip|sauce|nugget|wing|dessert|ice cream|cake|cookie|salad|onion ring|wedges|tenders|bites)/)) return 'Sides';
+          return 'Mains';
+        };
+
         // Map to format the rest of the component expects
-        const mapped = (items || []).map(item => ({
+        const cleanImg = (url) => {
+          if (!url || url === 'null' || url === 'None' || url.trim() === '') return null;
+          // Use wsrv.nl as an image proxy to bypass CORS and referrer blocks
+          return `https://wsrv.nl/?url=${encodeURIComponent(url)}`;
+        };
+
+        const mapped = (items || []).map(item => {
+          const img = cleanImg(item.image_url);
+
+          return {
           id: item.id,
           name: item.name,
-          category: item.section_name || 'Other',
+          category: categorizeItem(item.name, item.section_name || '', item.category),
+          section_name: item.section_name || 'Other',
           price: `£${parseFloat(item.price || 0).toFixed(2)}`,
           priceNum: parseFloat(item.price || 0),
           cost: '—',
           margin: '—',
           status: item.is_available ? 'Active' : 'Inactive',
-          image: item.image_url || 'https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=150&q=80',
-          description: item.description || ''
-        }));
+          image: img,
+          description: item.description || '',
+          platform: platformMap[item.restaurant_id] || 'deliveroo'
+        };
+        });
 
         setMenuItems(mapped);
 
-        // 1. Map 'section_name' directly to generate your top category filter pills row
-        const uniqueCats = ['All', ...new Set(mapped.map(i => i.category))];
+        // Map categories logically to generate the filter pills row
+        const availableCats = new Set(mapped.map(i => i.category));
+        const uniqueCats = [];
+        if (availableCats.has('Mains')) uniqueCats.push('Mains');
+        if (availableCats.has('Sides')) uniqueCats.push('Sides');
+        if (availableCats.has('Drinks')) uniqueCats.push('Drinks');
+        if (availableCats.has('Promo')) uniqueCats.push('Promo');
+        if (availableCats.has('Desserts')) uniqueCats.push('Desserts');
+        if (availableCats.has('Extras & Modifiers')) uniqueCats.push('Extras & Modifiers');
+        
         setCategories(uniqueCats);
-        setActiveCategory('All'); // Real-time fast client-side navigation filter toggle initialization
+        setActiveCategory(uniqueCats[0] || 'Mains'); // Default to first available tab
 
       } catch (err) {
         console.error("❌ Schema Data Retrieval Failure:", err.message);
@@ -113,8 +181,14 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
     { name: 'Milkshake', price: 4.00, image: 'https://images.unsplash.com/photo-1572490122747-3968b75cc699?auto=format&fit=crop&w=64&q=80', signal: 'Local Diner just launched a 20% off milkshake promo — monitor if this becomes permanent pricing' },
   ];
 
-  const filteredItems = (activeCategory === 'All' ? menuItems : menuItems.filter(item => item.category === activeCategory))
-    .filter(item => !searchQuery || item.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const filteredItems = menuItems.filter(item => {
+    // True Platform Filtering
+    if (item.platform && item.platform !== platform) return false;
+    
+    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesCat = activeCategory === 'All' || item.category === activeCategory;
+    return matchesSearch && matchesCat;
+  });
 
   const handleAnalyze = (id) => {
     setAnalyzingItem(id);
@@ -209,26 +283,30 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
 
       <div className="glass-panel main-menu-content-card" style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1.5rem', flex: 1 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem' }}>
-          <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem' }}>
-            {categories.map(cat => (
-              <button 
-                key={cat}
-                onClick={() => setActiveCategory(cat)}
-                style={{ 
-                  padding: '0.5rem 1rem', 
-                  borderRadius: '9999px', 
-                  fontSize: '0.875rem', 
-                  fontWeight: 600, 
-                  background: activeCategory === cat ? '#000' : 'rgba(255,255,255,0.6)', 
-                  color: activeCategory === cat ? '#fff' : '#4B5563',
-                  border: activeCategory === cat ? 'none' : '1px solid rgba(0,0,0,0.05)',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                  transition: 'all 0.2s'
-                }}
-              >
-                {cat}
-              </button>
+          <div style={{ display: 'flex', gap: '0.5rem', overflowX: 'auto', paddingBottom: '0.5rem', alignItems: 'center', flex: 1 }}>
+            {categories.map((cat, idx) => (
+              <React.Fragment key={cat}>
+                {cat === 'Promo' && (
+                  <div style={{ width: '2px', height: '24px', background: 'rgba(0,0,0,0.1)', margin: '0 0.25rem 0 auto', borderRadius: '2px' }} />
+                )}
+                <button 
+                  onClick={() => setActiveCategory(cat)}
+                  style={{ 
+                    padding: '0.5rem 1rem', 
+                    borderRadius: '9999px', 
+                    fontSize: '0.875rem', 
+                    fontWeight: 600, 
+                    background: activeCategory === cat ? '#E05046' : 'rgba(255,255,255,0.6)', 
+                    color: activeCategory === cat ? '#fff' : '#4B5563',
+                    border: activeCategory === cat ? 'none' : '1px solid rgba(0,0,0,0.05)',
+                    cursor: 'pointer',
+                    whiteSpace: 'nowrap',
+                    transition: 'all 0.2s'
+                  }}
+                >
+                  <span style={{ fontWeight: 600 }}>{cat} ({menuItems.filter(i => i.category === cat && (!i.platform || i.platform === platform)).length})</span>
+                </button>
+              </React.Fragment>
             ))}
           </div>
 
@@ -255,52 +333,64 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
               <h4 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', color: '#4B5563' }}>No Menu Items Found</h4>
               <p style={{ fontSize: '13px', margin: 0 }}>This restaurant has no records inside the menu_items table.</p>
             </div>
-          ) : filteredItems.map(item => {
-            const isAnalyzing = analyzingItem === item.id;
-            const isLoading = isAnalyzing && (analysisState === 'scraping' || analysisState === 'rendering');
-            return (
-              <div
-                key={item.id}
-                className={`menu-item-card${isAnalyzing ? ' analyzing' : ''}`}
-                onClick={() => handleAnalyze(item.id)}
-              >
-                {/* Image */}
-                <div className="menu-card-image-wrap">
-                  <img src={item.image} alt={item.name} />
-                  <div className="menu-card-overlay">
-                    {isLoading ? (
-                      <div className="menu-card-spinner" />
-                    ) : (
-                      <button className="menu-card-analyze-btn">
-                        Analyze
-                      </button>
-                    )}
-                  </div>
-                </div>
+          ) : (
+            <div style={{ gridColumn: '1/-1', display: 'flex', flexDirection: 'column', gap: '2.5rem' }}>
+              {Object.entries(
+                filteredItems.reduce((acc, item) => {
+                  const sec = item.section_name;
+                  if (!acc[sec]) acc[sec] = [];
+                  acc[sec].push(item);
+                  return acc;
+                }, {})
+              ).map(([section, items]) => (
+                <div key={section} style={{ width: '100%' }}>
+                  <h3 style={{ fontSize: '1.2rem', fontWeight: 700, marginBottom: '1rem', borderBottom: '1px solid #E5E7EB', paddingBottom: '0.5rem', color: '#111' }}>{section}</h3>
+                  <div className="menu-card-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+                    {items.map((item, idx) => {
+                      const isAnalyzing = analyzingItem === item.id;
+                      const isLoading = isAnalyzing && (analysisState === 'scraping' || analysisState === 'rendering');
+                      return (
+                        <div
+                          key={item.id}
+                          className={`menu-item-card${isAnalyzing ? ' analyzing' : ''}`}
+                          onClick={() => handleAnalyze(item.id)}
+                        >
+                          {/* Image */}
+                          <div className="menu-card-image-wrap">
+                            <ImageWithFallback src={item.image} alt={item.name} />
+                            <div className="menu-card-overlay">
+                              {isLoading ? (
+                                <div className="menu-card-spinner" />
+                              ) : (
+                                <button className="menu-card-analyze-btn">
+                                  Analyze
+                                </button>
+                              )}
+                            </div>
+                          </div>
 
-                {/* Content */}
-                <div className="menu-card-content">
-                  <p className="menu-card-name">{item.name}</p>
-                  <span className="menu-card-category">{item.category}</span>
-                  <div className="menu-card-footer">
-                    <span className="menu-card-price">
-                      <span style={{ color: '#36454F', fontSize: '0.85em', fontWeight: 600, marginRight: '4px' }}>Price:</span>
-                      {(() => {
-                        let p = parseFloat(item.price.replace('£', ''));
-                        if (platform === 'deliveroo') p *= 1.05;
-                        if (platform === 'ubereats') p *= 1.08;
-                        if (platform === 'justeat') p *= 1.02;
-                        return `£${p.toFixed(2)}`;
-                      })()}
-                    </span>
-                    <span className="menu-card-status">
-                      <span className={`menu-card-status-dot ${item.status === 'Active' ? 'active' : 'inactive'}`} />
-                    </span>
+                          {/* Content */}
+                          <div className="menu-card-content">
+                            <p className="menu-card-name">{item.name}</p>
+                            <span className="menu-card-category">{item.category}</span>
+                            <div className="menu-card-footer">
+                              <span className="menu-card-price">
+                                <span style={{ color: '#36454F', fontSize: '0.85em', fontWeight: 600, marginRight: '4px' }}>Price:</span>
+                                {item.price}
+                              </span>
+                              <span className="menu-card-status">
+                                <span className={`menu-card-status-dot ${item.status === 'Active' ? 'active' : 'inactive'}`} />
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              </div>
-            );
-          })}
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -322,7 +412,7 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
             <div style={{ padding: '1.5rem 1.75rem', borderBottom: '1px solid rgba(0,0,0,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#FAFAF8', flexShrink: 0 }}>
               <div>
                 <h2 style={{ fontSize: '1.3rem', fontWeight: 800, letterSpacing: '-0.02em' }}>Full Menu Analysis</h2>
-                <p style={{ fontSize: '0.7rem', color: '#9CA3AF', marginTop: '0.2rem' }}>{mockMenuItems.length} items analyzed against your competitive set</p>
+                <p style={{ fontSize: '0.7rem', color: '#9CA3AF', marginTop: '0.2rem' }}>{menuItems.length} items analyzed against your competitive set</p>
               </div>
               <button onClick={() => { setShowFullAnalysis(false); setFullAnalysisState('idle'); }} style={{ width: '36px', height: '36px', borderRadius: '50%', border: '1px solid rgba(0,0,0,0.08)', background: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}><X size={16} color="#6B7280" /></button>
             </div>
@@ -332,7 +422,7 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
                 <div style={{ width: '48px', height: '48px', borderRadius: '50%', border: '3px solid rgba(0,0,0,0.06)', borderTopColor: '#e05046', animation: 'spin 1s linear infinite' }} />
                 <div style={{ textAlign: 'center' }}>
                   <p style={{ fontSize: '0.95rem', fontWeight: 700, color: '#111' }}>Analyzing your full menu against competitors…</p>
-                  <p style={{ fontSize: '0.75rem', color: '#9CA3AF', marginTop: '0.35rem' }}>Comparing {mockMenuItems.length} items across 8 local restaurants</p>
+                  <p style={{ fontSize: '0.75rem', color: '#9CA3AF', marginTop: '0.35rem' }}>Comparing {menuItems.length} items across 8 local restaurants</p>
                 </div>
               </div>
             ) : (
@@ -340,7 +430,7 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
                 {/* Progress Summary */}
                 <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
                   {[
-                    { label: `${mockMenuItems.length} analysed`, color: '#6B7280', bg: 'rgba(0,0,0,0.04)' },
+                    { label: `${menuItems.length} analysed`, color: '#6B7280', bg: 'rgba(0,0,0,0.04)' },
                     { label: `${quickWins.length} quick wins`, color: '#10B981', bg: 'rgba(16,185,129,0.08)' },
                     { label: `${pricedRight.length} priced right`, color: '#6B7280', bg: 'rgba(0,0,0,0.04)' },
                     { label: `${watchList.length} on watch list`, color: '#D97706', bg: 'rgba(245,158,11,0.08)' },
@@ -368,7 +458,7 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                     {quickWins.map((item, i) => (
                       <div key={i} style={{ background: '#fff', borderRadius: '10px', padding: '1rem', border: '1px solid rgba(16,185,129,0.12)', borderLeft: '3px solid #10B981', display: 'flex', gap: '0.85rem' }}>
-                        <img src={item.image} alt={item.name} style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(0,0,0,0.06)' }} />
+                        <ImageWithFallback src={item.image} alt={item.name} style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(0,0,0,0.06)' }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
                             <div>
@@ -401,7 +491,7 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
                       {pricedRight.map((item, i) => (
                         <div key={i} style={{ background: '#fff', borderRadius: '8px', padding: '0.75rem 1rem', border: '1px solid rgba(0,0,0,0.04)', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                          <img src={item.image} alt={item.name} style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(0,0,0,0.06)' }} />
+                          <ImageWithFallback src={item.image} alt={item.name} style={{ width: '36px', height: '36px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(0,0,0,0.06)' }} />
                           <div style={{ flex: 1 }}>
                             <span style={{ fontWeight: 600, fontSize: '0.8rem', color: '#111' }}>{item.name}</span>
                             <p style={{ fontSize: '0.65rem', color: '#9CA3AF', marginTop: '0.15rem' }}>{item.note}</p>
@@ -423,7 +513,7 @@ const MyMenuContent = ({ analyzeTrigger, selectedRestaurant }) => {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                     {watchList.map((item, i) => (
                       <div key={i} style={{ background: '#fff', borderRadius: '10px', padding: '1rem', border: '1px solid rgba(245,158,11,0.12)', borderLeft: '3px solid #F59E0B', display: 'flex', gap: '0.85rem' }}>
-                        <img src={item.image} alt={item.name} style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(0,0,0,0.06)' }} />
+                        <ImageWithFallback src={item.image} alt={item.name} style={{ width: '44px', height: '44px', borderRadius: '8px', objectFit: 'cover', flexShrink: 0, border: '1px solid rgba(0,0,0,0.06)' }} />
                         <div style={{ flex: 1 }}>
                           <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
                             <span style={{ fontWeight: 700, fontSize: '0.85rem', color: '#111' }}>{item.name}</span>

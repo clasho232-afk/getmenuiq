@@ -22,3 +22,18 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Temporary patch scripts and scratch files
+*.py
+!replace_cards.py
+*.cjs
+*.diff
+*.fixed
+fix_css.js
+revert_css.js
+*_temp.jsx
+*_backup.jsx
+typography_audit.json
+search_results.json
+menu_block.txt
+new_right.jsx

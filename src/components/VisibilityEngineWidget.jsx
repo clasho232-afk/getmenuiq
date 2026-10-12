@@ -9,7 +9,7 @@ const VisibilityEngineWidget = ({ onPlatformClick }) => {
       name: 'Deliveroo',
       score: 65,
       barColor: '#00CCBC',
-      textColor: '#0f172a',
+      textColor: '#00CCBC',
       badge: (
         <div style={{
           width: '52px', height: '30px', borderRadius: '15px',
@@ -27,8 +27,8 @@ const VisibilityEngineWidget = ({ onPlatformClick }) => {
     {
       name: 'Uber Eats',
       score: 20,
-      barColor: '#EF4444',
-      textColor: '#EF4444',
+      barColor: '#06C167',
+      textColor: '#06C167',
       badge: (
         <div style={{
           width: '52px', height: '30px', borderRadius: '15px',
@@ -46,8 +46,8 @@ const VisibilityEngineWidget = ({ onPlatformClick }) => {
     {
       name: 'Just Eat',
       score: 14,
-      barColor: '#EF4444',
-      textColor: '#EF4444',
+      barColor: '#F36D00',
+      textColor: '#F36D00',
       badge: (
         <div style={{
           width: '52px', height: '30px', borderRadius: '15px',
@@ -70,19 +70,19 @@ const VisibilityEngineWidget = ({ onPlatformClick }) => {
       {/* Header */}
       <div 
         className="flex justify-between items-start cursor-pointer group" 
-        style={{ marginBottom: '2rem' }}
+        style={{ paddingBottom: '0.5rem', borderBottom: '1px solid #E2E8F0', marginBottom: '0.75rem' }}
         onClick={() => onPlatformClick && onPlatformClick('All')}
       >
-        <div>
-          <h2 className="text-xl font-bold text-gray-900 leading-tight mb-0 group-hover:text-slate-700 transition-colors">
+        <div className="flex flex-col gap-1.5">
+          <h2 className="text-xl font-bold text-gray-900 leading-tight mb-0 group-hover:text-slate-700 transition-colors whitespace-nowrap">
             Visibility Engine
           </h2>
         </div>
         <div className="flex flex-col items-end shrink-0">
-          <span className="font-bold text-slate-400" style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px', color: '#9CA3AF' }}>Health Score</span>
-          <div className="flex items-baseline">
-            <span className="font-black leading-none" style={{ fontSize: '1.75rem', color: '#EF4444', letterSpacing: '-0.02em' }}>{totalScore}</span>
-            <span className="font-bold" style={{ fontSize: '0.9rem', marginLeft: '2px', color: '#64748b', display: 'inline-block', transform: 'translateY(40%)' }}>/100</span>
+          <span className="font-bold text-slate-400" style={{ fontSize: '8px', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: '2px', color: '#9CA3AF' }}>Health Score</span>
+          <div className="flex" style={{ alignItems: 'baseline', gap: '2px' }}>
+            <span style={{ fontSize: '22px', fontWeight: 800, color: '#EF4444', lineHeight: 1, letterSpacing: '-0.02em' }}>{totalScore}</span>
+            <span style={{ fontSize: '11px', fontWeight: 600, color: '#64748B', lineHeight: 1, marginLeft: '1px' }}>/100</span>
           </div>
         </div>
       </div>

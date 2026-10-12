@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Target, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Sparkles, Search, Tag, Copy, Truck, Banknote, Gift, Filter } from 'lucide-react';
+import { Target, MapPin, SlidersHorizontal, ChevronDown, ChevronUp, X, Sparkles, Search, Tag, Copy, Truck, Banknote, Gift, Filter, Star } from 'lucide-react';
 import { MapContainer, TileLayer, Polygon, CircleMarker, ZoomControl, useMap, Tooltip } from 'react-leaflet';
 import 'leaflet/dist/leaflet.css';
 import eastLondonAreas from './east_london_areas.json';
@@ -138,6 +138,21 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
   const [showPlatformFilter, setShowPlatformFilter] = useState(false);
   const [expandedRestaurants, setExpandedRestaurants] = useState({});
   const filterDropdownRef = useRef(null);
+
+  const [starredItems, setStarredItems] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('menuiq_watchlist') || '[]'); } catch { return []; }
+  });
+
+  const toggleStar = (e, id) => {
+    e.stopPropagation();
+    try {
+      const wl = JSON.parse(localStorage.getItem('menuiq_watchlist') || '[]');
+      const isStarred = wl.includes(id);
+      const newWl = isStarred ? wl.filter(x => x !== id) : [...wl, id];
+      localStorage.setItem('menuiq_watchlist', JSON.stringify(newWl));
+      setStarredItems(newWl);
+    } catch {}
+  };
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -322,7 +337,7 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
           >
             <MapController center={mapCenter} zoom={13.5} selectedPromo={selectedPromo} />
             <ZoomControl position="bottomright" />
-            <TileLayer url="https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png" />
+            <TileLayer url="https://maps.wikimedia.org/osm-intl/{z}/{x}/{y}{r}.png" />
             
             {(() => {
               const groupedMarkers = displayFeed.reduce((acc, promo) => {
@@ -570,6 +585,13 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
                               <div style={{ width: '76px', display: 'flex', justifyContent: 'flex-end' }}>
                                 <span style={{ background: 'rgba(224, 80, 70, 0.08)', color: '#E05046', border: '1px solid rgba(224, 80, 70, 0.2)', fontSize: '11px', fontWeight: 600, padding: '3px 10px', borderRadius: '6px', whiteSpace: 'nowrap' }}>{group.promos[0].type}</span>
                               </div>
+                              <button
+                                onClick={(e) => toggleStar(e, `promo_${group.promos[0].id}`)}
+                                title={starredItems.includes(`promo_${group.promos[0].id}`) ? 'Remove from watchlist' : 'Add to watchlist'}
+                                style={{ background:'none', border:'none', padding:'0 5px', cursor:'pointer', flexShrink:0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                              >
+                                <Star size={16} fill={starredItems.includes(`promo_${group.promos[0].id}`) ? "#EAB308" : "none"} color={starredItems.includes(`promo_${group.promos[0].id}`) ? "#EAB308" : "#9CA3AF"} />
+                              </button>
                             </>
                           ) : (
                             isExpanded ? <ChevronUp size={16} color="#6B7280" /> : <ChevronDown size={16} color="#6B7280" />
@@ -602,6 +624,13 @@ const PromoTrackerModal = ({ isOpen, onClose }) => {
                                   <div style={{ width: '76px', display: 'flex', justifyContent: 'flex-end' }}>
                                     <span style={{ background: 'rgba(224, 80, 70, 0.08)', color: '#E05046', border: '1px solid rgba(224, 80, 70, 0.2)', fontSize: '10px', fontWeight: 600, padding: '2px 8px', borderRadius: '6px', whiteSpace: 'nowrap' }}>{promo.type}</span>
                                   </div>
+                                  <button
+                                    onClick={(e) => toggleStar(e, `promo_${promo.id}`)}
+                                    title={starredItems.includes(`promo_${promo.id}`) ? 'Remove from watchlist' : 'Add to watchlist'}
+                                    style={{ background:'none', border:'none', padding:'0 5px', cursor:'pointer', flexShrink:0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                  >
+                                    <Star size={16} fill={starredItems.includes(`promo_${promo.id}`) ? "#EAB308" : "none"} color={starredItems.includes(`promo_${promo.id}`) ? "#EAB308" : "#9CA3AF"} />
+                                  </button>
                                 </div>
                               </div>
                             );

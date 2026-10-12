@@ -131,6 +131,7 @@ const MarketNicheContent = () => {
   const [activeDetailTab, setActiveDetailTab] = useState('Overview');
   const [hoveredAreaId, setHoveredAreaId] = useState(null);
   const [selectedAreaId, setSelectedAreaId] = useState(null);
+  const [mapZoom, setMapZoom] = useState(12.5);
 
   const mockMapLocations = useMemo(() => {
     if (!selectedModalNiche) return [];
@@ -178,29 +179,15 @@ const MarketNicheContent = () => {
   };
 
   const getPlatformPill = (platform) => {
+    const iconStyle = { width: '20px', height: '20px', borderRadius: '50%', objectFit: 'cover', border: '1px solid #E5E7EB', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' };
     if (platform === 'UberEats') {
-        return (
-          <div style={{ background: '#06C167', padding: '0.2rem 0.5rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(6, 193, 103, 0.2)' }}>
-            <img src="https://cdn.simpleicons.org/ubereats/white" alt="UberEats" style={{ height: '10px', width: '10px' }} />
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap', lineHeight: 1 }}>UberEats</span>
-          </div>
-        );
+        return <img src="https://www.google.com/s2/favicons?domain=ubereats.com&sz=128" alt="UberEats" style={iconStyle} title="UberEats" />;
     }
     if (platform === 'Deliveroo') {
-        return (
-          <div style={{ background: '#00CCBC', padding: '0.2rem 0.5rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(0, 204, 188, 0.2)' }}>
-            <img src="https://cdn.simpleicons.org/deliveroo/white" alt="Deliveroo" style={{ height: '10px', width: '10px' }} />
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap', lineHeight: 1 }}>Deliveroo</span>
-          </div>
-        );
+        return <img src="https://www.google.com/s2/favicons?domain=deliveroo.co.uk&sz=128" alt="Deliveroo" style={iconStyle} title="Deliveroo" />;
     }
     if (platform === 'Just Eat') {
-        return (
-          <div style={{ background: '#FF8000', padding: '0.2rem 0.5rem', borderRadius: '9999px', display: 'flex', alignItems: 'center', gap: '0.3rem', boxShadow: '0 1px 2px rgba(255, 128, 0, 0.2)' }}>
-            <img src="https://cdn.simpleicons.org/justeat/white" alt="Just Eat" style={{ height: '10px', width: '10px' }} />
-            <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', whiteSpace: 'nowrap', lineHeight: 1 }}>Just Eat</span>
-          </div>
-        );
+        return <img src="https://www.google.com/s2/favicons?domain=just-eat.co.uk&sz=128" alt="Just Eat" style={iconStyle} title="Just Eat" />;
     }
     return null;
   };
@@ -302,7 +289,7 @@ const MarketNicheContent = () => {
       
       {/* LEFT PANE: Niche Feed (List View) */}
       <div className="niche-feed-container">
-        <div className="feed-header-wrapper">
+        <div className="feed-header-wrapper" style={{ marginTop: '-5%' }}>
             <h1 className="feed-title sans-serif" style={{ marginBottom: '12px' }}>
                 Market Niches
             </h1>
@@ -386,7 +373,7 @@ const MarketNicheContent = () => {
                       <span className="metric-highlight">{niche.areas.length} areas</span>
                     </div>
                     <span className="metric-separator">|</span> 
-                    <div className="metric-group">
+                    <div className="metric-group" style={{ alignItems: 'center' }}>
                       <span className="metric-label">Platform:</span>
                       {getPlatformPill(niche.platform)}
                     </div>
@@ -398,7 +385,7 @@ const MarketNicheContent = () => {
       </div>
 
       {/* RIGHT PANE: Detail View & Map */}
-      <div className="niche-detail-container">
+      <div className="niche-detail-container" style={{ marginTop: '-1%' }}>
         {selectedModalNiche ? (
           <div className="detail-inner">
             
@@ -415,7 +402,7 @@ const MarketNicheContent = () => {
             <div className="detail-header-row" style={{ position: 'relative', marginBottom: '0' }}>
                 <div className="detail-title-col" style={{ paddingRight: '160px' }}>
                     <h2 className="detail-title" style={{ margin: 0, paddingBottom: '4px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ color: '#64748B', fontWeight: '400' }}>Restaurant:</span>
+                        <span style={{ color: '#64748B', fontWeight: '400' }}>Menu Item:</span>
                         {selectedModalNiche.name}
                     </h2>
                 </div>
@@ -445,46 +432,44 @@ const MarketNicheContent = () => {
 
             {activeDetailTab === 'Overview' && (
               <>
-                  {/* Niche Taxonomy */}
-                  <div className="detail-taxonomy row-metrics detail-expanded-metrics" style={{ display: 'flex', gap: '48px', paddingTop: '7px', paddingBottom: '12px', marginBottom: '12px', borderBottom: '1px solid #E2E8F0' }}>
-                      <div className="metric-group">
+                  {/* Unified Metrics Grid */}
+                  <div className="detail-expanded-metrics" style={{ display: 'grid', gridTemplateColumns: 'max-content max-content max-content max-content', paddingBottom: '16px', marginBottom: '16px', borderBottom: '1px solid #E2E8F0' }}>
+                      
+                      {/* Row 1 */}
+                      <div className="metric-group" style={{ gridColumn: 'span 2', paddingTop: '12px', paddingBottom: '12px', borderBottom: '1px solid #E2E8F0', paddingRight: '24px' }}>
                           <span className="metric-label" style={{ color: '#64748B' }}>Niche Category:</span> 
                           <span className="metric-highlight">{selectedModalNiche.nicheCategory}</span>
                       </div>
-                      <div className="metric-group">
+                      <div className="metric-group" style={{ gridColumn: 'span 2', paddingTop: '12px', paddingBottom: '12px', borderBottom: '1px solid #E2E8F0', borderLeft: '1px solid #E2E8F0', paddingLeft: '24px' }}>
                           <span className="metric-label" style={{ color: '#64748B' }}>Type:</span> 
                           <span className="metric-highlight">{selectedModalNiche.type}</span>
                       </div>
-                  </div>
 
-                {/* Stats Row */}
-                <div className="row-metrics expanded-metrics detail-expanded-metrics" style={{ marginTop: '0', marginBottom: '24px' }}>
-                    <div className="metric-group">
-                      <span className="metric-label" style={{ color: '#64748B' }}>Sellers:</span>
-                      <span className="metric-highlight">{selectedModalNiche.stat2Value}</span>
-                    </div>
-                    <span className="metric-separator" style={{ color: '#E2E8F0' }}>|</span> 
-                    <div className="metric-group">
-                      <span className="metric-label" style={{ color: '#64748B' }}>Sold in:</span>
-                      <span className="metric-highlight">{selectedModalNiche.areas.length} areas</span>
-                    </div>
-                    <span className="metric-separator" style={{ color: '#E2E8F0' }}>|</span> 
-                    <div className="metric-group">
-                      <span className="metric-label" style={{ color: '#64748B' }}>Highest Price:</span>
-                      <span className="metric-highlight">{selectedModalNiche.highPrice}</span> 
-                    </div>
-                    <span className="metric-separator" style={{ color: '#E2E8F0' }}>|</span> 
-                    <div className="metric-group">
-                      <span className="metric-label" style={{ color: '#64748B' }}>Lowest Price:</span>
-                      <span className="metric-highlight">{selectedModalNiche.lowPrice}</span> 
-                    </div>
-                </div>
+                      {/* Row 2 */}
+                      <div className="metric-group" style={{ paddingTop: '12px', paddingRight: '24px' }}>
+                          <span className="metric-label" style={{ color: '#64748B' }}>Sellers:</span> 
+                          <span className="metric-highlight">{selectedModalNiche.areas ? selectedModalNiche.stat2Value : '12'}</span>
+                      </div>
+                      <div className="metric-group" style={{ paddingTop: '12px', borderLeft: '1px solid #E2E8F0', paddingLeft: '24px', paddingRight: '24px' }}>
+                          <span className="metric-label" style={{ color: '#64748B' }}>Sold In:</span> 
+                          <span className="metric-highlight">{selectedModalNiche.areas ? selectedModalNiche.areas.length + ' areas' : '2 areas'}</span>
+                      </div>
+                      <div className="metric-group" style={{ paddingTop: '12px', borderLeft: '1px solid #E2E8F0', paddingLeft: '24px', paddingRight: '24px' }}>
+                          <span className="metric-label" style={{ color: '#64748B' }}>Highest Price:</span> 
+                          <span className="metric-highlight">{selectedModalNiche.highPrice || '£15.00'}</span>
+                      </div>
+                      <div className="metric-group" style={{ paddingTop: '12px', borderLeft: '1px solid #E2E8F0', paddingLeft: '24px' }}>
+                          <span className="metric-label" style={{ color: '#64748B' }}>Lowest Price:</span> 
+                          <span className="metric-highlight">{selectedModalNiche.lowPrice || '£8.50'}</span>
+                      </div>
+                  </div>
 
                 {/* Mini Map at the bottom */}
                 <div className="detail-minimap-container">
                     <Map
                       ref={mapRef}
                       initialViewState={{ longitude: -0.052, latitude: 51.522, zoom: 12.5, pitch: 0, bearing: 0 }}
+                      onMove={evt => setMapZoom(evt.viewState.zoom)}
                       mapStyle="https://basemaps.cartocdn.com/gl/positron-gl-style/style.json"
                       interactiveLayerIds={['areas-fill']}
                       onMouseMove={onMapHover}
@@ -496,19 +481,14 @@ const MarketNicheContent = () => {
                       </Source>
                       
                       {mockMapLocations.map(loc => (
-                        <Marker key={loc.id} longitude={loc.lng} latitude={loc.lat} anchor="bottom">
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                            {/* Small Banner */}
-                            <div style={{ background: 'rgba(255, 255, 255, 0.95)', padding: '4px', borderRadius: '6px', boxShadow: '0 2px 4px rgba(0,0,0,0.15)', display: 'flex', flexDirection: 'row', alignItems: 'center', gap: '6px', marginBottom: '4px', border: '1px solid #E2E8F0', backdropFilter: 'blur(4px)' }}>
-                              <img src={selectedModalNiche.image} style={{ width: '20px', height: '20px', borderRadius: '4px', objectFit: 'cover' }} alt="restaurant" />
-                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-                                <span style={{ fontSize: '9px', fontWeight: '700', color: '#1A1A1A', whiteSpace: 'nowrap', lineHeight: '1.2' }}><span style={{ color: '#64748B', fontWeight: '500' }}>Restaurant: </span>{loc.name}</span>
-                                <span style={{ fontSize: '8px', fontWeight: '500', color: '#64748B', whiteSpace: 'nowrap', lineHeight: '1.2', marginBottom: '2px' }}>{selectedModalNiche.name}</span>
-                                <span style={{ fontSize: '10px', fontWeight: '800', color: '#F97316', lineHeight: '1.2' }}>{loc.price}</span>
-                              </div>
+                        <Marker key={loc.id} longitude={loc.lng} latitude={loc.lat} anchor="center">
+                          <div className={`mapbox-marker-dot ${mapZoom >= 13.5 ? 'zoomed' : ''}`}>
+                            <img src={selectedModalNiche.image} alt="restaurant" />
+                            <div className="minimap-card-text">
+                              <strong style={{ fontSize: '13px', color: '#1A1A1A' }}>{loc.name}</strong>
+                              <span style={{ fontSize: '11px', color: '#64748B' }}>{selectedModalNiche.title}</span>
+                              <strong style={{ color: '#E05046', fontSize: '14px', marginTop: '2px' }}>{loc.price}</strong>
                             </div>
-                            {/* Red Dot */}
-                            <div style={{ width: '10px', height: '10px', backgroundColor: '#EF4444', borderRadius: '50%', border: '2px solid white', boxShadow: '0 2px 4px rgba(0,0,0,0.3)' }}></div>
                           </div>
                         </Marker>
                       ))}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Search, Mail, Bell, UtensilsCrossed, Menu, X, MapPin, ChevronDown, Lock, Loader2, Check } from 'lucide-react';
 import PremiumUpsellModal from './PremiumUpsellModal';
-import AreaSelectorWidget from './AreaSelectorWidget';
+
 
 const TopNav = ({ activeTab, setActiveTab, onOpenCommandPalette }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -37,11 +37,6 @@ const TopNav = ({ activeTab, setActiveTab, onOpenCommandPalette }) => {
           <span>MenuIQ</span>
         </div>
         
-        {/* The Divider */}
-        <div style={{ width: '1px', height: '24px', background: '#E5E7EB', margin: '0 16px' }} />
-
-        {/* Location Selector */}
-        <AreaSelectorWidget />
       </div>
       
       {/* Desktop Navigation Links */}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import RestaurantProfilePage from './RestaurantProfilePage';
+import { ErrorBoundary } from './ErrorBoundary';
 
 const CompetitorSummaryModal = ({ competitor, onClose, asSidebar = false }) => {
   if (!competitor) return null;
@@ -50,7 +51,9 @@ const CompetitorSummaryModal = ({ competitor, onClose, asSidebar = false }) => {
       </div>
       
       <div style={{ flex: 1, width: '100%', position: 'relative' }}>
-        <RestaurantProfilePage restaurantId={competitor.id} onBack={onClose} />
+        <ErrorBoundary key={competitor.id}>
+          <RestaurantProfilePage restaurantId={competitor.id} onBack={onClose} />
+        </ErrorBoundary>
       </div>
     </div>
   );

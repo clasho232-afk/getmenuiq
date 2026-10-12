@@ -14,76 +14,73 @@ const CompetitorPricingTab = ({ niche }) => {
     ].sort((a, b) => b.price - a.price); // Order from most to least expensive
   }, []);
 
-  const getPlatformDetails = (platform) => {
-    if (platform === 'Deliveroo') return { bgColor: '#00CCBC', logoUrl: 'https://cdn.simpleicons.org/deliveroo/white' };
-    if (platform === 'UberEats') return { bgColor: '#06C167', logoUrl: 'https://cdn.simpleicons.org/ubereats/white' };
-    return { bgColor: '#FF8000', logoUrl: 'https://cdn.simpleicons.org/justeat/white' };
+  const getPlatformLogo = (platform) => {
+    if (platform === 'UberEats') return "https://www.google.com/s2/favicons?domain=ubereats.com&sz=128";
+    if (platform === 'Deliveroo') return "https://www.google.com/s2/favicons?domain=deliveroo.co.uk&sz=128";
+    if (platform === 'Just Eat') return "https://www.google.com/s2/favicons?domain=just-eat.co.uk&sz=128";
+    return "";
   };
 
   return (
-    <div className="pricing-tab-container" style={{ display: 'block', paddingTop: '0px' }}>
+    <div className="pricing-tab-container" style={{ display: 'block', marginTop: '16px', padding: '12px 0 0 0', overflow: 'hidden', background: 'rgba(255, 255, 255, 0.4)', borderRadius: '12px' }}>
       
       {/* Table Header Row */}
-      <div style={{ display: 'flex', alignItems: 'center', padding: '0 26px 12px 14px', borderBottom: '1px solid #E2E8F0', marginBottom: '12px', gap: '12px' }}>
-        {/* Placeholder for Image */}
-        <div style={{ width: '26px', flexShrink: 0 }}></div>
+      <div style={{ display: 'flex', alignItems: 'center', padding: '0 16px 8px 16px', borderBottom: '1px solid #E2E8F0', gap: '12px' }}>
+        <div style={{ width: '32px', flexShrink: 0 }}></div>
         
-        <div style={{ display: 'flex', alignItems: 'center', flex: '1.0', minWidth: 0, justifyContent: 'flex-start' }}>
-          <span style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Seller</span>
+        <div style={{ flex: '1.2', minWidth: 0 }}>
+          <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Seller</span>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', flex: '1.3', minWidth: 0, justifyContent: 'flex-start' }}>
-          <span style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Item</span>
+        <div style={{ flex: '1.5', minWidth: 0 }}>
+          <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Item</span>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', flex: '1.0', minWidth: 0, justifyContent: 'flex-start' }}>
-          <span style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Platform</span>
+        <div style={{ flex: '0.8', minWidth: 0 }}>
+          <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Platform</span>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', flex: '0.9', minWidth: 0, justifyContent: 'flex-start' }}>
-          <span style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Area</span>
+        <div style={{ flex: '1.0', minWidth: 0 }}>
+          <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Area</span>
         </div>
         
-        <div style={{ display: 'flex', alignItems: 'center', flex: '0.8', justifyContent: 'flex-end', minWidth: 0 }}>
-          <span style={{ fontSize: '10px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Price</span>
+        <div style={{ flex: '0.8', textAlign: 'right', minWidth: 0 }}>
+          <span style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: '700' }}>Price</span>
         </div>
       </div>
 
-      <div className="competitor-list-scroll" style={{ width: '100%', paddingRight: '8px' }}>
-        {mockCompetitors.map((comp) => {
-          const platformDetails = getPlatformDetails(comp.platform);
+      <div className="competitor-list-scroll" style={{ width: '100%' }}>
+        {mockCompetitors.map((comp, idx) => {
+          const isLast = idx === mockCompetitors.length - 1;
           return (
-          <div key={comp.id} className="competitor-row" style={{ display: 'flex', alignItems: 'center', background: '#FFFFFF', borderRadius: '10px', padding: '10px 14px', marginBottom: '8px', boxShadow: '0px 2px 8px rgba(0,0,0,0.03)', border: '1px solid #F0F0F0', gap: '12px' }}>
+          <div key={comp.id} className="modern-competitor-row" style={{ display: 'flex', alignItems: 'center', padding: '6px 16px', borderBottom: isLast ? 'none' : '1px solid #E2E8F0', gap: '8px', transition: 'background 0.2s', cursor: 'pointer' }}>
             
             {/* 1. Micro Imagery */}
-            <img src={comp.image} alt={comp.name} style={{ width: '26px', height: '26px', borderRadius: '6px', objectFit: 'cover', flexShrink: 0 }} />
+            <img src={comp.image} alt={comp.name} style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover', flexShrink: 0, border: '1px solid #E2E8F0' }} />
 
             {/* 2. Restaurant */}
-            <div style={{ display: 'flex', alignItems: 'center', flex: '1.0', minWidth: 0 }}>
-              <span style={{ fontSize: '12px', fontWeight: '600', color: '#1A1A1A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={comp.name}>{comp.name}</span>
+            <div style={{ flex: '1.2', minWidth: 0 }}>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#0F172A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{comp.name}</span>
             </div>
 
             {/* 3. Item Name */}
-            <div style={{ display: 'flex', alignItems: 'center', flex: '1.3', minWidth: 0 }}>
-              <span style={{ fontSize: '11px', fontWeight: '500', color: '#1A1A1A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={comp.itemName}>{comp.itemName}</span>
+            <div style={{ flex: '1.5', minWidth: 0 }}>
+              <span style={{ fontSize: '13px', fontWeight: '500', color: '#475569', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{comp.itemName}</span>
             </div>
 
             {/* 4. Platform Metric */}
-            <div style={{ display: 'flex', alignItems: 'center', flex: '1.0', minWidth: 0 }}>
-              <div style={{ background: platformDetails.bgColor, padding: '2px 6px', borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '4px', flexShrink: 0 }}>
-                  <img src={platformDetails.logoUrl} style={{ width: '10px', height: '10px' }} alt={comp.platform} />
-                  <span style={{ fontSize: '10px', fontWeight: 800, color: '#FFFFFF', lineHeight: 1, whiteSpace: 'nowrap' }}>{comp.platform}</span>
-              </div>
+            <div style={{ flex: '0.8', minWidth: 0, display: 'flex', alignItems: 'center' }}>
+              <img src={getPlatformLogo(comp.platform)} style={{ width: '20px', height: '20px', borderRadius: '50%', border: '1px solid #E5E7EB', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }} alt={comp.platform} title={comp.platform} />
             </div>
 
             {/* 5. Area Metric */}
-            <div style={{ display: 'flex', alignItems: 'center', flex: '0.9', minWidth: 0 }}>
-              <span style={{ fontSize: '12px', fontWeight: '500', color: '#1A1A1A', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={comp.area}>{comp.area}</span>
+            <div style={{ flex: '1.0', minWidth: 0 }}>
+              <span style={{ fontSize: '13px', fontWeight: '500', color: '#64748B', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}>{comp.area}</span>
             </div>
 
             {/* 6. Price Metric */}
-            <div style={{ display: 'flex', alignItems: 'center', flex: '0.8', justifyContent: 'flex-end', minWidth: 0 }}>
-              <span style={{ fontSize: '14px', fontWeight: '700', color: '#1A1A1A', whiteSpace: 'nowrap', flexShrink: 0 }}>£{comp.price.toFixed(2)}</span>
+            <div style={{ flex: '0.8', textAlign: 'right', minWidth: 0 }}>
+              <span style={{ fontSize: '15px', fontWeight: '800', color: '#0F172A', whiteSpace: 'nowrap', display: 'block' }}>£{comp.price.toFixed(2)}</span>
             </div>
 
           </div>
